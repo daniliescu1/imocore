@@ -28,6 +28,10 @@ return new class extends Migration
             });
 
         Schema::table('locatori', function (Blueprint $table) {
+            $table->dropForeign(['imobil_id']);
+        });
+
+        Schema::table('locatori', function (Blueprint $table) {
             $table->dropUnique('locatori_imobil_id_nume_unique');
         });
 
@@ -44,8 +48,12 @@ return new class extends Migration
         });
 
         Schema::table('locatori', function (Blueprint $table) {
-            $table->foreignId('imobil_id')->nullable()->change();
+            $table->foreignId('imobil_id')->nullable(false)->change();
             $table->unique(['imobil_id', 'nume']);
+        });
+
+        Schema::table('locatori', function (Blueprint $table) {
+            $table->foreign('imobil_id')->references('id')->on('imobile')->cascadeOnDelete();
         });
     }
 };
