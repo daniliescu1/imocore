@@ -48,5 +48,7 @@ class DatabaseSeeder extends Seeder
                 'spatii_comune' => 4,
             ]
         );
+
+        $this->call(LocalRestoreSeeder::class);
     }
 }

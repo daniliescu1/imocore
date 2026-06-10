@@ -293,10 +293,7 @@ class SpatiuController extends Controller
         ]);
 
         $validated['retim_direct'] = (bool) ($validated['retim_direct'] ?? false);
-        $validated['regim_incalzire'] = $validated['regim_incalzire'] ?? 'integral';
-        $validated['procent_incalzire_override'] = $validated['regim_incalzire'] === 'partial'
-            ? ($validated['procent_incalzire_override'] ?? null)
-            : null;
+        $validated = $this->normalizeSpatiuByStatus($validated);
         $validated['moneda'] = 'EUR';
 
         if ($spatiu && (int) $validated['imobil_id'] !== (int) $spatiu->imobil_id) {
@@ -314,6 +311,29 @@ class SpatiuController extends Controller
 
         $validated['locator'] = ($validated['locator_id'] ?? null)
             ? Locator::query()->whereKey($validated['locator_id'])->value('nume')
+            : null;
+
+        return $validated;
+    }
+
+    private function normalizeSpatiuByStatus(array $validated): array
+    {
+        if (($validated['status'] ?? '') === 'administrativ') {
+            $validated['regim_incalzire'] = 'neincalzit';
+            $validated['procent_incalzire_override'] = null;
+            $validated['locator_id'] = null;
+            $validated['configurare_anexa_id'] = null;
+            $validated['chirias'] = null;
+            $validated['indexare_2025'] = null;
+            $validated['indexare_2026'] = null;
+
+            return $validated;
+        }
+
+        $validated['regim_incalzire'] = $validated['regim_incalzire']
+            ?? (in_array($validated['status'] ?? '', ['liber', 'inchiriat'], true) ? 'integral' : 'neincalzit');
+        $validated['procent_incalzire_override'] = $validated['regim_incalzire'] === 'partial'
+            ? ($validated['procent_incalzire_override'] ?? null)
             : null;
 
         return $validated;

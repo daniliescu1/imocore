@@ -99,7 +99,7 @@ export default function Create({ imobil = null, campuriSpatiuConfigurabile = [],
         strada: imobil?.strada || '',
         numar: imobil?.numar || '',
         localitate: imobil?.localitate || '',
-        judet: imobil?.judet || '',
+        judet: imobil?.judet || 'Timiș',
         cod_postal: imobil?.cod_postal || '',
         numere_cf: imobil?.numere_cf?.length ? imobil.numere_cf : [emptyCf],
         campuri_spatiu_vizibile: imobil?.campuri_spatiu_vizibile?.length

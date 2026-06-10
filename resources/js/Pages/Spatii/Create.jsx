@@ -44,15 +44,55 @@ function numericValue(value) {
     return Number.isFinite(number) ? number : null;
 }
 
+function defaultRegimIncalzire(status, regimExistent = null) {
+    if (regimExistent) {
+        return regimExistent;
+    }
+
+    if (status === 'liber' || status === 'inchiriat') {
+        return 'integral';
+    }
+
+    return 'neincalzit';
+}
+
+function applyStatusChange(status, data) {
+    if (status === 'administrativ') {
+        return {
+            ...data,
+            status,
+            regim_incalzire: 'neincalzit',
+            procent_incalzire_override: '',
+            locator_id: '',
+            configurare_anexa_id: '',
+            chirias: '',
+            indexare_2025: '',
+            indexare_2026: '',
+        };
+    }
+
+    if (status === 'liber' || status === 'inchiriat') {
+        return {
+            ...data,
+            status,
+            regim_incalzire: 'integral',
+            procent_incalzire_override: '',
+        };
+    }
+
+    return { ...data, status };
+}
+
 export default function Create({ imobile, locatori, configurariAnexe = {}, campuriSpatiuVizibile = {}, spatiu = null, initialImobilId = null }) {
     const isEditing = Boolean(spatiu);
+    const initialStatus = spatiu?.status || 'liber';
     const { data, setData, post, put, processing, errors } = useForm({
         imobil_id: spatiu?.imobil_id || initialImobilId || '',
         identificator: spatiu?.identificator || '',
         suprafata_contractuala_mp: spatiu?.suprafata_contractuala_mp || '',
         corp: spatiu?.corp || '',
         etaj: spatiu?.etaj || '',
-        regim_incalzire: spatiu?.regim_incalzire || 'integral',
+        regim_incalzire: defaultRegimIncalzire(initialStatus, spatiu?.regim_incalzire || null),
         procent_incalzire_override: spatiu?.procent_incalzire_override || '',
         retim_direct: Boolean(spatiu?.retim_direct),
         status: spatiu?.status || 'liber',
@@ -151,7 +191,7 @@ export default function Create({ imobile, locatori, configurariAnexe = {}, campu
 
                     <label className="form-field">
                         <span>Status *</span>
-                        <select value={data.status} onChange={(event) => setData('status', event.target.value)}>
+                        <select value={data.status} onChange={(event) => setData(applyStatusChange(event.target.value, data))}>
                             <option value="liber">Liber</option>
                             <option value="rezervat">Rezervat</option>
                             <option value="inchiriat">Închiriat</option>
@@ -176,7 +216,7 @@ export default function Create({ imobile, locatori, configurariAnexe = {}, campu
                         </label>
                     ) : null}
 
-                    {showField('regim_incalzire') ? (
+                    {showField('regim_incalzire') && !esteAdministrativ ? (
                         <label className="form-field">
                             <span>Regim încălzire</span>
                             <select value={data.regim_incalzire} onChange={(event) => {
@@ -196,7 +236,7 @@ export default function Create({ imobile, locatori, configurariAnexe = {}, campu
                         </label>
                     ) : null}
 
-                    {showField('procent_incalzire_override') && data.regim_incalzire === 'partial' ? (
+                    {showField('procent_incalzire_override') && !esteAdministrativ && data.regim_incalzire === 'partial' ? (
                         <label className="form-field">
                             <span>Procent încălzire manual</span>
                             <input type="number" min="0" max="100" step="0.01" value={data.procent_incalzire_override} onChange={(event) => setData('procent_incalzire_override', event.target.value)} />
@@ -204,7 +244,7 @@ export default function Create({ imobile, locatori, configurariAnexe = {}, campu
                         </label>
                     ) : null}
 
-                    {showField('locator_id') ? (
+                    {showField('locator_id') && !esteAdministrativ ? (
                         <label className="form-field">
                             <span>Locator</span>
                             <select value={data.locator_id} onChange={(event) => setData('locator_id', event.target.value)} disabled={!data.imobil_id}>
@@ -215,7 +255,7 @@ export default function Create({ imobile, locatori, configurariAnexe = {}, campu
                         </label>
                     ) : null}
 
-                    {showField('configurare_anexa_id') ? (
+                    {showField('configurare_anexa_id') && !esteAdministrativ ? (
                         <label className="form-field">
                             <span>Configurare anexă</span>
                             <select value={data.configurare_anexa_id} onChange={(event) => setData('configurare_anexa_id', event.target.value)} disabled={!data.imobil_id || configurariPentruImobil.length === 0}>
@@ -226,7 +266,7 @@ export default function Create({ imobile, locatori, configurariAnexe = {}, campu
                         </label>
                     ) : null}
 
-                    {showField('chirias') ? (
+                    {showField('chirias') && !esteAdministrativ ? (
                         <label className="form-field">
                             <span>Chiriaș</span>
                             <input type="text" value={data.chirias} onChange={(event) => setData('chirias', event.target.value)} />
@@ -244,7 +284,7 @@ export default function Create({ imobile, locatori, configurariAnexe = {}, campu
                     </label>
                 ) : null}
 
-                {showField('indexare_2025') || showField('indexare_2026') || (showField('pret_mp_ultima_indexare') && ultimaIndexare !== null && pretMpUltimaIndexare) ? (
+                {!esteAdministrativ && (showField('indexare_2025') || showField('indexare_2026') || (showField('pret_mp_ultima_indexare') && ultimaIndexare !== null && pretMpUltimaIndexare)) ? (
                     <div className="form-grid">
                         {showField('indexare_2025') ? (
                             <label className="form-field">
