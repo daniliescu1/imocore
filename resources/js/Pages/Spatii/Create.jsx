@@ -2,7 +2,7 @@ import React from 'react';
 import { Link, useForm } from '@inertiajs/react';
 import AppLayout from '../../Layouts/AppLayout';
 
-const etajOptions = ['-1', 'Parter', '1', '2', '3', '4', '5'];
+const etajOptions = ['-1', 'Parter', '1', '2', '3', '4', '5', 'Acoperiș'];
 
 const defaultVisibleSpaceFields = [
     'suprafata_contractuala_mp',
@@ -93,7 +93,7 @@ export default function Create({ imobile, locatori, configurariAnexe = {}, campu
         identificator: spatiu?.identificator || '',
         suprafata_contractuala_mp: spatiu?.suprafata_contractuala_mp || '',
         corp: spatiu?.corp || '',
-        etaj: spatiu?.etaj || '',
+        etaj: spatiu?.etaj || 'Parter',
         regim_incalzire: defaultRegimIncalzire(initialStatus, spatiu?.regim_incalzire || null),
         procent_incalzire_override: spatiu?.procent_incalzire_override || '',
         retim_direct: Boolean(spatiu?.retim_direct),
@@ -187,7 +187,6 @@ export default function Create({ imobile, locatori, configurariAnexe = {}, campu
                         <label className="form-field">
                             <span>Etaj</span>
                             <select value={data.etaj} onChange={(event) => setData('etaj', event.target.value)}>
-                                <option value="">—</option>
                                 {etajOptions.map((etaj) => <option value={etaj} key={etaj}>{etaj}</option>)}
                                 {data.etaj && !etajOptions.includes(data.etaj) ? <option value={data.etaj}>{data.etaj}</option> : null}
                             </select>

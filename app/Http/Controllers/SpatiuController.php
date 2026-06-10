@@ -277,7 +277,7 @@ class SpatiuController extends Controller
             'identificator' => ['required', 'string', 'max:255'],
             'suprafata_contractuala_mp' => ['nullable', 'numeric', 'min:0'],
             'corp' => ['nullable', 'string', 'max:255'],
-            'etaj' => ['nullable', 'string', 'in:-1,Parter,1,2,3,4,5'],
+            'etaj' => ['nullable', 'string', 'in:-1,Parter,1,2,3,4,5,Acoperiș'],
             'regim_incalzire' => ['nullable', 'in:integral,partial,neincalzit,manual'],
             'procent_incalzire_override' => ['nullable', 'numeric', 'min:0', 'max:100'],
             'retim_direct' => ['boolean'],
@@ -295,6 +295,10 @@ class SpatiuController extends Controller
         $validated['retim_direct'] = (bool) ($validated['retim_direct'] ?? false);
         $validated = $this->normalizeSpatiuByStatus($validated);
         $validated['moneda'] = 'EUR';
+
+        if (blank($validated['etaj'] ?? null)) {
+            $validated['etaj'] = 'Parter';
+        }
 
         if ($spatiu && (int) $validated['imobil_id'] !== (int) $spatiu->imobil_id) {
             $validated['ordine'] = $this->nextOrdineForImobil((int) $validated['imobil_id']);
