@@ -691,6 +691,22 @@ td {
     padding: 0 16px;
 }
 
+.spaces-table .spatiu-identificator-header,
+.spaces-table .spatiu-identificator-cell {
+    max-width: 10rem;
+    width: 10rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.spaces-table .spatiu-identificator-cell .table-name-link {
+    display: block;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
 .drag-handle-header {
     width: 36px;
     padding: 0 8px 0 12px !important;
