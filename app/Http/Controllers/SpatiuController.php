@@ -304,13 +304,17 @@ class SpatiuController extends Controller
     {
         $request->merge($this->normalizeDecimalFields($request->all()));
 
+        if ($request->input('regim_incalzire') === 'manual') {
+            $request->merge(['regim_incalzire' => 'integral']);
+        }
+
         $validated = $request->validate([
             'imobil_id' => ['required', 'exists:imobile,id'],
             'identificator' => ['required', 'string', 'max:255'],
             'suprafata_contractuala_mp' => ['nullable', 'numeric', 'min:0'],
             'corp' => ['nullable', 'string', 'max:255'],
             'etaj' => ['nullable', 'string', 'in:-1,Parter,1,2,3,4,5,Acoperiș,Fațadă'],
-            'regim_incalzire' => ['nullable', 'in:integral,partial,neincalzit,manual'],
+            'regim_incalzire' => ['nullable', 'in:integral,partial,neincalzit'],
             'procent_incalzire_override' => ['nullable', 'numeric', 'min:0', 'max:100'],
             'retim_direct' => ['boolean'],
             'status' => ['required', 'in:liber,rezervat,inchiriat,comun,administrativ'],

@@ -93,9 +93,13 @@ function persoaneStandardCalculate(suprafata) {
     return Math.ceil(mp / 10);
 }
 
+function normalizeRegimIncalzire(regim) {
+    return regim === 'manual' ? 'integral' : regim;
+}
+
 function defaultRegimIncalzire(status, regimExistent = null) {
     if (regimExistent) {
-        return regimExistent;
+        return normalizeRegimIncalzire(regimExistent);
     }
 
     if (status === 'liber' || status === 'inchiriat') {
@@ -356,7 +360,6 @@ export default function Create({ imobile, locatori, configurariAnexe = {}, campu
                                 <option value="integral">Încălzit integral</option>
                                 <option value="partial">Țevi încălzire / încălzire parțială</option>
                                 <option value="neincalzit">Neîncălzit</option>
-                                <option value="manual">Excepție</option>
                             </select>
                             {errors.regim_incalzire ? <small>{errors.regim_incalzire}</small> : null}
                         </label>
