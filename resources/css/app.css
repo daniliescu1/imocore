@@ -1647,6 +1647,16 @@ tr:last-child td {
     margin-top: 24px;
 }
 
+.form-indexare-section {
+    margin-top: 28px;
+    padding-top: 24px;
+    border-top: 1px solid var(--border);
+}
+
+.form-indexare-section .form-grid {
+    margin-top: 0;
+}
+
 .rules-list {
     display: grid;
     gap: 18px;

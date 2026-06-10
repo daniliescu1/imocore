@@ -334,33 +334,6 @@ export default function Create({ imobile, locatori, configurariAnexe = {}, campu
                     </label>
                 ) : null}
 
-                {!esteAdministrativ && (showField('indexare_2025') || showField('indexare_2026') || (showField('pret_mp_ultima_indexare') && ultimaIndexare !== null && pretMpUltimaIndexare)) ? (
-                    <div className="form-grid">
-                        {showField('indexare_2025') ? (
-                            <label className="form-field">
-                                <span>Indexare 2025</span>
-                                <input {...decimalInputProps('indexare_2025', data.indexare_2025, setData)} />
-                                {errors.indexare_2025 ? <small>{errors.indexare_2025}</small> : null}
-                            </label>
-                        ) : null}
-
-                        {showField('indexare_2026') ? (
-                            <label className="form-field">
-                                <span>Indexare 2026</span>
-                                <input {...decimalInputProps('indexare_2026', data.indexare_2026, setData)} />
-                                {errors.indexare_2026 ? <small>{errors.indexare_2026}</small> : null}
-                            </label>
-                        ) : null}
-
-                        {showField('pret_mp_ultima_indexare') && ultimaIndexare !== null && pretMpUltimaIndexare ? (
-                            <label className="form-field">
-                                <span>Preț / mp ultima indexare</span>
-                                <input type="text" value={pretMpUltimaIndexare} readOnly tabIndex={-1} aria-readonly="true" />
-                            </label>
-                        ) : null}
-                    </div>
-                ) : null}
-
                 <div className="form-footer-actions">
                     <span />
                     <div className="form-actions">
@@ -368,6 +341,35 @@ export default function Create({ imobile, locatori, configurariAnexe = {}, campu
                         <button className="primary-button" type="submit" disabled={processing}>{processing ? 'Se salvează...' : (isEditing ? 'Salvează modificările' : 'Salvează spațiu')}</button>
                     </div>
                 </div>
+
+                {!esteAdministrativ && (showField('indexare_2025') || showField('indexare_2026') || (showField('pret_mp_ultima_indexare') && ultimaIndexare !== null && pretMpUltimaIndexare)) ? (
+                    <section className="form-indexare-section">
+                        <div className="form-grid">
+                            {showField('indexare_2025') ? (
+                                <label className="form-field">
+                                    <span>Indexare 2025</span>
+                                    <input {...decimalInputProps('indexare_2025', data.indexare_2025, setData)} />
+                                    {errors.indexare_2025 ? <small>{errors.indexare_2025}</small> : null}
+                                </label>
+                            ) : null}
+
+                            {showField('indexare_2026') ? (
+                                <label className="form-field">
+                                    <span>Indexare 2026</span>
+                                    <input {...decimalInputProps('indexare_2026', data.indexare_2026, setData)} />
+                                    {errors.indexare_2026 ? <small>{errors.indexare_2026}</small> : null}
+                                </label>
+                            ) : null}
+
+                            {showField('pret_mp_ultima_indexare') && ultimaIndexare !== null && pretMpUltimaIndexare ? (
+                                <label className="form-field">
+                                    <span>Preț / mp ultima indexare</span>
+                                    <input type="text" value={pretMpUltimaIndexare} readOnly tabIndex={-1} aria-readonly="true" />
+                                </label>
+                            ) : null}
+                        </div>
+                    </section>
+                ) : null}
             </form>
         </AppLayout>
     );
