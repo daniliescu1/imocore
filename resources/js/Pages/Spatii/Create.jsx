@@ -220,6 +220,14 @@ export default function Create({ imobile, locatori, configurariAnexe = {}, campu
                         </label>
                     ) : null}
 
+                    {showField('pret_lunar') ? (
+                        <label className="form-field">
+                            <span>Chirie lunară EUR</span>
+                            <input {...decimalInputProps('pret_lunar', data.pret_lunar, setData)} />
+                            {errors.pret_lunar ? <small>{errors.pret_lunar}</small> : null}
+                        </label>
+                    ) : null}
+
                     {showField('corp') ? (
                         <label className="form-field">
                             <span>Corp</span>
@@ -255,14 +263,6 @@ export default function Create({ imobile, locatori, configurariAnexe = {}, campu
                         <label className="form-field">
                             <span>Persoane standard calculate</span>
                             <input type="text" value={Math.floor((numericValue(data.suprafata_contractuala_mp) ?? 0) / 10)} readOnly />
-                        </label>
-                    ) : null}
-
-                    {showField('pret_lunar') ? (
-                        <label className="form-field">
-                            <span>Chirie lunară EUR</span>
-                            <input {...decimalInputProps('pret_lunar', data.pret_lunar, setData)} />
-                            {errors.pret_lunar ? <small>{errors.pret_lunar}</small> : null}
                         </label>
                     ) : null}
 
