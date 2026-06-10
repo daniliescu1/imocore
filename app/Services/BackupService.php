@@ -630,10 +630,6 @@ class BackupService
             return '';
         }
 
-        if (is_numeric($string) && str_contains($string, '.')) {
-            $string = str_replace('.', ',', $string);
-        }
-
         return $this->removeDiacritics($string);
     }
 
