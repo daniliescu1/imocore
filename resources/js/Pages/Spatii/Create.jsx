@@ -124,6 +124,17 @@ function applyStatusChange(status, data) {
         };
     }
 
+    if (status === 'comun') {
+        return {
+            ...data,
+            status,
+            regim_incalzire: 'neincalzit',
+            procent_incalzire_override: '',
+            locator_id: '',
+            configurare_anexa_id: '',
+        };
+    }
+
     if (status === 'liber' || status === 'inchiriat') {
         return {
             ...data,
@@ -189,6 +200,7 @@ export default function Create({ imobile, locatori, configurariAnexe = {}, campu
     const campuriVizibile = data.imobil_id ? (campuriSpatiuVizibile[data.imobil_id] || defaultVisibleSpaceFields) : defaultVisibleSpaceFields;
     const showField = (field) => campuriVizibile.includes(field);
     const esteAdministrativ = data.status === 'administrativ';
+    const esteComun = data.status === 'comun';
     const etajFaraPersoane = etajeFaraPersoane.includes(data.etaj);
     const ultimaIndexare = numericValue(data.indexare_2026) ?? numericValue(data.indexare_2025);
     const suprafataPentruIndexare = numericValue(data.suprafata_contractuala_mp);
@@ -339,14 +351,14 @@ export default function Create({ imobile, locatori, configurariAnexe = {}, campu
                         {errors.status ? <small>{errors.status}</small> : null}
                     </label>
 
-                    {showField('persoane_standard') && !esteAdministrativ && !etajFaraPersoane ? (
+                    {showField('persoane_standard') && !esteAdministrativ && !esteComun && !etajFaraPersoane ? (
                         <label className="form-field">
                             <span>Persoane standard calculate</span>
                             <input type="text" value={persoaneStandardCalculate(data.suprafata_contractuala_mp)} readOnly />
                         </label>
                     ) : null}
 
-                    {showField('regim_incalzire') && !esteAdministrativ && !etajFaraPersoane ? (
+                    {showField('regim_incalzire') && !esteAdministrativ && !esteComun && !etajFaraPersoane ? (
                         <label className="form-field">
                             <span>Regim încălzire</span>
                             <select value={data.regim_incalzire} onChange={(event) => {
@@ -365,7 +377,7 @@ export default function Create({ imobile, locatori, configurariAnexe = {}, campu
                         </label>
                     ) : null}
 
-                    {showField('procent_incalzire_override') && !esteAdministrativ && !etajFaraPersoane && data.regim_incalzire === 'partial' ? (
+                    {showField('procent_incalzire_override') && !esteAdministrativ && !esteComun && !etajFaraPersoane && data.regim_incalzire === 'partial' ? (
                         <label className="form-field">
                             <span>Procent încălzire parțială</span>
                             <div className="form-input-addon">
@@ -376,7 +388,7 @@ export default function Create({ imobile, locatori, configurariAnexe = {}, campu
                         </label>
                     ) : null}
 
-                    {showField('locator_id') && !esteAdministrativ ? (
+                    {showField('locator_id') && !esteAdministrativ && !esteComun ? (
                         <label className="form-field">
                             <span>Locator</span>
                             <select value={data.locator_id} onChange={(event) => setData('locator_id', event.target.value)} disabled={!data.imobil_id}>
@@ -387,7 +399,7 @@ export default function Create({ imobile, locatori, configurariAnexe = {}, campu
                         </label>
                     ) : null}
 
-                    {showField('configurare_anexa_id') && !esteAdministrativ && !etajFaraPersoane ? (
+                    {showField('configurare_anexa_id') && !esteAdministrativ && !esteComun && !etajFaraPersoane ? (
                         <label className="form-field">
                             <span>Configurare anexă</span>
                             <select value={data.configurare_anexa_id} onChange={(event) => setData('configurare_anexa_id', event.target.value)} disabled={!data.imobil_id || configurariPentruImobil.length === 0}>

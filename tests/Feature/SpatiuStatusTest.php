@@ -70,4 +70,42 @@ class SpatiuStatusTest extends TestCase
         $this->assertNull($spatiu->indexare_2025);
         $this->assertNull($spatiu->indexare_2026);
     }
+
+    public function test_spatiul_comun_are_zero_persoane_si_fara_locator_anexa(): void
+    {
+        $imobil = Imobil::query()->create([
+            'nume' => 'Imobil comun',
+            'strada' => 'Strada Test',
+            'numar' => '3',
+            'localitate' => 'Timișoara',
+        ]);
+
+        $locator = Locator::query()->create(['nume' => 'Locator Test']);
+        $configurare = ConfigurareAnexaImobil::query()->create([
+            'imobil_id' => $imobil->id,
+            'denumire' => 'Anexa test',
+            'implicit' => true,
+            'activ' => true,
+        ]);
+
+        $this->post(route('spatii.store'), [
+            'imobil_id' => $imobil->id,
+            'identificator' => 'S-COMUN',
+            'suprafata_contractuala_mp' => '14.6',
+            'status' => 'comun',
+            'regim_incalzire' => 'integral',
+            'locator_id' => $locator->id,
+            'configurare_anexa_id' => $configurare->id,
+        ])->assertRedirect('/spatii?imobil_id='.$imobil->id);
+
+        $spatiu = Spatiu::query()->where('identificator', 'S-COMUN')->firstOrFail();
+
+        $this->assertSame('comun', $spatiu->status);
+        $this->assertSame('neincalzit', $spatiu->regim_incalzire);
+        $this->assertNull($spatiu->locator_id);
+        $this->assertNull($spatiu->configurare_anexa_id);
+        $this->assertSame(0, $spatiu->persoane_declarate);
+        $this->assertSame(0, $spatiu->persoane_standard);
+        $this->assertSame(0, $spatiu->persoanePentruAnexa());
+    }
 }

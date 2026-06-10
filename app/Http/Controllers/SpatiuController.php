@@ -258,6 +258,7 @@ class SpatiuController extends Controller
 
         $spatiu = Spatiu::create($validated);
         $this->syncPersoaneForAdministrativ($spatiu);
+        $this->syncPersoaneForComun($spatiu);
         $spatiu->imobil->recalculeazaSpatii();
 
         return redirect($this->spatiiIndexUrl($spatiu->imobil_id))->with('success', 'Spațiul a fost adăugat.');
@@ -268,6 +269,7 @@ class SpatiuController extends Controller
         $oldImobil = $spatiu->imobil;
         $spatiu->update($this->validatedData($request, $spatiu));
         $this->syncPersoaneForAdministrativ($spatiu->fresh());
+        $this->syncPersoaneForComun($spatiu->fresh());
 
         $spatiu->refresh()->imobil->recalculeazaSpatii();
 
@@ -430,6 +432,16 @@ class SpatiuController extends Controller
             return $validated;
         }
 
+        if (($validated['status'] ?? '') === 'comun') {
+            $validated['regim_incalzire'] = 'neincalzit';
+            $validated['procent_incalzire_override'] = null;
+            $validated['locator_id'] = null;
+            $validated['configurare_anexa_id'] = null;
+            $validated['persoane_declarate'] = 0;
+
+            return $validated;
+        }
+
         $validated['regim_incalzire'] = $validated['regim_incalzire']
             ?? (in_array($validated['status'] ?? '', ['liber', 'inchiriat'], true) ? 'integral' : 'neincalzit');
         $validated['procent_incalzire_override'] = $validated['regim_incalzire'] === 'partial'
@@ -447,6 +459,17 @@ class SpatiuController extends Controller
 
         if ($spatiu->persoane_declarate !== null) {
             $spatiu->update(['persoane_declarate' => null]);
+        }
+    }
+
+    private function syncPersoaneForComun(Spatiu $spatiu): void
+    {
+        if ($spatiu->status !== 'comun') {
+            return;
+        }
+
+        if ((int) $spatiu->persoane_declarate !== 0) {
+            $spatiu->update(['persoane_declarate' => 0]);
         }
     }
 

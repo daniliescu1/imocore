@@ -56,7 +56,7 @@ class Spatiu extends Model
 
     public function getPersoaneStandardAttribute(): int
     {
-        if ($this->status === 'administrativ' || self::etajFaraPersoane($this->etaj)) {
+        if ($this->status === 'administrativ' || $this->status === 'comun' || self::etajFaraPersoane($this->etaj)) {
             return 0;
         }
 
@@ -81,7 +81,7 @@ class Spatiu extends Model
 
     public function persoanePentruAnexa(): int
     {
-        if ($this->status === 'administrativ' || self::etajFaraPersoane($this->etaj)) {
+        if ($this->status === 'administrativ' || $this->status === 'comun' || self::etajFaraPersoane($this->etaj)) {
             return 0;
         }
 
