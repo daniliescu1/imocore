@@ -103,8 +103,8 @@ export default function BackupIndex({
                     </div>
                 </div>
                 <p className="backup-help-text">
-                    Ultimele {retentionDays} zile apar mai jos. Fiecare backup conține baza de date,
-                    CSV imobile, câte un CSV pe imobil pentru spații și un CSV separat cu chiriașii.
+                    Backup-ul manual de sus se actualizează când apeși <strong>Backup acum</strong>.
+                    Mai jos apar backup-urile automate zilnice din ultimele {retentionDays} zile — câte un rând pe zi.
                 </p>
             </section>
 
@@ -126,7 +126,7 @@ export default function BackupIndex({
                         </thead>
                         <tbody>
                             {backups.map((backup) => (
-                                <tr key={`${backup.date}-${backup.created_at}`}>
+                                <tr key={`${backup.date}-${backup.trigger}-${backup.created_at}`}>
                                     <td>{formatDateTime(backup.created_at || `${backup.date}T03:00:00`)}</td>
                                     <td>{triggerLabel(backup.trigger)}</td>
                                     <td>

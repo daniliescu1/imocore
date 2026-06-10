@@ -54,7 +54,7 @@ class BackupTest extends TestCase
         $this->post(route('backup.store'))->assertRedirect(route('backup.index'));
 
         $date = now()->format('Y-m-d');
-        $directory = storage_path('app/backups/'.$date);
+        $directory = storage_path('app/backups/manual');
         $imobilCsv = $directory.'/spatii/'.$spatiu->imobil_id.'-imobil-backup.csv';
 
         $this->assertDirectoryExists($directory);
@@ -106,8 +106,7 @@ class BackupTest extends TestCase
 
         $this->post(route('backup.store'));
 
-        $date = now()->format('Y-m-d');
-        $directory = storage_path('app/backups/'.$date.'/spatii');
+        $directory = storage_path('app/backups/manual/spatii');
 
         $this->assertFileExists($directory.'/'.$imobilDoi->id.'-imobil-doi.csv');
         $this->assertSame(2, count(File::files($directory)));
@@ -118,24 +117,23 @@ class BackupTest extends TestCase
         $spatiu = $this->seedSpatiu();
         $this->post(route('backup.store'));
 
-        $date = now()->format('Y-m-d');
         $filename = $spatiu->imobil_id.'-imobil-backup.csv';
 
-        $this->get(route('backup.download', ['date' => $date, 'type' => 'database']))
+        $this->get(route('backup.download', ['date' => 'manual', 'type' => 'database']))
             ->assertOk()
-            ->assertDownload("imocore-database-{$date}.sqlite");
+            ->assertDownload('imocore-database-manual.sqlite');
 
-        $this->get(route('backup.download', ['date' => $date, 'type' => 'imobile']))
+        $this->get(route('backup.download', ['date' => 'manual', 'type' => 'imobile']))
             ->assertOk()
-            ->assertDownload("imocore-imobile-{$date}.csv");
+            ->assertDownload('imocore-imobile-manual.csv');
 
-        $this->get(route('backup.download.spatii', ['date' => $date, 'file' => $filename]))
+        $this->get(route('backup.download.spatii', ['date' => 'manual', 'file' => $filename]))
             ->assertOk()
-            ->assertDownload("imocore-spatii-{$spatiu->imobil_id}-imobil-backup-{$date}.csv");
+            ->assertDownload("imocore-spatii-{$spatiu->imobil_id}-imobil-backup-manual.csv");
 
-        $this->get(route('backup.download', ['date' => $date, 'type' => 'chiriasi']))
+        $this->get(route('backup.download', ['date' => 'manual', 'type' => 'chiriasi']))
             ->assertOk()
-            ->assertDownload("imocore-chiriasi-{$date}.csv");
+            ->assertDownload('imocore-chiriasi-manual.csv');
     }
 
     public function test_daily_command_creates_automatic_backup(): void
@@ -153,6 +151,27 @@ class BackupTest extends TestCase
         $this->assertNotEmpty($manifest['spatii_files']);
     }
 
+    public function test_manual_and_automatic_backups_appear_as_separate_rows(): void
+    {
+        $this->seedSpatiu();
+        $backupService = app(BackupService::class);
+
+        $backupService->runBackup('automatic');
+        $backupService->runBackup('manual');
+
+        $this->get(route('backup.index'))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('Backup/Index')
+                ->has('backups', 2)
+                ->where('backups.0.date', 'manual')
+                ->where('backups.0.trigger', 'manual')
+                ->where('backups.1.trigger', 'automatic'));
+
+        $this->assertDirectoryExists(storage_path('app/backups/manual'));
+        $this->assertDirectoryExists(storage_path('app/backups/'.now()->format('Y-m-d')));
+    }
+
     public function test_old_backups_are_pruned_after_retention_period(): void
     {
         $backupService = app(BackupService::class);
@@ -168,6 +187,7 @@ class BackupTest extends TestCase
         $backupService->runBackup('manual');
 
         $this->assertDirectoryDoesNotExist($oldDirectory);
+        $this->assertDirectoryExists(storage_path('app/backups/manual'));
 
         Carbon::setTestNow();
     }

@@ -33,6 +33,7 @@ class Spatiu extends Model
         'locator',
         'chirias',
         'observatii',
+        'de_lamurit',
     ];
 
     protected $casts = [
@@ -42,6 +43,7 @@ class Spatiu extends Model
         'indexare_2026' => 'decimal:2',
         'retim_direct' => 'boolean',
         'activ' => 'boolean',
+        'de_lamurit' => 'boolean',
         'arhivat_la' => 'datetime',
         'ordine' => 'integer',
     ];
@@ -52,7 +54,18 @@ class Spatiu extends Model
             return 0;
         }
 
-        return (int) floor(((float) $this->suprafata_contractuala_mp) / 10);
+        return self::calculeazaPersoaneStandard($this->suprafata_contractuala_mp);
+    }
+
+    public static function calculeazaPersoaneStandard(float|string|null $suprafata): int
+    {
+        $suprafataMp = (float) ($suprafata ?: 0);
+
+        if ($suprafataMp <= 0) {
+            return 0;
+        }
+
+        return (int) ceil($suprafataMp / 10);
     }
 
     public function persoanePentruAnexa(): int
@@ -66,6 +79,16 @@ class Spatiu extends Model
         }
 
         return $this->persoane_standard;
+    }
+
+    public function scopeInchiriat($query)
+    {
+        return $query->where('status', 'inchiriat');
+    }
+
+    public function chirieCurenta(): float
+    {
+        return (float) ($this->indexare_2026 ?: $this->indexare_2025 ?: $this->pret_lunar ?: 0);
     }
 
     public function imobil(): BelongsTo

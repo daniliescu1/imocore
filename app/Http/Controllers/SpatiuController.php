@@ -171,6 +171,7 @@ class SpatiuController extends Controller
             'moneda' => $spatiu->moneda,
             'locator' => $spatiu->locatorEntitate?->nume ?: ($spatiu->getAttribute('locator') ?: '—'),
             'chirias' => $spatiu->chirias ?: '—',
+            'de_lamurit' => (bool) $spatiu->de_lamurit,
         ];
     }
 
@@ -212,6 +213,7 @@ class SpatiuController extends Controller
                 'configurare_anexa_id' => $spatiu->configurare_anexa_id,
                 'chirias' => $spatiu->chirias,
                 'observatii' => $spatiu->observatii,
+                'de_lamurit' => (bool) $spatiu->de_lamurit,
             ],
         ]);
     }
@@ -293,9 +295,11 @@ class SpatiuController extends Controller
             'configurare_anexa_id' => ['nullable', 'exists:configurari_anexe_imobil,id'],
             'chirias' => ['nullable', 'string', 'max:255'],
             'observatii' => ['nullable', 'string', 'max:5000'],
+            'de_lamurit' => ['boolean'],
         ]);
 
         $validated['retim_direct'] = (bool) ($validated['retim_direct'] ?? false);
+        $validated['de_lamurit'] = (bool) ($validated['de_lamurit'] ?? false);
         $validated = $this->normalizeSpatiuByStatus($validated);
         $validated['moneda'] = 'EUR';
 
@@ -356,6 +360,7 @@ class SpatiuController extends Controller
             $validated['chirias'] = null;
             $validated['indexare_2025'] = null;
             $validated['indexare_2026'] = null;
+            $validated['de_lamurit'] = false;
 
             return $validated;
         }

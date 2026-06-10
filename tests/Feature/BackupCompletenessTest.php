@@ -41,8 +41,7 @@ class BackupCompletenessTest extends TestCase
 
         app(BackupService::class)->runBackup('manual');
 
-        $date = now()->format('Y-m-d');
-        $this->backupDirectory = storage_path('app/backups/'.$date);
+        $this->backupDirectory = storage_path('app/backups/manual');
         $manifest = json_decode(File::get($this->backupDirectory.'/manifest.json'), true);
         $this->exportDate = isset($manifest['created_at'])
             ? \Illuminate\Support\Carbon::parse($manifest['created_at'])->format('Y-m-d H:i:s')

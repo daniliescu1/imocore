@@ -15,20 +15,22 @@ class DashboardController extends Controller
     {
         $totalSpatii = Spatiu::query()->count();
         $spatiiLibere = Spatiu::query()->where('status', 'liber');
-        $spatiiInchiriate = Spatiu::query()->where('status', 'inchiriat')->get();
+        $spatiiInchiriateQuery = Spatiu::query()->inchiriat();
         $isOwner = $this->isOwner($request->user());
 
         $stats = [
             'total' => $totalSpatii,
             'libere' => (clone $spatiiLibere)->count(),
-            'inchiriate' => $spatiiInchiriate->count(),
+            'inchiriate' => (clone $spatiiInchiriateQuery)->count(),
             'libere_suma' => (float) (clone $spatiiLibere)->sum('pret_lunar'),
             'libere_mp' => (float) (clone $spatiiLibere)->sum('suprafata_contractuala_mp'),
         ];
 
         if ($isOwner) {
+            $spatiiInchiriate = (clone $spatiiInchiriateQuery)->get();
+
             $stats['inchiriate_suma'] = (float) $spatiiInchiriate->sum(
-                fn (Spatiu $spatiu): float => (float) ($spatiu->indexare_2026 ?: $spatiu->indexare_2025 ?: $spatiu->pret_lunar ?: 0)
+                fn (Spatiu $spatiu): float => $spatiu->chirieCurenta()
             );
             $stats['inchiriate_mp'] = (float) $spatiiInchiriate->sum('suprafata_contractuala_mp');
         }

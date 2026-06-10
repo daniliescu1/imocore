@@ -14,6 +14,8 @@ class BackupService
 {
     public const RETENTION_DAYS = 7;
 
+    public const MANUAL_BACKUP_ID = 'manual';
+
     private const SPATIU_CAMPURI_DOAR_CITIRE = [
         'persoane_standard',
         'pret_mp_ultima_indexare',
@@ -29,8 +31,14 @@ class BackupService
      */
     public function runBackup(string $trigger = 'manual'): array
     {
-        $date = now()->format('Y-m-d');
+        $date = $trigger === 'manual'
+            ? self::MANUAL_BACKUP_ID
+            : now()->format('Y-m-d');
         $directory = $this->backupRoot().DIRECTORY_SEPARATOR.$date;
+
+        if ($trigger === 'manual' && File::isDirectory($directory)) {
+            File::deleteDirectory($directory);
+        }
 
         if (! File::isDirectory($directory)) {
             File::makeDirectory($directory, 0755, true);
@@ -80,7 +88,19 @@ class BackupService
             return [];
         }
 
-        $backups = collect(File::directories($this->backupRoot()))
+        $backups = [];
+
+        $manualDirectory = $this->backupRoot().DIRECTORY_SEPARATOR.self::MANUAL_BACKUP_ID;
+
+        if (File::isDirectory($manualDirectory) && $this->findDatabaseFile($manualDirectory)) {
+            $manualBackup = $this->buildBackupEntry($manualDirectory, self::MANUAL_BACKUP_ID);
+
+            if ($manualBackup !== null) {
+                $backups[] = $manualBackup;
+            }
+        }
+
+        $dailyBackups = collect(File::directories($this->backupRoot()))
             ->map(function (string $directory): ?array {
                 $date = basename($directory);
 
@@ -88,35 +108,47 @@ class BackupService
                     return null;
                 }
 
-                $manifest = $this->readManifest($directory);
-                $databaseFile = $this->findDatabaseFile($directory);
-                $chiriasiCsvFile = $directory.DIRECTORY_SEPARATOR.'chiriasi.csv';
-                $imobileCsvFile = $directory.DIRECTORY_SEPARATOR.'imobile.csv';
-
-                return [
-                    'date' => $date,
-                    'created_at' => $manifest['created_at'] ?? null,
-                    'trigger' => $manifest['trigger'] ?? null,
-                    'database_url' => $databaseFile ? route('backup.download', ['date' => $date, 'type' => 'database']) : null,
-                    'imobile_csv_url' => File::exists($imobileCsvFile) ? route('backup.download', ['date' => $date, 'type' => 'imobile']) : null,
-                    'spatii_files' => $this->listSpatiiFilesForBackup($directory, $date, $manifest),
-                    'chiriasi_csv_url' => File::exists($chiriasiCsvFile) ? route('backup.download', ['date' => $date, 'type' => 'chiriasi']) : null,
-                    'database_size' => $databaseFile ? File::size($databaseFile) : null,
-                    'imobile_csv_size' => File::exists($imobileCsvFile) ? File::size($imobileCsvFile) : null,
-                    'chiriasi_csv_size' => File::exists($chiriasiCsvFile) ? File::size($chiriasiCsvFile) : null,
-                ];
+                return $this->buildBackupEntry($directory, $date);
             })
             ->filter()
             ->sortByDesc(fn (array $backup): string => $backup['created_at'] ?? ($backup['date'].'T00:00:00'))
             ->values()
             ->all();
 
-        return $backups;
+        return [...$backups, ...$dailyBackups];
+    }
+
+    /**
+     * @return array{date: string, created_at: string|null, trigger: string|null, database_url: string|null, imobile_csv_url: string|null, spatii_files: list<array{imobil_id: int|null, imobil: string, filename: string, url: string, size: int}>, chiriasi_csv_url: string|null, database_size: int|null, imobile_csv_size: int|null, chiriasi_csv_size: int|null}|null
+     */
+    private function buildBackupEntry(string $directory, string $dateKey): ?array
+    {
+        $manifest = $this->readManifest($directory);
+        $databaseFile = $this->findDatabaseFile($directory);
+        $chiriasiCsvFile = $directory.DIRECTORY_SEPARATOR.'chiriasi.csv';
+        $imobileCsvFile = $directory.DIRECTORY_SEPARATOR.'imobile.csv';
+
+        if ($databaseFile === null) {
+            return null;
+        }
+
+        return [
+            'date' => $dateKey,
+            'created_at' => $manifest['created_at'] ?? null,
+            'trigger' => $manifest['trigger'] ?? null,
+            'database_url' => route('backup.download', ['date' => $dateKey, 'type' => 'database']),
+            'imobile_csv_url' => File::exists($imobileCsvFile) ? route('backup.download', ['date' => $dateKey, 'type' => 'imobile']) : null,
+            'spatii_files' => $this->listSpatiiFilesForBackup($directory, $dateKey, $manifest),
+            'chiriasi_csv_url' => File::exists($chiriasiCsvFile) ? route('backup.download', ['date' => $dateKey, 'type' => 'chiriasi']) : null,
+            'database_size' => File::size($databaseFile),
+            'imobile_csv_size' => File::exists($imobileCsvFile) ? File::size($imobileCsvFile) : null,
+            'chiriasi_csv_size' => File::exists($chiriasiCsvFile) ? File::size($chiriasiCsvFile) : null,
+        ];
     }
 
     public function resolveDownloadPath(string $date, string $type): string
     {
-        if (! preg_match('/^\d{4}-\d{2}-\d{2}$/', $date)) {
+        if ($date !== self::MANUAL_BACKUP_ID && ! preg_match('/^\d{4}-\d{2}-\d{2}$/', $date)) {
             abort(404);
         }
 
@@ -140,7 +172,7 @@ class BackupService
 
     public function resolveSpatiiDownloadPath(string $date, string $file): string
     {
-        if (! preg_match('/^\d{4}-\d{2}-\d{2}$/', $date)) {
+        if ($date !== self::MANUAL_BACKUP_ID && ! preg_match('/^\d{4}-\d{2}-\d{2}$/', $date)) {
             abort(404);
         }
 
@@ -192,7 +224,7 @@ class BackupService
         foreach (File::directories($this->backupRoot()) as $directory) {
             $date = basename($directory);
 
-            if (! preg_match('/^\d{4}-\d{2}-\d{2}$/', $date)) {
+            if ($date === self::MANUAL_BACKUP_ID || ! preg_match('/^\d{4}-\d{2}-\d{2}$/', $date)) {
                 continue;
             }
 

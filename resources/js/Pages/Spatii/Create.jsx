@@ -82,6 +82,16 @@ function decimalInputProps(field, value, setData) {
     };
 }
 
+function persoaneStandardCalculate(suprafata) {
+    const mp = numericValue(suprafata) ?? 0;
+
+    if (mp <= 0) {
+        return 0;
+    }
+
+    return Math.ceil(mp / 10);
+}
+
 function defaultRegimIncalzire(status, regimExistent = null) {
     if (regimExistent) {
         return regimExistent;
@@ -106,6 +116,7 @@ function applyStatusChange(status, data) {
             chirias: '',
             indexare_2025: '',
             indexare_2026: '',
+            de_lamurit: false,
         };
     }
 
@@ -142,6 +153,7 @@ export default function Create({ imobile, locatori, configurariAnexe = {}, campu
         configurare_anexa_id: spatiu?.configurare_anexa_id || '',
         chirias: spatiu?.chirias || '',
         observatii: spatiu?.observatii || '',
+        de_lamurit: Boolean(spatiu?.de_lamurit),
     });
 
     const locatoriDisponibili = locatori || [];
@@ -262,7 +274,7 @@ export default function Create({ imobile, locatori, configurariAnexe = {}, campu
                     {showField('persoane_standard') && !esteAdministrativ ? (
                         <label className="form-field">
                             <span>Persoane standard calculate</span>
-                            <input type="text" value={Math.floor((numericValue(data.suprafata_contractuala_mp) ?? 0) / 10)} readOnly />
+                            <input type="text" value={persoaneStandardCalculate(data.suprafata_contractuala_mp)} readOnly />
                         </label>
                     ) : null}
 
@@ -342,8 +354,23 @@ export default function Create({ imobile, locatori, configurariAnexe = {}, campu
                     </div>
                 </div>
 
-                {!esteAdministrativ && (showField('indexare_2025') || showField('indexare_2026') || (showField('pret_mp_ultima_indexare') && ultimaIndexare !== null && pretMpUltimaIndexare)) ? (
+                {!esteAdministrativ ? (
                     <section className="form-indexare-section">
+                        <label className="de-lamurit-switch">
+                            <button
+                                type="button"
+                                role="switch"
+                                aria-checked={data.de_lamurit}
+                                className={`de-lamurit-toggle${data.de_lamurit ? ' is-on' : ''}`}
+                                onClick={() => setData('de_lamurit', !data.de_lamurit)}
+                            >
+                                <span className="de-lamurit-toggle-thumb" />
+                            </button>
+                            <span className="de-lamurit-switch-label">De lămurit</span>
+                        </label>
+                        {errors.de_lamurit ? <small>{errors.de_lamurit}</small> : null}
+
+                        {(showField('indexare_2025') || showField('indexare_2026') || (showField('pret_mp_ultima_indexare') && ultimaIndexare !== null && pretMpUltimaIndexare)) ? (
                         <div className="form-grid">
                             {showField('indexare_2025') ? (
                                 <label className="form-field">
@@ -368,6 +395,7 @@ export default function Create({ imobile, locatori, configurariAnexe = {}, campu
                                 </label>
                             ) : null}
                         </div>
+                        ) : null}
                     </section>
                 ) : null}
             </form>

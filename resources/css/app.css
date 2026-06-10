@@ -1654,7 +1654,59 @@ tr:last-child td {
 }
 
 .form-indexare-section .form-grid {
-    margin-top: 0;
+    margin-top: 16px;
+}
+
+.de-lamurit-switch {
+    display: inline-flex;
+    align-items: center;
+    gap: 12px;
+    cursor: pointer;
+}
+
+.de-lamurit-switch-label {
+    color: var(--text-dark);
+    font-weight: 700;
+}
+
+.de-lamurit-toggle {
+    position: relative;
+    width: 52px;
+    height: 30px;
+    border: none;
+    border-radius: 999px;
+    background: #d7dde5;
+    padding: 0;
+    cursor: pointer;
+    transition: background-color 0.15s ease;
+}
+
+.de-lamurit-toggle.is-on {
+    background: #ffff00;
+}
+
+.de-lamurit-toggle-thumb {
+    position: absolute;
+    top: 3px;
+    left: 3px;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    background: #fff;
+    box-shadow: 0 1px 4px rgba(15, 23, 42, 0.18);
+    transition: transform 0.15s ease;
+}
+
+.de-lamurit-toggle.is-on .de-lamurit-toggle-thumb {
+    transform: translateX(22px);
+}
+
+.responsive-table tbody tr.is-de-lamurit {
+    background: #ffff00;
+}
+
+.responsive-table tbody tr.is-de-lamurit:hover {
+    background: #fff200;
 }
 
 .rules-list {

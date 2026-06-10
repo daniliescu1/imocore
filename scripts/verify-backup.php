@@ -9,7 +9,9 @@ require __DIR__.'/../vendor/autoload.php';
 $app = require __DIR__.'/../bootstrap/app.php';
 $app->make(Illuminate\Contracts\Console\Kernel::class)->bootstrap();
 
-$date = now()->format('Y-m-d');
+$date = is_dir(storage_path('app/backups/manual'))
+    ? 'manual'
+    : now()->format('Y-m-d');
 $dir = storage_path("app/backups/{$date}");
 
 if (! is_dir($dir)) {

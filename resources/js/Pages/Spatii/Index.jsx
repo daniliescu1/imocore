@@ -80,7 +80,7 @@ function SpatiuRow({
 
     return (
         <tr
-            className={`clickable-row${isDragging ? ' is-dragging' : ''}${canReorder ? ' draggable-row' : ''}`}
+            className={`clickable-row${spatiu.de_lamurit ? ' is-de-lamurit' : ''}${isDragging ? ' is-dragging' : ''}${canReorder ? ' draggable-row' : ''}`}
             draggable={canReorder}
             onDragStart={(event) => onDragStart(event, spatiu.id)}
             onDragOver={(event) => onDragOver(event, spatiu.id)}

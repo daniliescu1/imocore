@@ -79,4 +79,51 @@ class SpatiuIndexareTest extends TestCase
         $this->assertSame('1407.50', $spatiu->pret_lunar);
         $this->assertSame('1500.25', $spatiu->indexare_2025);
     }
+
+    public function test_de_lamurit_se_salveaza_si_apare_in_lista(): void
+    {
+        $imobil = Imobil::query()->create([
+            'nume' => 'Imobil lamurit',
+            'strada' => 'Strada Test',
+            'numar' => '3',
+            'localitate' => 'Timișoara',
+        ]);
+
+        $this->post(route('spatii.store'), [
+            'imobil_id' => $imobil->id,
+            'identificator' => 'S3',
+            'status' => 'inchiriat',
+            'moneda' => 'EUR',
+            'de_lamurit' => true,
+            'observatii' => 'de lamurit mp',
+        ])->assertRedirect('/spatii?imobil_id='.$imobil->id);
+
+        $spatiu = Spatiu::query()->where('identificator', 'S3')->firstOrFail();
+
+        $this->assertTrue($spatiu->de_lamurit);
+
+        $this->get(route('spatii.edit', $spatiu))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('Spatii/Create')
+                ->where('spatiu.de_lamurit', true)
+            );
+
+        $this->get(route('spatii.index', ['imobil_id' => $imobil->id]))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('Spatii/Index')
+                ->where('spatii.0.de_lamurit', true)
+            );
+
+        $this->put(route('spatii.update', $spatiu), [
+            'imobil_id' => $imobil->id,
+            'identificator' => 'S3',
+            'status' => 'inchiriat',
+            'moneda' => 'EUR',
+            'de_lamurit' => false,
+        ])->assertRedirect('/spatii?imobil_id='.$imobil->id);
+
+        $this->assertFalse($spatiu->fresh()->de_lamurit);
+    }
 }
