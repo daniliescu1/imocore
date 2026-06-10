@@ -277,7 +277,7 @@ class SpatiuController extends Controller
             'identificator' => ['required', 'string', 'max:255'],
             'suprafata_contractuala_mp' => ['nullable', 'numeric', 'min:0'],
             'corp' => ['nullable', 'string', 'max:255'],
-            'etaj' => ['nullable', 'string', 'max:255'],
+            'etaj' => ['nullable', 'string', 'in:-1,Parter,1,2,3,4,5'],
             'regim_incalzire' => ['nullable', 'in:integral,partial,neincalzit,manual'],
             'procent_incalzire_override' => ['nullable', 'numeric', 'min:0', 'max:100'],
             'retim_direct' => ['boolean'],

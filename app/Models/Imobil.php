@@ -17,7 +17,7 @@ class Imobil extends Model
     ];
 
     public const CAMPURI_SPATIU_CONFIGURABILE = [
-        'suprafata_contractuala_mp' => 'Suprafață contractuală mp',
+        'suprafata_contractuala_mp' => 'Suprafață mp',
         'corp' => 'Corp',
         'etaj' => 'Etaj',
         'persoane_standard' => 'Persoane standard calculate',

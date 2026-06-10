@@ -2,6 +2,8 @@ import React from 'react';
 import { Link, useForm } from '@inertiajs/react';
 import AppLayout from '../../Layouts/AppLayout';
 
+const etajOptions = ['-1', 'Parter', '1', '2', '3', '4', '5'];
+
 const defaultVisibleSpaceFields = [
     'suprafata_contractuala_mp',
     'corp',
@@ -167,7 +169,7 @@ export default function Create({ imobile, locatori, configurariAnexe = {}, campu
 
                     {showField('suprafata_contractuala_mp') ? (
                         <label className="form-field">
-                            <span>Suprafață contractuală mp</span>
+                            <span>Suprafață mp</span>
                             <input type="number" min="0" step="0.01" value={data.suprafata_contractuala_mp} onChange={(event) => setData('suprafata_contractuala_mp', event.target.value)} />
                             {errors.suprafata_contractuala_mp ? <small>{errors.suprafata_contractuala_mp}</small> : null}
                         </label>
@@ -184,7 +186,11 @@ export default function Create({ imobile, locatori, configurariAnexe = {}, campu
                     {showField('etaj') ? (
                         <label className="form-field">
                             <span>Etaj</span>
-                            <input type="text" value={data.etaj} onChange={(event) => setData('etaj', event.target.value)} />
+                            <select value={data.etaj} onChange={(event) => setData('etaj', event.target.value)}>
+                                <option value="">—</option>
+                                {etajOptions.map((etaj) => <option value={etaj} key={etaj}>{etaj}</option>)}
+                                {data.etaj && !etajOptions.includes(data.etaj) ? <option value={data.etaj}>{data.etaj}</option> : null}
+                            </select>
                             {errors.etaj ? <small>{errors.etaj}</small> : null}
                         </label>
                     ) : null}
