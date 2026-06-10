@@ -38,7 +38,7 @@ class Imobil extends Model
         'indexare_2026' => 'Indexare 2026',
         'pret_mp_ultima_indexare' => 'Preț / mp ultima indexare',
         'regim_incalzire' => 'Regim încălzire',
-        'procent_incalzire_override' => 'Procent încălzire manual',
+        'procent_incalzire_override' => 'Procent încălzire parțială',
         'locator_id' => 'Locator existent',
         'configurare_anexa_id' => 'Configurare anexă',
         'chirias' => 'Chiriaș',

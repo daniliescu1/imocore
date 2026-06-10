@@ -126,4 +126,125 @@ class SpatiuIndexareTest extends TestCase
 
         $this->assertFalse($spatiu->fresh()->de_lamurit);
     }
+
+    public function test_de_lamurit_se_salveaza_automat_la_toggle(): void
+    {
+        $imobil = Imobil::query()->create([
+            'nume' => 'Imobil toggle',
+            'strada' => 'Strada Test',
+            'numar' => '4',
+            'localitate' => 'Timișoara',
+        ]);
+
+        $spatiu = Spatiu::query()->create([
+            'imobil_id' => $imobil->id,
+            'identificator' => 'S4',
+            'status' => 'inchiriat',
+            'moneda' => 'EUR',
+            'de_lamurit' => false,
+        ]);
+
+        $this->from(route('spatii.edit', $spatiu))
+            ->patch(route('spatii.marcaj', $spatiu), ['field' => 'de_lamurit', 'value' => true])
+            ->assertRedirect(route('spatii.edit', $spatiu));
+
+        $this->assertTrue($spatiu->fresh()->de_lamurit);
+
+        $this->get(route('spatii.index', ['imobil_id' => $imobil->id]))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('spatii.0.de_lamurit', true)
+            );
+    }
+
+    public function test_de_lamurit_functioneaza_si_pentru_spatiu_administrativ(): void
+    {
+        $imobil = Imobil::query()->create([
+            'nume' => 'Imobil admin lamurit',
+            'strada' => 'Strada Test',
+            'numar' => '5',
+            'localitate' => 'Timișoara',
+        ]);
+
+        $spatiu = Spatiu::query()->create([
+            'imobil_id' => $imobil->id,
+            'identificator' => 'ADM1',
+            'status' => 'administrativ',
+            'moneda' => 'EUR',
+            'de_lamurit' => false,
+        ]);
+
+        $this->from(route('spatii.edit', $spatiu))
+            ->patch(route('spatii.marcaj', $spatiu), ['field' => 'de_lamurit', 'value' => true])
+            ->assertRedirect(route('spatii.edit', $spatiu));
+
+        $this->assertTrue($spatiu->fresh()->de_lamurit);
+    }
+
+    public function test_marcaj_galben_si_verde_se_salveaza_si_apare_in_lista(): void
+    {
+        $imobil = Imobil::query()->create([
+            'nume' => 'Imobil marcaje',
+            'strada' => 'Strada Test',
+            'numar' => '6',
+            'localitate' => 'Timișoara',
+        ]);
+
+        $this->post(route('spatii.store'), [
+            'imobil_id' => $imobil->id,
+            'identificator' => 'S6',
+            'status' => 'inchiriat',
+            'moneda' => 'EUR',
+            'marcat_galben' => true,
+            'marcat_verde' => true,
+        ])->assertRedirect('/spatii?imobil_id='.$imobil->id);
+
+        $spatiu = Spatiu::query()->where('identificator', 'S6')->firstOrFail();
+
+        $this->assertTrue($spatiu->marcat_galben);
+        $this->assertTrue($spatiu->marcat_verde);
+
+        $this->get(route('spatii.index', ['imobil_id' => $imobil->id]))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('spatii.0.marcat_galben', true)
+                ->where('spatii.0.marcat_verde', true)
+            );
+
+        $this->from(route('spatii.edit', $spatiu))
+            ->patch(route('spatii.marcaj', $spatiu), ['field' => 'marcat_galben', 'value' => false])
+            ->assertRedirect(route('spatii.edit', $spatiu));
+
+        $this->assertFalse($spatiu->fresh()->marcat_galben);
+        $this->assertTrue($spatiu->fresh()->marcat_verde);
+    }
+
+    public function test_acoperis_si_fatada_au_zero_persoane(): void
+    {
+        $imobil = Imobil::query()->create([
+            'nume' => 'Imobil etaj',
+            'strada' => 'Strada Test',
+            'numar' => '1',
+            'localitate' => 'Timișoara',
+        ]);
+
+        foreach (['Acoperiș', 'Fațadă'] as $etaj) {
+            $this->post(route('spatii.store'), [
+                'imobil_id' => $imobil->id,
+                'identificator' => $etaj,
+                'suprafata_contractuala_mp' => '160',
+                'etaj' => $etaj,
+                'status' => 'liber',
+                'moneda' => 'EUR',
+            ])->assertRedirect('/spatii?imobil_id='.$imobil->id);
+
+            $spatiu = Spatiu::query()->where('identificator', $etaj)->firstOrFail();
+
+            $this->assertSame(0, $spatiu->persoane_declarate);
+            $this->assertSame(0, $spatiu->persoane_standard);
+            $this->assertSame(0, $spatiu->persoanePentruAnexa());
+            $this->assertSame('neincalzit', $spatiu->regim_incalzire);
+            $this->assertNull($spatiu->configurare_anexa_id);
+        }
+    }
 }

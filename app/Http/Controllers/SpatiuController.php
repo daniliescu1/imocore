@@ -172,6 +172,8 @@ class SpatiuController extends Controller
             'locator' => $spatiu->locatorEntitate?->nume ?: ($spatiu->getAttribute('locator') ?: '—'),
             'chirias' => $spatiu->chirias ?: '—',
             'de_lamurit' => (bool) $spatiu->de_lamurit,
+            'marcat_galben' => (bool) $spatiu->marcat_galben,
+            'marcat_verde' => (bool) $spatiu->marcat_verde,
         ];
     }
 
@@ -214,6 +216,8 @@ class SpatiuController extends Controller
                 'chirias' => $spatiu->chirias,
                 'observatii' => $spatiu->observatii,
                 'de_lamurit' => (bool) $spatiu->de_lamurit,
+                'marcat_galben' => (bool) $spatiu->marcat_galben,
+                'marcat_verde' => (bool) $spatiu->marcat_verde,
             ],
         ]);
     }
@@ -273,6 +277,20 @@ class SpatiuController extends Controller
         return redirect($this->spatiiIndexUrl($spatiu->imobil_id))->with('success', 'Spațiul a fost actualizat.');
     }
 
+    public function updateMarcaj(Request $request, Spatiu $spatiu): RedirectResponse
+    {
+        $validated = $request->validate([
+            'field' => ['required', 'in:marcat_galben,marcat_verde,de_lamurit'],
+            'value' => ['required', 'boolean'],
+        ]);
+
+        $spatiu->update([
+            $validated['field'] => (bool) $validated['value'],
+        ]);
+
+        return back();
+    }
+
     private function validatedData(Request $request, ?Spatiu $spatiu = null): array
     {
         $request->merge($this->normalizeDecimalFields($request->all()));
@@ -282,7 +300,7 @@ class SpatiuController extends Controller
             'identificator' => ['required', 'string', 'max:255'],
             'suprafata_contractuala_mp' => ['nullable', 'numeric', 'min:0'],
             'corp' => ['nullable', 'string', 'max:255'],
-            'etaj' => ['nullable', 'string', 'in:-1,Parter,1,2,3,4,5,Acoperiș'],
+            'etaj' => ['nullable', 'string', 'in:-1,Parter,1,2,3,4,5,Acoperiș,Fațadă'],
             'regim_incalzire' => ['nullable', 'in:integral,partial,neincalzit,manual'],
             'procent_incalzire_override' => ['nullable', 'numeric', 'min:0', 'max:100'],
             'retim_direct' => ['boolean'],
@@ -296,10 +314,14 @@ class SpatiuController extends Controller
             'chirias' => ['nullable', 'string', 'max:255'],
             'observatii' => ['nullable', 'string', 'max:5000'],
             'de_lamurit' => ['boolean'],
+            'marcat_galben' => ['boolean'],
+            'marcat_verde' => ['boolean'],
         ]);
 
         $validated['retim_direct'] = (bool) ($validated['retim_direct'] ?? false);
         $validated['de_lamurit'] = (bool) ($validated['de_lamurit'] ?? false);
+        $validated['marcat_galben'] = (bool) ($validated['marcat_galben'] ?? false);
+        $validated['marcat_verde'] = (bool) ($validated['marcat_verde'] ?? false);
         $validated = $this->normalizeSpatiuByStatus($validated);
         $validated['moneda'] = 'EUR';
 
@@ -323,6 +345,13 @@ class SpatiuController extends Controller
         $validated['locator'] = ($validated['locator_id'] ?? null)
             ? Locator::query()->whereKey($validated['locator_id'])->value('nume')
             : null;
+
+        if (Spatiu::etajFaraPersoane($validated['etaj'] ?? null)) {
+            $validated['persoane_declarate'] = 0;
+            $validated['regim_incalzire'] = 'neincalzit';
+            $validated['procent_incalzire_override'] = null;
+            $validated['configurare_anexa_id'] = null;
+        }
 
         return $validated;
     }
@@ -360,7 +389,6 @@ class SpatiuController extends Controller
             $validated['chirias'] = null;
             $validated['indexare_2025'] = null;
             $validated['indexare_2026'] = null;
-            $validated['de_lamurit'] = false;
 
             return $validated;
         }

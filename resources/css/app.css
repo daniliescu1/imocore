@@ -1286,6 +1286,50 @@ tr:last-child td {
     font-weight: 700;
 }
 
+.form-input-addon {
+    display: flex;
+    align-items: stretch;
+    width: 100%;
+}
+
+.form-input-addon input {
+    flex: 1 1 auto;
+    min-width: 0;
+    border-top-right-radius: 0;
+    border-bottom-right-radius: 0;
+    border-right: none;
+    -moz-appearance: textfield;
+    appearance: textfield;
+}
+
+.form-input-addon input::-webkit-outer-spin-button,
+.form-input-addon input::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+}
+
+.form-input-addon input:focus {
+    z-index: 1;
+}
+
+.form-input-addon-suffix {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 44px;
+    padding: 0 14px;
+    border: 1px solid var(--border);
+    border-left: none;
+    border-radius: 0 8px 8px 0;
+    background: #f4f6f8;
+    color: var(--text-dark);
+    font-weight: 800;
+}
+
+.form-input-addon:focus-within .form-input-addon-suffix {
+    border-color: rgba(0, 85, 63, 0.42);
+}
+
 .inline-checkbox {
     display: inline-flex;
     align-items: center;
@@ -1657,19 +1701,26 @@ tr:last-child td {
     margin-top: 16px;
 }
 
-.de-lamurit-switch {
+.spatiu-marcaj-switches {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 24px;
+}
+
+.spatiu-marcaj-switch {
     display: inline-flex;
     align-items: center;
     gap: 12px;
     cursor: pointer;
 }
 
-.de-lamurit-switch-label {
+.spatiu-marcaj-switch-label {
     color: var(--text-dark);
     font-weight: 700;
 }
 
-.de-lamurit-toggle {
+.spatiu-marcaj-toggle {
     position: relative;
     width: 52px;
     height: 30px;
@@ -1681,11 +1732,19 @@ tr:last-child td {
     transition: background-color 0.15s ease;
 }
 
-.de-lamurit-toggle.is-on {
+.spatiu-marcaj-toggle.is-yellow.is-on {
     background: #ffff00;
 }
 
-.de-lamurit-toggle-thumb {
+.spatiu-marcaj-toggle.is-green.is-on {
+    background: #00ff00;
+}
+
+.spatiu-marcaj-toggle.is-red.is-on {
+    background: #ff4444;
+}
+
+.spatiu-marcaj-toggle-thumb {
     position: absolute;
     top: 3px;
     left: 3px;
@@ -1697,16 +1756,32 @@ tr:last-child td {
     transition: transform 0.15s ease;
 }
 
-.de-lamurit-toggle.is-on .de-lamurit-toggle-thumb {
+.spatiu-marcaj-toggle.is-on .spatiu-marcaj-toggle-thumb {
     transform: translateX(22px);
 }
 
-.responsive-table tbody tr.is-de-lamurit {
+.responsive-table tbody tr.is-marcat-galben {
     background: #ffff00;
 }
 
-.responsive-table tbody tr.is-de-lamurit:hover {
+.responsive-table tbody tr.is-marcat-galben:hover {
     background: #fff200;
+}
+
+.responsive-table tbody tr.is-marcat-verde {
+    background: #00ff00;
+}
+
+.responsive-table tbody tr.is-marcat-verde:hover {
+    background: #00e600;
+}
+
+.responsive-table tbody tr.is-de-lamurit {
+    background: #ff4444;
+}
+
+.responsive-table tbody tr.is-de-lamurit:hover {
+    background: #ff6666;
 }
 
 .rules-list {

@@ -8,6 +8,8 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Spatiu extends Model
 {
+    public const ETAJE_FARA_PERSOANE = ['Acoperiș', 'Fațadă'];
+
     protected $table = 'spatii';
 
     protected $fillable = [
@@ -34,6 +36,8 @@ class Spatiu extends Model
         'chirias',
         'observatii',
         'de_lamurit',
+        'marcat_galben',
+        'marcat_verde',
     ];
 
     protected $casts = [
@@ -44,17 +48,24 @@ class Spatiu extends Model
         'retim_direct' => 'boolean',
         'activ' => 'boolean',
         'de_lamurit' => 'boolean',
+        'marcat_galben' => 'boolean',
+        'marcat_verde' => 'boolean',
         'arhivat_la' => 'datetime',
         'ordine' => 'integer',
     ];
 
     public function getPersoaneStandardAttribute(): int
     {
-        if ($this->status === 'administrativ') {
+        if ($this->status === 'administrativ' || self::etajFaraPersoane($this->etaj)) {
             return 0;
         }
 
         return self::calculeazaPersoaneStandard($this->suprafata_contractuala_mp);
+    }
+
+    public static function etajFaraPersoane(?string $etaj): bool
+    {
+        return in_array($etaj, self::ETAJE_FARA_PERSOANE, true);
     }
 
     public static function calculeazaPersoaneStandard(float|string|null $suprafata): int
@@ -70,7 +81,7 @@ class Spatiu extends Model
 
     public function persoanePentruAnexa(): int
     {
-        if ($this->status === 'administrativ') {
+        if ($this->status === 'administrativ' || self::etajFaraPersoane($this->etaj)) {
             return 0;
         }
 

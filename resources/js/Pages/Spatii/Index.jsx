@@ -22,6 +22,22 @@ function statusLabel(status) {
     return STATUS_LABELS[status] || status;
 }
 
+function marcajRowClass(spatiu) {
+    if (spatiu.de_lamurit) {
+        return ' is-de-lamurit';
+    }
+
+    if (spatiu.marcat_galben) {
+        return ' is-marcat-galben';
+    }
+
+    if (spatiu.marcat_verde) {
+        return ' is-marcat-verde';
+    }
+
+    return '';
+}
+
 function buildFilters(filters, overrides = {}) {
     return {
         localitate: filters.localitate || '',
@@ -80,7 +96,7 @@ function SpatiuRow({
 
     return (
         <tr
-            className={`clickable-row${spatiu.de_lamurit ? ' is-de-lamurit' : ''}${isDragging ? ' is-dragging' : ''}${canReorder ? ' draggable-row' : ''}`}
+            className={`clickable-row${marcajRowClass(spatiu)}${isDragging ? ' is-dragging' : ''}${canReorder ? ' draggable-row' : ''}`}
             draggable={canReorder}
             onDragStart={(event) => onDragStart(event, spatiu.id)}
             onDragOver={(event) => onDragOver(event, spatiu.id)}

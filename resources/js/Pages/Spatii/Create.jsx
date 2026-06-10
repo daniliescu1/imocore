@@ -1,8 +1,9 @@
 import React from 'react';
-import { Link, useForm } from '@inertiajs/react';
+import { Link, router, useForm } from '@inertiajs/react';
 import AppLayout from '../../Layouts/AppLayout';
 
-const etajOptions = ['-1', 'Parter', '1', '2', '3', '4', '5', 'Acoperiș'];
+const etajOptions = ['-1', 'Parter', '1', '2', '3', '4', '5', 'Acoperiș', 'Fațadă'];
+const etajeFaraPersoane = ['Acoperiș', 'Fațadă'];
 
 const defaultVisibleSpaceFields = [
     'suprafata_contractuala_mp',
@@ -116,7 +117,6 @@ function applyStatusChange(status, data) {
             chirias: '',
             indexare_2025: '',
             indexare_2026: '',
-            de_lamurit: false,
         };
     }
 
@@ -130,6 +130,28 @@ function applyStatusChange(status, data) {
     }
 
     return { ...data, status };
+}
+
+function applyEtajChange(etaj, data) {
+    if (etajeFaraPersoane.includes(etaj)) {
+        return {
+            ...data,
+            etaj,
+            regim_incalzire: 'neincalzit',
+            procent_incalzire_override: '',
+            configurare_anexa_id: '',
+        };
+    }
+
+    if (etajeFaraPersoane.includes(data.etaj)) {
+        return {
+            ...data,
+            etaj,
+            regim_incalzire: defaultRegimIncalzire(data.status, null),
+        };
+    }
+
+    return { ...data, etaj };
 }
 
 export default function Create({ imobile, locatori, configurariAnexe = {}, campuriSpatiuVizibile = {}, spatiu = null, initialImobilId = null }) {
@@ -154,6 +176,8 @@ export default function Create({ imobile, locatori, configurariAnexe = {}, campu
         chirias: spatiu?.chirias || '',
         observatii: spatiu?.observatii || '',
         de_lamurit: Boolean(spatiu?.de_lamurit),
+        marcat_galben: Boolean(spatiu?.marcat_galben),
+        marcat_verde: Boolean(spatiu?.marcat_verde),
     });
 
     const locatoriDisponibili = locatori || [];
@@ -161,6 +185,7 @@ export default function Create({ imobile, locatori, configurariAnexe = {}, campu
     const campuriVizibile = data.imobil_id ? (campuriSpatiuVizibile[data.imobil_id] || defaultVisibleSpaceFields) : defaultVisibleSpaceFields;
     const showField = (field) => campuriVizibile.includes(field);
     const esteAdministrativ = data.status === 'administrativ';
+    const etajFaraPersoane = etajeFaraPersoane.includes(data.etaj);
     const ultimaIndexare = numericValue(data.indexare_2026) ?? numericValue(data.indexare_2025);
     const suprafataPentruIndexare = numericValue(data.suprafata_contractuala_mp);
     const pretMpUltimaIndexare = ultimaIndexare !== null && suprafataPentruIndexare
@@ -185,6 +210,23 @@ export default function Create({ imobile, locatori, configurariAnexe = {}, campu
         }
 
         post('/spatii');
+    }
+
+    function toggleMarcaj(field) {
+        const previous = data[field];
+        const next = !previous;
+
+        setData(field, next);
+
+        if (!isEditing) {
+            return;
+        }
+
+        router.patch(`/spatii/${spatiu.id}/marcaj`, { field, value: next }, {
+            preserveScroll: true,
+            preserveState: true,
+            onError: () => setData(field, previous),
+        });
     }
 
     const backHref = data.imobil_id ? `/spatii?imobil_id=${data.imobil_id}` : '/spatii';
@@ -251,7 +293,7 @@ export default function Create({ imobile, locatori, configurariAnexe = {}, campu
                     {showField('etaj') ? (
                         <label className="form-field">
                             <span>Etaj</span>
-                            <select value={data.etaj} onChange={(event) => setData('etaj', event.target.value)}>
+                            <select value={data.etaj} onChange={(event) => setData(applyEtajChange(event.target.value, data))}>
                                 {etajOptions.map((etaj) => <option value={etaj} key={etaj}>{etaj}</option>)}
                                 {data.etaj && !etajOptions.includes(data.etaj) ? <option value={data.etaj}>{data.etaj}</option> : null}
                             </select>
@@ -271,14 +313,14 @@ export default function Create({ imobile, locatori, configurariAnexe = {}, campu
                         {errors.status ? <small>{errors.status}</small> : null}
                     </label>
 
-                    {showField('persoane_standard') && !esteAdministrativ ? (
+                    {showField('persoane_standard') && !esteAdministrativ && !etajFaraPersoane ? (
                         <label className="form-field">
                             <span>Persoane standard calculate</span>
                             <input type="text" value={persoaneStandardCalculate(data.suprafata_contractuala_mp)} readOnly />
                         </label>
                     ) : null}
 
-                    {showField('regim_incalzire') && !esteAdministrativ ? (
+                    {showField('regim_incalzire') && !esteAdministrativ && !etajFaraPersoane ? (
                         <label className="form-field">
                             <span>Regim încălzire</span>
                             <select value={data.regim_incalzire} onChange={(event) => {
@@ -298,10 +340,13 @@ export default function Create({ imobile, locatori, configurariAnexe = {}, campu
                         </label>
                     ) : null}
 
-                    {showField('procent_incalzire_override') && !esteAdministrativ && data.regim_incalzire === 'partial' ? (
+                    {showField('procent_incalzire_override') && !esteAdministrativ && !etajFaraPersoane && data.regim_incalzire === 'partial' ? (
                         <label className="form-field">
-                            <span>Procent încălzire manual</span>
-                            <input type="number" min="0" max="100" step="0.01" value={data.procent_incalzire_override} onChange={(event) => setData('procent_incalzire_override', event.target.value)} />
+                            <span>Procent încălzire parțială</span>
+                            <div className="form-input-addon">
+                                <input type="number" min="0" max="100" step="0.01" value={data.procent_incalzire_override} onChange={(event) => setData('procent_incalzire_override', event.target.value)} />
+                                <span className="form-input-addon-suffix">%</span>
+                            </div>
                             {errors.procent_incalzire_override ? <small>{errors.procent_incalzire_override}</small> : null}
                         </label>
                     ) : null}
@@ -317,7 +362,7 @@ export default function Create({ imobile, locatori, configurariAnexe = {}, campu
                         </label>
                     ) : null}
 
-                    {showField('configurare_anexa_id') && !esteAdministrativ ? (
+                    {showField('configurare_anexa_id') && !esteAdministrativ && !etajFaraPersoane ? (
                         <label className="form-field">
                             <span>Configurare anexă</span>
                             <select value={data.configurare_anexa_id} onChange={(event) => setData('configurare_anexa_id', event.target.value)} disabled={!data.imobil_id || configurariPentruImobil.length === 0}>
@@ -354,50 +399,78 @@ export default function Create({ imobile, locatori, configurariAnexe = {}, campu
                     </div>
                 </div>
 
-                {!esteAdministrativ ? (
-                    <section className="form-indexare-section">
-                        <label className="de-lamurit-switch">
+                <section className="form-indexare-section">
+                    <div className="spatiu-marcaj-switches">
+                        <label className="spatiu-marcaj-switch">
+                            <button
+                                type="button"
+                                role="switch"
+                                aria-checked={data.marcat_galben}
+                                className={`spatiu-marcaj-toggle is-yellow${data.marcat_galben ? ' is-on' : ''}`}
+                                onClick={() => toggleMarcaj('marcat_galben')}
+                            >
+                                <span className="spatiu-marcaj-toggle-thumb" />
+                            </button>
+                            <span className="spatiu-marcaj-switch-label">Galben</span>
+                        </label>
+
+                        <label className="spatiu-marcaj-switch">
+                            <button
+                                type="button"
+                                role="switch"
+                                aria-checked={data.marcat_verde}
+                                className={`spatiu-marcaj-toggle is-green${data.marcat_verde ? ' is-on' : ''}`}
+                                onClick={() => toggleMarcaj('marcat_verde')}
+                            >
+                                <span className="spatiu-marcaj-toggle-thumb" />
+                            </button>
+                            <span className="spatiu-marcaj-switch-label">Verde</span>
+                        </label>
+
+                        <label className="spatiu-marcaj-switch">
                             <button
                                 type="button"
                                 role="switch"
                                 aria-checked={data.de_lamurit}
-                                className={`de-lamurit-toggle${data.de_lamurit ? ' is-on' : ''}`}
-                                onClick={() => setData('de_lamurit', !data.de_lamurit)}
+                                className={`spatiu-marcaj-toggle is-red${data.de_lamurit ? ' is-on' : ''}`}
+                                onClick={() => toggleMarcaj('de_lamurit')}
                             >
-                                <span className="de-lamurit-toggle-thumb" />
+                                <span className="spatiu-marcaj-toggle-thumb" />
                             </button>
-                            <span className="de-lamurit-switch-label">De lămurit</span>
+                            <span className="spatiu-marcaj-switch-label">De lămurit</span>
                         </label>
-                        {errors.de_lamurit ? <small>{errors.de_lamurit}</small> : null}
+                    </div>
+                    {errors.de_lamurit ? <small>{errors.de_lamurit}</small> : null}
+                    {errors.marcat_galben ? <small>{errors.marcat_galben}</small> : null}
+                    {errors.marcat_verde ? <small>{errors.marcat_verde}</small> : null}
 
-                        {(showField('indexare_2025') || showField('indexare_2026') || (showField('pret_mp_ultima_indexare') && ultimaIndexare !== null && pretMpUltimaIndexare)) ? (
-                        <div className="form-grid">
-                            {showField('indexare_2025') ? (
-                                <label className="form-field">
-                                    <span>Indexare 2025</span>
-                                    <input {...decimalInputProps('indexare_2025', data.indexare_2025, setData)} />
-                                    {errors.indexare_2025 ? <small>{errors.indexare_2025}</small> : null}
-                                </label>
-                            ) : null}
-
-                            {showField('indexare_2026') ? (
-                                <label className="form-field">
-                                    <span>Indexare 2026</span>
-                                    <input {...decimalInputProps('indexare_2026', data.indexare_2026, setData)} />
-                                    {errors.indexare_2026 ? <small>{errors.indexare_2026}</small> : null}
-                                </label>
-                            ) : null}
-
-                            {showField('pret_mp_ultima_indexare') && ultimaIndexare !== null && pretMpUltimaIndexare ? (
-                                <label className="form-field">
-                                    <span>Preț / mp ultima indexare</span>
-                                    <input type="text" value={pretMpUltimaIndexare} readOnly tabIndex={-1} aria-readonly="true" />
-                                </label>
-                            ) : null}
-                        </div>
+                    {!esteAdministrativ && (showField('indexare_2025') || showField('indexare_2026') || (showField('pret_mp_ultima_indexare') && ultimaIndexare !== null && pretMpUltimaIndexare)) ? (
+                    <div className="form-grid">
+                        {showField('indexare_2025') ? (
+                            <label className="form-field">
+                                <span>Indexare 2025</span>
+                                <input {...decimalInputProps('indexare_2025', data.indexare_2025, setData)} />
+                                {errors.indexare_2025 ? <small>{errors.indexare_2025}</small> : null}
+                            </label>
                         ) : null}
-                    </section>
-                ) : null}
+
+                        {showField('indexare_2026') ? (
+                            <label className="form-field">
+                                <span>Indexare 2026</span>
+                                <input {...decimalInputProps('indexare_2026', data.indexare_2026, setData)} />
+                                {errors.indexare_2026 ? <small>{errors.indexare_2026}</small> : null}
+                            </label>
+                        ) : null}
+
+                        {showField('pret_mp_ultima_indexare') && ultimaIndexare !== null && pretMpUltimaIndexare ? (
+                            <label className="form-field">
+                                <span>Preț / mp ultima indexare</span>
+                                <input type="text" value={pretMpUltimaIndexare} readOnly tabIndex={-1} aria-readonly="true" />
+                            </label>
+                        ) : null}
+                    </div>
+                    ) : null}
+                </section>
             </form>
         </AppLayout>
     );
