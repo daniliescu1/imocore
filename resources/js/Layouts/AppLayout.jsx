@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Link, usePage } from '@inertiajs/react';
 import {
     BarChart3,
@@ -9,6 +9,7 @@ import {
     ExternalLink,
     FileCheck2,
     FileText,
+    HardDriveUpload,
     Home,
     Menu,
     Users,
@@ -38,6 +39,7 @@ const navigation = [
     { label: 'Indexare chirii', icon: BarChart3, href: '/indexare-chirii' },
     { label: 'Reguli imobile', icon: Settings, href: '/reguli-imobile' },
     { label: 'Setări', icon: Settings, href: '/setari' },
+    { label: 'Backup', icon: HardDriveUpload, href: '/backup' },
 ];
 
 function isActive(url, href) {
@@ -56,6 +58,93 @@ function Logo() {
             </div>
             <div className="brand-text">Imo Core</div>
         </Link>
+    );
+}
+
+function UserMenu({ variant = 'top', onNavigate = null }) {
+    const [open, setOpen] = useState(false);
+    const menuRef = useRef(null);
+
+    const menuItems = [
+        { label: 'Setări', icon: Settings, href: '/setari' },
+        { label: 'Backup', icon: HardDriveUpload, href: '/backup' },
+    ];
+
+    useEffect(() => {
+        if (!open) {
+            return undefined;
+        }
+
+        function handleClickOutside(event) {
+            if (menuRef.current && !menuRef.current.contains(event.target)) {
+                setOpen(false);
+            }
+        }
+
+        function handleEscape(event) {
+            if (event.key === 'Escape') {
+                setOpen(false);
+            }
+        }
+
+        document.addEventListener('mousedown', handleClickOutside);
+        document.addEventListener('keydown', handleEscape);
+
+        return () => {
+            document.removeEventListener('mousedown', handleClickOutside);
+            document.removeEventListener('keydown', handleEscape);
+        };
+    }, [open]);
+
+    function closeMenu() {
+        setOpen(false);
+        onNavigate?.();
+    }
+
+    return (
+        <div className={`user-menu user-menu-${variant}`} ref={menuRef}>
+            <button
+                type="button"
+                className="user-menu-trigger"
+                onClick={() => setOpen((current) => !current)}
+                aria-expanded={open}
+                aria-haspopup="menu"
+            >
+                <div className={`avatar ${variant === 'sidebar' ? 'sidebar-avatar' : ''}`}>O</div>
+                <div className={variant === 'sidebar' ? 'user-menu-copy' : undefined}>
+                    {variant === 'sidebar' ? (
+                        <>
+                            <div className="sidebar-user-name">Owner</div>
+                            <div className="sidebar-user-role">Administrator</div>
+                        </>
+                    ) : (
+                        <span>Owner</span>
+                    )}
+                </div>
+                <ChevronDown size={16} className={open ? 'user-menu-chevron-open' : undefined} />
+            </button>
+
+            {open ? (
+                <div className="user-menu-dropdown" role="menu">
+                    {menuItems.map((item) => {
+                        const Icon = item.icon;
+
+                        return (
+                            <Link
+                                key={item.href}
+                                className="user-menu-item"
+                                href={item.href}
+                                role="menuitem"
+                                onClick={closeMenu}
+                            >
+                                <Icon size={16} />
+                                <span>{item.label}</span>
+                            </Link>
+                        );
+                    })}
+                </div>
+            ) : null}
+        </div>
     );
 }
 
@@ -95,14 +184,7 @@ function Sidebar({ open, onClose, currentUrl }) {
                         <ExternalLink size={16} className="nav-external" />
                     </Link>
 
-                    <div className="sidebar-user">
-                        <div className="avatar sidebar-avatar">O</div>
-                        <div>
-                            <div className="sidebar-user-name">Owner</div>
-                            <div className="sidebar-user-role">Administrator</div>
-                        </div>
-                        <ChevronDown size={16} />
-                    </div>
+                    <UserMenu variant="sidebar" onNavigate={onClose} />
                 </div>
             </aside>
         </>
@@ -159,11 +241,7 @@ export default function AppLayout({
                             <Bell size={20} />
                             <span>3</span>
                         </button>
-                        <div className="top-user">
-                            <div className="avatar">O</div>
-                            <span>Owner</span>
-                            <ChevronDown size={16} />
-                        </div>
+                        <UserMenu />
                     </div>
                 </header>
 

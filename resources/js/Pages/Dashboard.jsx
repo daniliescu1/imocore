@@ -1,4 +1,5 @@
 import React from 'react';
+import { usePage } from '@inertiajs/react';
 import { Building2, DoorOpen, UsersRound } from 'lucide-react';
 import AppLayout from '../Layouts/AppLayout';
 
@@ -32,6 +33,8 @@ function formatNumber(value) {
 }
 
 export default function Dashboard({ today, stats, freeSpaces, overdue, endings }) {
+    const { isOwner = false } = usePage().props;
+
     return (
         <AppLayout title="Panou principal" subtitle={today}>
             <div className="stats-grid">
@@ -40,7 +43,14 @@ export default function Dashboard({ today, stats, freeSpaces, overdue, endings }
                     <div><strong>Suma:</strong> {formatNumber(stats.libere_suma)} EUR</div>
                     <div><strong>Suprafață:</strong> {formatNumber(stats.libere_mp)} mp</div>
                 </StatCard>
-                <StatCard tone="rented" icon={UsersRound} label="Spații închiriate" value={stats.inchiriate} />
+                <StatCard tone="rented" icon={UsersRound} label="Spații închiriate" value={stats.inchiriate}>
+                    {isOwner && stats.inchiriate_suma !== undefined ? (
+                        <>
+                            <div><strong>Total sumă:</strong> {formatNumber(stats.inchiriate_suma)} EUR</div>
+                            <div><strong>Total suprafață:</strong> {formatNumber(stats.inchiriate_mp)} mp</div>
+                        </>
+                    ) : null}
+                </StatCard>
             </div>
 
             <TableCard title="Spații libere">

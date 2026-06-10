@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\BackupController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\AnexaController;
 use App\Http\Controllers\CitireContorController;
@@ -69,6 +70,10 @@ Route::delete('/facturare/{factura}', [FacturaController::class, 'destroy'])->na
 Route::get('/reguli-imobile', [ReguliImobilController::class, 'index'])->name('reguli-imobile.index');
 Route::put('/reguli-imobile/{imobil}', [ReguliImobilController::class, 'update'])->name('reguli-imobile.update');
 Route::get('/setari', [SetariController::class, 'index'])->name('setari.index');
+Route::get('/backup', [BackupController::class, 'index'])->name('backup.index');
+Route::post('/backup', [BackupController::class, 'store'])->name('backup.store');
+Route::get('/backup/{date}/{type}', [BackupController::class, 'download'])->name('backup.download');
+Route::get('/backup/{date}/spatii/{file}', [BackupController::class, 'downloadSpatii'])->name('backup.download.spatii');
 
 foreach (['rezervari', 'pv-predare', 'contoare', 'utilitati'] as $crudModule) {
     Route::get("/{$crudModule}", [SimpleCrudController::class, 'index'])->defaults('module', $crudModule);

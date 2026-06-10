@@ -6,6 +6,7 @@ use App\Models\ConfigurareAnexaImobil;
 use App\Models\Imobil;
 use App\Models\Locator;
 use App\Models\Spatiu;
+use App\Support\DecimalInput;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -272,6 +273,8 @@ class SpatiuController extends Controller
 
     private function validatedData(Request $request, ?Spatiu $spatiu = null): array
     {
+        $request->merge($this->normalizeDecimalFields($request->all()));
+
         $validated = $request->validate([
             'imobil_id' => ['required', 'exists:imobile,id'],
             'identificator' => ['required', 'string', 'max:255'],
@@ -318,6 +321,29 @@ class SpatiuController extends Controller
             : null;
 
         return $validated;
+    }
+
+    /**
+     * @param  array<string, mixed>  $input
+     * @return array<string, mixed>
+     */
+    private function normalizeDecimalFields(array $input): array
+    {
+        foreach ([
+            'suprafata_contractuala_mp',
+            'pret_lunar',
+            'indexare_2025',
+            'indexare_2026',
+            'procent_incalzire_override',
+        ] as $field) {
+            if (! array_key_exists($field, $input)) {
+                continue;
+            }
+
+            $input[$field] = DecimalInput::normalize($input[$field]);
+        }
+
+        return $input;
     }
 
     private function normalizeSpatiuByStatus(array $validated): array

@@ -36,14 +36,50 @@ function numericValue(value) {
         return null;
     }
 
-    const normalized = String(value).trim().replace(',', '.');
-    if (normalized === '') {
+    const normalized = normalizeDecimalInput(value);
+    if (normalized === null || normalized === '') {
         return null;
     }
 
     const number = Number(normalized);
 
     return Number.isFinite(number) ? number : null;
+}
+
+function normalizeDecimalInput(value) {
+    if (value === null || value === undefined) {
+        return null;
+    }
+
+    let normalized = String(value).trim().replace(/\s/g, '');
+
+    if (normalized === '') {
+        return null;
+    }
+
+    const hasComma = normalized.includes(',');
+    const hasDot = normalized.includes('.');
+
+    if (hasComma && hasDot) {
+        normalized = normalized.replace(/,/g, '');
+    } else if (hasComma) {
+        normalized = normalized.replace(',', '.');
+    }
+
+    return normalized;
+}
+
+function decimalInputProps(field, value, setData) {
+    return {
+        type: 'text',
+        inputMode: 'decimal',
+        value,
+        onChange: (event) => setData(field, event.target.value),
+        onBlur: (event) => {
+            const normalized = normalizeDecimalInput(event.target.value);
+            setData(field, normalized ?? '');
+        },
+    };
 }
 
 function defaultRegimIncalzire(status, regimExistent = null) {
@@ -88,7 +124,7 @@ function applyStatusChange(status, data) {
 export default function Create({ imobile, locatori, configurariAnexe = {}, campuriSpatiuVizibile = {}, spatiu = null, initialImobilId = null }) {
     const isEditing = Boolean(spatiu);
     const initialStatus = spatiu?.status || 'liber';
-    const { data, setData, post, put, processing, errors } = useForm({
+    const { data, setData, post, put, processing, errors, transform } = useForm({
         imobil_id: spatiu?.imobil_id || initialImobilId || '',
         identificator: spatiu?.identificator || '',
         suprafata_contractuala_mp: spatiu?.suprafata_contractuala_mp || '',
@@ -118,6 +154,15 @@ export default function Create({ imobile, locatori, configurariAnexe = {}, campu
     const pretMpUltimaIndexare = ultimaIndexare !== null && suprafataPentruIndexare
         ? (ultimaIndexare / suprafataPentruIndexare).toFixed(2)
         : '';
+
+    transform((formData) => ({
+        ...formData,
+        suprafata_contractuala_mp: normalizeDecimalInput(formData.suprafata_contractuala_mp) ?? '',
+        pret_lunar: normalizeDecimalInput(formData.pret_lunar) ?? '',
+        indexare_2025: normalizeDecimalInput(formData.indexare_2025) ?? '',
+        indexare_2026: normalizeDecimalInput(formData.indexare_2026) ?? '',
+        procent_incalzire_override: normalizeDecimalInput(formData.procent_incalzire_override) ?? '',
+    }));
 
     function submit(event) {
         event.preventDefault();
@@ -170,7 +215,7 @@ export default function Create({ imobile, locatori, configurariAnexe = {}, campu
                     {showField('suprafata_contractuala_mp') ? (
                         <label className="form-field">
                             <span>Suprafață mp</span>
-                            <input type="number" min="0" step="0.01" value={data.suprafata_contractuala_mp} onChange={(event) => setData('suprafata_contractuala_mp', event.target.value)} />
+                            <input {...decimalInputProps('suprafata_contractuala_mp', data.suprafata_contractuala_mp, setData)} />
                             {errors.suprafata_contractuala_mp ? <small>{errors.suprafata_contractuala_mp}</small> : null}
                         </label>
                     ) : null}
@@ -209,14 +254,14 @@ export default function Create({ imobile, locatori, configurariAnexe = {}, campu
                     {showField('persoane_standard') && !esteAdministrativ ? (
                         <label className="form-field">
                             <span>Persoane standard calculate</span>
-                            <input type="text" value={Math.floor(Number(data.suprafata_contractuala_mp || 0) / 10)} readOnly />
+                            <input type="text" value={Math.floor((numericValue(data.suprafata_contractuala_mp) ?? 0) / 10)} readOnly />
                         </label>
                     ) : null}
 
                     {showField('pret_lunar') ? (
                         <label className="form-field">
                             <span>Chirie lunară EUR</span>
-                            <input type="number" min="0" step="0.01" value={data.pret_lunar} onChange={(event) => setData('pret_lunar', event.target.value)} />
+                            <input {...decimalInputProps('pret_lunar', data.pret_lunar, setData)} />
                             {errors.pret_lunar ? <small>{errors.pret_lunar}</small> : null}
                         </label>
                     ) : null}
@@ -294,7 +339,7 @@ export default function Create({ imobile, locatori, configurariAnexe = {}, campu
                         {showField('indexare_2025') ? (
                             <label className="form-field">
                                 <span>Indexare 2025</span>
-                                <input type="number" min="0" step="0.01" value={data.indexare_2025} onChange={(event) => setData('indexare_2025', event.target.value)} />
+                                <input {...decimalInputProps('indexare_2025', data.indexare_2025, setData)} />
                                 {errors.indexare_2025 ? <small>{errors.indexare_2025}</small> : null}
                             </label>
                         ) : null}
@@ -302,7 +347,7 @@ export default function Create({ imobile, locatori, configurariAnexe = {}, campu
                         {showField('indexare_2026') ? (
                             <label className="form-field">
                                 <span>Indexare 2026</span>
-                                <input type="number" min="0" step="0.01" value={data.indexare_2026} onChange={(event) => setData('indexare_2026', event.target.value)} />
+                                <input {...decimalInputProps('indexare_2026', data.indexare_2026, setData)} />
                                 {errors.indexare_2026 ? <small>{errors.indexare_2026}</small> : null}
                             </label>
                         ) : null}

@@ -33,7 +33,7 @@
     },
     "scripts": {
         "backup-db": [
-            "@php scripts/backup-sqlite.php"
+            "@php artisan backup:run-daily"
         ],
         "test:safe": [
             "@php vendor/bin/phpunit --configuration phpunit.xml"

@@ -16,6 +16,18 @@ class Imobil extends Model
         'status',
     ];
 
+    public const CAMPURI_FORMULAR = [
+        'nume' => 'Nume imobil',
+        'strada' => 'Stradă',
+        'numar' => 'Număr',
+        'localitate' => 'Localitate',
+        'judet' => 'Județ',
+        'cod_postal' => 'Cod poștal',
+        'numere_cf' => 'Numere CF',
+        'campuri_spatiu_vizibile' => 'Câmpuri vizibile formular spațiu',
+        'observatii' => 'Observații',
+    ];
+
     public const CAMPURI_SPATIU_CONFIGURABILE = [
         'suprafata_contractuala_mp' => 'Suprafață mp',
         'corp' => 'Corp',

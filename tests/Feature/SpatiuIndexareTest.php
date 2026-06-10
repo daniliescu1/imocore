@@ -53,4 +53,30 @@ class SpatiuIndexareTest extends TestCase
                 ->where('spatii.0.pret_mp_curent', '14.08')
             );
     }
+
+    public function test_suprafata_si_chirie_accepta_virgula_ca_separator_zecimal(): void
+    {
+        $imobil = Imobil::query()->create([
+            'nume' => 'Imobil virgula',
+            'strada' => 'Strada Test',
+            'numar' => '2',
+            'localitate' => 'Timișoara',
+        ]);
+
+        $this->post(route('spatii.store'), [
+            'imobil_id' => $imobil->id,
+            'identificator' => 'S2',
+            'suprafata_contractuala_mp' => '598,31',
+            'pret_lunar' => '1407,50',
+            'status' => 'inchiriat',
+            'moneda' => 'EUR',
+            'indexare_2025' => '1500,25',
+        ])->assertRedirect('/spatii?imobil_id='.$imobil->id);
+
+        $spatiu = Spatiu::query()->where('identificator', 'S2')->firstOrFail();
+
+        $this->assertSame('598.31', $spatiu->suprafata_contractuala_mp);
+        $this->assertSame('1407.50', $spatiu->pret_lunar);
+        $this->assertSame('1500.25', $spatiu->indexare_2025);
+    }
 }
