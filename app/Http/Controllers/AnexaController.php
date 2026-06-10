@@ -1,0 +1,295 @@
+<?php
+
+namespace App\Http\Controllers;
+
+use App\Models\Anexa;
+use App\Models\AnexaLinie;
+use App\Models\CitireContor;
+use App\Models\Contract;
+use App\Models\ConfigurareAnexaLinie;
+use App\Models\Spatiu;
+use Carbon\Carbon;
+use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
+use Inertia\Inertia;
+use Inertia\Response;
+
+class AnexaController extends Controller
+{
+    public function index(): Response
+    {
+        $contracteEligibile = $this->contracteEligibileQuery()->count();
+        $anexe = Anexa::query()
+            ->with('contract.spatiu.imobil')
+            ->latest()
+            ->get()
+            ->map(fn (Anexa $anexa): array => [
+                'id' => $anexa->id,
+                'contract' => $anexa->contract?->numar_contract ?: '—',
+                'spatiu' => $anexa->contract?->spatiu?->identificator ?: '—',
+                'chirias' => $anexa->contract?->chirias ?: '—',
+                'imobil' => $anexa->contract?->spatiu?->imobil?->nume ?: '—',
+                'luna' => $anexa->luna,
+                'total' => $anexa->total,
+                'status' => $anexa->status,
+            ]);
+        $rezumatImobile = $this->rezumatImobile();
+
+        return Inertia::render('Anexe/Index', [
+            'anexe' => $anexe,
+            'rezumatImobile' => $rezumatImobile,
+            'lunaImplicita' => now()->format('Y-m'),
+            'contracteEligibile' => $contracteEligibile,
+        ]);
+    }
+
+    public function generate(Request $request): RedirectResponse
+    {
+        $validated = $request->validate([
+            'luna' => ['required', 'string', 'size:7'],
+        ]);
+        $lunaFacturare = $validated['luna'];
+        $lunaUtilitati = Carbon::createFromFormat('Y-m', $lunaFacturare)->subMonth()->format('Y-m');
+
+        $contracte = $this->contracteEligibileQuery()->get();
+
+        if ($contracte->isEmpty()) {
+            return redirect('/anexe')->with('warning', 'Nu există anexe de generat. Verifică dacă ai contracte active și dacă spațiile au o configurare de anexă selectată.');
+        }
+
+        $generated = 0;
+
+        foreach ($contracte as $contract) {
+            $spatiu = $contract->spatiu;
+            $configurare = $spatiu?->configurareAnexa;
+
+            if (! $spatiu || ! $configurare) {
+                continue;
+            }
+
+            $anexa = Anexa::query()->updateOrCreate(
+                [
+                    'contract_id' => $contract->id,
+                    'luna' => $lunaUtilitati,
+                ],
+                [
+                    'status' => 'draft',
+                    'total' => 0,
+                ]
+            );
+
+            $anexa->linii()->delete();
+            $total = 0;
+
+            foreach ($configurare->linii()->where('activ', true)->orderBy('ordine')->orderBy('id')->get() as $linieConfigurata) {
+                if ($linieConfigurata->tip_linie === 'header') {
+                    $anexa->linii()->create([
+                        'ordine' => $linieConfigurata->ordine,
+                        'tip_linie' => 'header',
+                        'nr_crt' => null,
+                        'denumire' => '',
+                    ]);
+
+                    continue;
+                }
+
+                $linie = $this->linieGenerata($anexa, $spatiu->id, $linieConfigurata, $lunaUtilitati, $lunaFacturare);
+                $total += (float) $linie->valoare + (float) ($linie->tva_21 ?? 0);
+            }
+
+            $anexa->update(['total' => $total]);
+            $generated++;
+        }
+
+        return redirect('/anexe')->with('success', "{$generated} anexe au fost generate.");
+    }
+
+    private function contracteEligibileQuery()
+    {
+        return Contract::query()
+            ->with(['spatiu.configurareAnexa.linii', 'spatiu.imobil'])
+            ->where('status', 'activ')
+            ->whereHas('spatiu', fn ($query) => $query->whereNotNull('configurare_anexa_id'));
+    }
+
+    private function rezumatImobile(): array
+    {
+        return \App\Models\Imobil::query()
+            ->withCount([
+                'spatii as spatii_inchiriate_count' => fn ($query) => $query->where('status', 'inchiriat'),
+            ])
+            ->orderBy('nume')
+            ->get()
+            ->map(function (\App\Models\Imobil $imobil): array {
+                $anexe = Anexa::query()
+                    ->whereHas('contract.spatiu', fn ($query) => $query->where('imobil_id', $imobil->id))
+                    ->get(['id', 'total']);
+
+                return [
+                    'id' => $imobil->id,
+                    'nume' => $imobil->nume,
+                    'localitate' => $imobil->localitate,
+                    'spatii_inchiriate' => $imobil->spatii_inchiriate_count,
+                    'anexe_generate' => $anexe->count(),
+                    'total_generat' => $anexe->sum(fn (Anexa $anexa): float => (float) $anexa->total),
+                ];
+            })
+            ->all();
+    }
+
+    public function show(Anexa $anexa): Response
+    {
+        $anexa->load(['linii', 'contract.spatiu.imobil', 'contract.spatiu.locatorEntitate']);
+        $contract = $anexa->contract;
+        $spatiu = $contract?->spatiu;
+        $imobil = $spatiu?->imobil;
+        $dataCitire = $this->dataCitirePentruAnexa($spatiu?->id, $anexa->luna);
+
+        $liniiServiciu = $anexa->linii->filter(fn (AnexaLinie $linie): bool => ($linie->tip_linie ?: 'serviciu') !== 'header');
+        $subtotal = $liniiServiciu->sum(fn (AnexaLinie $linie): float => (float) $linie->valoare);
+        $totalTva = $liniiServiciu->sum(fn (AnexaLinie $linie): float => (float) ($linie->tva_21 ?? 0));
+
+        return Inertia::render('Anexe/Show', [
+            'anexa' => [
+                'id' => $anexa->id,
+                'numar' => '01',
+                'luna' => $anexa->luna,
+                'total' => $anexa->total,
+                'subtotal' => $subtotal,
+                'total_tva' => $totalTva,
+                'status' => $anexa->status,
+                'data_citire' => $dataCitire,
+                'contract' => [
+                    'numar' => $contract?->numar_contract,
+                    'chirias' => $contract?->chirias,
+                ],
+                'spatiu' => [
+                    'identificator' => $spatiu?->identificator,
+                    'locator' => $spatiu?->locatorEntitate?->nume ?: $spatiu?->getAttribute('locator'),
+                    'chirias' => $spatiu?->chirias ?: $contract?->chirias,
+                ],
+                'imobil' => [
+                    'nume' => $imobil?->nume,
+                    'adresa' => trim(implode(' ', array_filter([$imobil?->strada, $imobil?->numar]))),
+                    'localitate' => $imobil?->localitate,
+                ],
+                'linii' => $anexa->linii->values()->map(fn (AnexaLinie $linie): array => [
+                    'tip_linie' => $linie->tip_linie ?: 'serviciu',
+                    'nr_crt' => $linie->nr_crt,
+                    'denumire' => $linie->denumire,
+                    'tip_calcul' => $linie->tip_calcul,
+                    'coeficient' => $linie->coeficient,
+                    'index_vechi' => $linie->index_vechi,
+                    'index_nou' => $linie->index_nou,
+                    'cantitate' => $linie->cantitate,
+                    'um' => $linie->um,
+                    'pret_unitar' => $linie->pret_unitar,
+                    'valoare' => $linie->valoare,
+                    'tva_21' => $linie->tva_21,
+                ]),
+            ],
+        ]);
+    }
+
+    public function destroy(Anexa $anexa): RedirectResponse
+    {
+        $anexa->delete();
+
+        return redirect('/anexe')->with('success', 'Anexa generată a fost ștearsă.');
+    }
+
+    private function linieGenerata(Anexa $anexa, int $spatiuId, ConfigurareAnexaLinie $linieConfigurata, string $lunaUtilitati, string $lunaFacturare): AnexaLinie
+    {
+        $spatiu = Spatiu::query()->findOrFail($spatiuId);
+        $indexVechi = $linieConfigurata->index_vechi;
+        $indexNou = $linieConfigurata->index_nou;
+        $cantitate = $linieConfigurata->facturat;
+        $coeficient = null;
+        $tipCalcul = $linieConfigurata->tip_calcul;
+
+        if ($tipCalcul === 'mp_coeficient') {
+            $suprafataMp = (float) ($spatiu->suprafata_contractuala_mp ?? 0);
+            $coeficient = (float) ($linieConfigurata->coeficient ?? 0);
+            $indexVechi = $suprafataMp > 0 ? $suprafataMp : null;
+            $indexNou = $coeficient > 0 ? $coeficient : null;
+            $cantitate = ($suprafataMp > 0 && $coeficient > 0)
+                ? round($suprafataMp * $coeficient, 3)
+                : null;
+        } elseif ($this->tipCalculPeMp($tipCalcul)) {
+            $suprafataMp = (float) ($spatiu->suprafata_contractuala_mp ?? 0);
+            $indexVechi = $suprafataMp > 0 ? $suprafataMp : null;
+            $indexNou = null;
+            $cantitate = $suprafataMp > 0 ? round($suprafataMp, 3) : null;
+        } elseif ($tipCalcul === 'persoane') {
+            $persoane = $spatiu->persoanePentruAnexa();
+            $indexVechi = null;
+            $indexNou = null;
+            $cantitate = $persoane;
+        } elseif ($tipCalcul === 'contor') {
+            $citire = $this->citirePentruAnexa($spatiuId, $linieConfigurata->id, $lunaUtilitati, $lunaFacturare);
+
+            $indexVechi = $citire?->index_vechi;
+            $indexNou = $citire?->index_nou;
+            $cantitate = $citire?->consum;
+        }
+
+        $pretUnitar = $linieConfigurata->pret_unitar;
+        $valoare = $linieConfigurata->valoare;
+
+        if ($cantitate !== null && $pretUnitar !== null) {
+            $valoare = (float) $cantitate * (float) $pretUnitar;
+        }
+
+        $valoare = (float) ($valoare ?? 0);
+        $procentTva = (float) ($linieConfigurata->tva_21 ?? 0);
+        $sumaTva = $procentTva > 0 ? round($valoare * $procentTva / 100, 2) : null;
+
+        return $anexa->linii()->create([
+            'ordine' => $linieConfigurata->ordine,
+            'tip_linie' => 'serviciu',
+            'nr_crt' => $linieConfigurata->nr_crt,
+            'denumire' => $linieConfigurata->denumire,
+            'um' => $linieConfigurata->um,
+            'tip_calcul' => $linieConfigurata->tip_calcul,
+            'index_vechi' => $indexVechi,
+            'index_nou' => $indexNou,
+            'cantitate' => $cantitate,
+            'coeficient' => $coeficient,
+            'pret_unitar' => $pretUnitar,
+            'valoare' => $valoare,
+            'tva_21' => $sumaTva,
+        ]);
+    }
+
+    private function tipCalculPeMp(?string $tipCalcul): bool
+    {
+        return in_array($tipCalcul, ['mp', 'pe_mp'], true);
+    }
+
+    private function citirePentruAnexa(int $spatiuId, int $linieId, string $lunaUtilitati, string $lunaFacturare): ?CitireContor
+    {
+        return CitireContor::query()
+            ->where('spatiu_id', $spatiuId)
+            ->where('configurare_anexa_linie_id', $linieId)
+            ->whereIn('luna', array_unique([$lunaUtilitati, $lunaFacturare]))
+            ->orderByRaw('case when luna = ? then 0 else 1 end', [$lunaUtilitati])
+            ->first();
+    }
+
+    private function dataCitirePentruAnexa(?int $spatiuId, string $lunaUtilitati): ?string
+    {
+        if (! $spatiuId) {
+            return null;
+        }
+
+        $lunaFacturare = Carbon::createFromFormat('Y-m', $lunaUtilitati)->addMonth()->format('Y-m');
+
+        return CitireContor::query()
+            ->where('spatiu_id', $spatiuId)
+            ->whereIn('luna', array_unique([$lunaUtilitati, $lunaFacturare]))
+            ->whereNotNull('data_citire')
+            ->orderByRaw('case when luna = ? then 0 else 1 end', [$lunaUtilitati])
+            ->orderByDesc('data_citire')
+            ->value('data_citire');
+    }
+}

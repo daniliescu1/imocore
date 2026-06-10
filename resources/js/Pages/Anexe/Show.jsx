@@ -1,0 +1,112 @@
+import React from 'react';
+import { Link } from '@inertiajs/react';
+import AppLayout from '../../Layouts/AppLayout';
+import { AnnexTableBodyRows } from '../../Components/AnnexTableRows';
+
+function formatDecimal(value) {
+    if (value === null || value === undefined || value === '') return '—';
+    return String(Number(value)).replace(/(\.\d*?)0+$/, '$1').replace(/\.$/, '');
+}
+
+function formatMoney(value) {
+    if (value === null || value === undefined || value === '') return '—';
+    return Number(value).toFixed(2);
+}
+
+function lunaText(luna) {
+    const [year, month] = String(luna || '').split('-');
+    if (!year || !month) return '—';
+
+    const luni = {
+        '01': 'Ianuarie',
+        '02': 'Februarie',
+        '03': 'Martie',
+        '04': 'Aprilie',
+        '05': 'Mai',
+        '06': 'Iunie',
+        '07': 'Iulie',
+        '08': 'August',
+        '09': 'Septembrie',
+        '10': 'Octombrie',
+        '11': 'Noiembrie',
+        '12': 'Decembrie',
+    };
+
+    return `${month} ${luni[month] || ''} ${year}`;
+}
+
+export default function Show({ anexa }) {
+    const topbarActions = <Link className="secondary-button button-link" href="/anexe">Înapoi la anexe</Link>;
+    const luna = String(anexa.luna || '').slice(5, 7);
+    const an = String(anexa.luna || '').slice(0, 4);
+
+    return (
+        <AppLayout title={`Anexa nr.${anexa.numar}`} subtitle="Previzualizare anexă generată" showGlobalSearch={false} topbarActions={topbarActions}>
+            <section className="generated-annex">
+                <div className="generated-annex-header">
+                    <div>
+                        <h2>ANEXA nr.{anexa.numar}</h2>
+                        <p>din luna {lunaText(anexa.luna)}</p>
+                    </div>
+                    <div className="generated-annex-meta">
+                        <span>Perioada citire contoare</span>
+                        <strong>20.{luna}.{an} - 25.{luna}.{an}</strong>
+                    </div>
+                </div>
+
+                <div className="generated-annex-parties">
+                    <div>
+                        <span>Imobil</span>
+                        <strong>{anexa.imobil.nume || '—'}</strong>
+                        <small>{[anexa.imobil.adresa, anexa.imobil.localitate].filter(Boolean).join(', ') || '—'}</small>
+                    </div>
+                    <div>
+                        <span>Nume locator</span>
+                        <strong>{anexa.spatiu.locator || '—'}</strong>
+                    </div>
+                    <div>
+                        <span>Nume locatar</span>
+                        <strong>{anexa.spatiu.chirias || anexa.contract.chirias || '—'}</strong>
+                    </div>
+                    <div>
+                        <span>ID spațiu</span>
+                        <strong>{anexa.spatiu.identificator || '—'}</strong>
+                    </div>
+                    <div>
+                        <span>Contract</span>
+                        <strong>{anexa.contract.numar || '—'}</strong>
+                    </div>
+                </div>
+
+                <div className="responsive-table generated-annex-table-wrap">
+                    <table className="generated-annex-table">
+                        <thead>
+                            <tr>
+                                <th>Nr. crt</th>
+                                <th>Denumire serviciu</th>
+                                <th>Index vechi</th>
+                                <th>Index nou</th>
+                                <th>Facturat</th>
+                                <th>UM</th>
+                                <th>Preț unitar</th>
+                                <th>Valoare</th>
+                                <th>TVA</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <AnnexTableBodyRows linii={anexa.linii} formatDecimal={formatDecimal} />
+                        </tbody>
+                        <tfoot>
+                            <tr>
+                                <td colSpan="6" />
+                                <td>Total</td>
+                                <td>{formatMoney(anexa.subtotal)}</td>
+                                <td>{formatMoney(anexa.total_tva)}</td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+            </section>
+        </AppLayout>
+    );
+}
