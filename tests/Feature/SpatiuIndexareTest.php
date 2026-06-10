@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Models\ConfigurareAnexaImobil;
 use App\Models\Imobil;
 use App\Models\Spatiu;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -181,7 +182,7 @@ class SpatiuIndexareTest extends TestCase
         $this->assertTrue($spatiu->fresh()->de_lamurit);
     }
 
-    public function test_marcaj_galben_si_verde_se_salveaza_si_apare_in_lista(): void
+    public function test_marcajele_sunt_mutual_exclusive(): void
     {
         $imobil = Imobil::query()->create([
             'nume' => 'Imobil marcaje',
@@ -202,21 +203,35 @@ class SpatiuIndexareTest extends TestCase
         $spatiu = Spatiu::query()->where('identificator', 'S6')->firstOrFail();
 
         $this->assertTrue($spatiu->marcat_galben);
-        $this->assertTrue($spatiu->marcat_verde);
-
-        $this->get(route('spatii.index', ['imobil_id' => $imobil->id]))
-            ->assertOk()
-            ->assertInertia(fn (Assert $page) => $page
-                ->where('spatii.0.marcat_galben', true)
-                ->where('spatii.0.marcat_verde', true)
-            );
+        $this->assertFalse($spatiu->marcat_verde);
+        $this->assertFalse($spatiu->de_lamurit);
 
         $this->from(route('spatii.edit', $spatiu))
-            ->patch(route('spatii.marcaj', $spatiu), ['field' => 'marcat_galben', 'value' => false])
+            ->patch(route('spatii.marcaj', $spatiu), ['field' => 'marcat_verde', 'value' => true])
             ->assertRedirect(route('spatii.edit', $spatiu));
 
-        $this->assertFalse($spatiu->fresh()->marcat_galben);
-        $this->assertTrue($spatiu->fresh()->marcat_verde);
+        $spatiu->refresh();
+        $this->assertFalse($spatiu->marcat_galben);
+        $this->assertTrue($spatiu->marcat_verde);
+        $this->assertFalse($spatiu->de_lamurit);
+
+        $this->from(route('spatii.edit', $spatiu))
+            ->patch(route('spatii.marcaj', $spatiu), ['field' => 'de_lamurit', 'value' => true])
+            ->assertRedirect(route('spatii.edit', $spatiu));
+
+        $spatiu->refresh();
+        $this->assertFalse($spatiu->marcat_galben);
+        $this->assertFalse($spatiu->marcat_verde);
+        $this->assertTrue($spatiu->de_lamurit);
+
+        $this->from(route('spatii.edit', $spatiu))
+            ->patch(route('spatii.marcaj', $spatiu), ['field' => 'de_lamurit', 'value' => false])
+            ->assertRedirect(route('spatii.edit', $spatiu));
+
+        $spatiu->refresh();
+        $this->assertFalse($spatiu->marcat_galben);
+        $this->assertFalse($spatiu->marcat_verde);
+        $this->assertFalse($spatiu->de_lamurit);
     }
 
     public function test_acoperis_si_fatada_au_zero_persoane(): void
@@ -246,5 +261,47 @@ class SpatiuIndexareTest extends TestCase
             $this->assertSame('neincalzit', $spatiu->regim_incalzire);
             $this->assertNull($spatiu->configurare_anexa_id);
         }
+    }
+
+    public function test_lista_indica_daca_spatiul_are_anexa_alocata(): void
+    {
+        $imobil = Imobil::query()->create([
+            'nume' => 'Imobil anexa',
+            'strada' => 'Strada Test',
+            'numar' => '7',
+            'localitate' => 'Timișoara',
+        ]);
+
+        $configurare = ConfigurareAnexaImobil::query()->create([
+            'imobil_id' => $imobil->id,
+            'denumire' => 'Anexa test',
+            'implicit' => true,
+            'activ' => true,
+        ]);
+
+        Spatiu::query()->create([
+            'imobil_id' => $imobil->id,
+            'identificator' => 'Fara anexa',
+            'status' => 'inchiriat',
+            'moneda' => 'EUR',
+        ]);
+
+        Spatiu::query()->create([
+            'imobil_id' => $imobil->id,
+            'identificator' => 'Cu anexa',
+            'status' => 'inchiriat',
+            'moneda' => 'EUR',
+            'configurare_anexa_id' => $configurare->id,
+        ]);
+
+        $this->get(route('spatii.index', ['imobil_id' => $imobil->id]))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('Spatii/Index')
+                ->where('spatii.0.identificator', 'Fara anexa')
+                ->where('spatii.0.are_anexa_alocata', false)
+                ->where('spatii.1.identificator', 'Cu anexa')
+                ->where('spatii.1.are_anexa_alocata', true)
+            );
     }
 }

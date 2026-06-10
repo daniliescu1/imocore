@@ -174,6 +174,7 @@ class SpatiuController extends Controller
             'de_lamurit' => (bool) $spatiu->de_lamurit,
             'marcat_galben' => (bool) $spatiu->marcat_galben,
             'marcat_verde' => (bool) $spatiu->marcat_verde,
+            'are_anexa_alocata' => $spatiu->configurare_anexa_id !== null,
         ];
     }
 
@@ -284,9 +285,17 @@ class SpatiuController extends Controller
             'value' => ['required', 'boolean'],
         ]);
 
-        $spatiu->update([
-            $validated['field'] => (bool) $validated['value'],
-        ]);
+        $updates = [
+            'marcat_galben' => false,
+            'marcat_verde' => false,
+            'de_lamurit' => false,
+        ];
+
+        if ($validated['value']) {
+            $updates[$validated['field']] = true;
+        }
+
+        $spatiu->update($updates);
 
         return back();
     }
@@ -322,6 +331,7 @@ class SpatiuController extends Controller
         $validated['de_lamurit'] = (bool) ($validated['de_lamurit'] ?? false);
         $validated['marcat_galben'] = (bool) ($validated['marcat_galben'] ?? false);
         $validated['marcat_verde'] = (bool) ($validated['marcat_verde'] ?? false);
+        $validated = $this->normalizeMarcaje($validated);
         $validated = $this->normalizeSpatiuByStatus($validated);
         $validated['moneda'] = 'EUR';
 
@@ -377,6 +387,29 @@ class SpatiuController extends Controller
         }
 
         return $input;
+    }
+
+    /**
+     * @param  array<string, mixed>  $validated
+     * @return array<string, mixed>
+     */
+    private function normalizeMarcaje(array $validated): array
+    {
+        $fields = ['marcat_galben', 'marcat_verde', 'de_lamurit'];
+        $active = null;
+
+        foreach ($fields as $field) {
+            if ($validated[$field] ?? false) {
+                $active = $field;
+                break;
+            }
+        }
+
+        foreach ($fields as $field) {
+            $validated[$field] = $field === $active;
+        }
+
+        return $validated;
     }
 
     private function normalizeSpatiuByStatus(array $validated): array

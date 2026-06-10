@@ -213,19 +213,32 @@ export default function Create({ imobile, locatori, configurariAnexe = {}, campu
     }
 
     function toggleMarcaj(field) {
-        const previous = data[field];
-        const next = !previous;
+        const previous = {
+            marcat_galben: data.marcat_galben,
+            marcat_verde: data.marcat_verde,
+            de_lamurit: data.de_lamurit,
+        };
+        const activating = !data[field];
+        const updates = {
+            marcat_galben: false,
+            marcat_verde: false,
+            de_lamurit: false,
+        };
 
-        setData(field, next);
+        if (activating) {
+            updates[field] = true;
+        }
+
+        setData(updates);
 
         if (!isEditing) {
             return;
         }
 
-        router.patch(`/spatii/${spatiu.id}/marcaj`, { field, value: next }, {
+        router.patch(`/spatii/${spatiu.id}/marcaj`, { field, value: activating }, {
             preserveScroll: true,
             preserveState: true,
-            onError: () => setData(field, previous),
+            onError: () => setData(previous),
         });
     }
 

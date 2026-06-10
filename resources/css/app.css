@@ -702,6 +702,21 @@ td {
     vertical-align: middle;
 }
 
+.spatiu-anexa-indicator-header,
+.spatiu-anexa-indicator-cell {
+    width: 10px;
+    min-width: 10px;
+    padding: 0 !important;
+}
+
+.spatiu-anexa-indicator-cell.is-fara-anexa {
+    background: #ff00ff;
+}
+
+.responsive-table tbody tr:hover td.spatiu-anexa-indicator-cell.is-fara-anexa {
+    background: #ff00ff;
+}
+
 .drag-handle {
     display: inline-flex;
     align-items: center;
@@ -994,7 +1009,7 @@ tr:last-child td {
     cursor: pointer;
 }
 
-.clickable-row:hover td {
+.clickable-row:hover td:not(.spatiu-anexa-indicator-cell) {
     background: var(--card-soft);
 }
 
@@ -1760,27 +1775,27 @@ tr:last-child td {
     transform: translateX(22px);
 }
 
-.responsive-table tbody tr.is-marcat-galben {
+.responsive-table tbody tr.is-marcat-galben td:not(.spatiu-anexa-indicator-cell) {
     background: #ffff00;
 }
 
-.responsive-table tbody tr.is-marcat-galben:hover {
+.responsive-table tbody tr.is-marcat-galben:hover td:not(.spatiu-anexa-indicator-cell) {
     background: #fff200;
 }
 
-.responsive-table tbody tr.is-marcat-verde {
+.responsive-table tbody tr.is-marcat-verde td:not(.spatiu-anexa-indicator-cell) {
     background: #00ff00;
 }
 
-.responsive-table tbody tr.is-marcat-verde:hover {
+.responsive-table tbody tr.is-marcat-verde:hover td:not(.spatiu-anexa-indicator-cell) {
     background: #00e600;
 }
 
-.responsive-table tbody tr.is-de-lamurit {
+.responsive-table tbody tr.is-de-lamurit td:not(.spatiu-anexa-indicator-cell) {
     background: #ff4444;
 }
 
-.responsive-table tbody tr.is-de-lamurit:hover {
+.responsive-table tbody tr.is-de-lamurit:hover td:not(.spatiu-anexa-indicator-cell) {
     background: #ff6666;
 }
 
