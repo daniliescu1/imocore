@@ -156,7 +156,7 @@ function applyEtajChange(etaj, data) {
 
 export default function Create({ imobile, locatori, configurariAnexe = {}, campuriSpatiuVizibile = {}, spatiu = null, initialImobilId = null }) {
     const isEditing = Boolean(spatiu);
-    const initialStatus = spatiu?.status || 'liber';
+    const initialStatus = spatiu?.status || 'inchiriat';
     const { data, setData, post, put, processing, errors, transform } = useForm({
         imobil_id: spatiu?.imobil_id || initialImobilId || '',
         identificator: spatiu?.identificator || '',
@@ -166,7 +166,7 @@ export default function Create({ imobile, locatori, configurariAnexe = {}, campu
         regim_incalzire: defaultRegimIncalzire(initialStatus, spatiu?.regim_incalzire || null),
         procent_incalzire_override: spatiu?.procent_incalzire_override || '',
         retim_direct: Boolean(spatiu?.retim_direct),
-        status: spatiu?.status || 'liber',
+        status: spatiu?.status || 'inchiriat',
         pret_lunar: spatiu?.pret_lunar || '',
         indexare_2025: spatiu?.indexare_2025 || '',
         indexare_2026: spatiu?.indexare_2026 || '',
