@@ -22,6 +22,10 @@ function statusLabel(status) {
     return STATUS_LABELS[status] || status;
 }
 
+function showFaraAnexaIndicator(spatiu) {
+    return spatiu.status === 'inchiriat' && !spatiu.are_anexa_alocata;
+}
+
 function marcajRowClass(spatiu) {
     if (spatiu.de_lamurit) {
         return ' is-de-lamurit';
@@ -112,7 +116,7 @@ function SpatiuRow({
                 </td>
             ) : null}
             <td
-                className={`spatiu-anexa-indicator-cell${spatiu.are_anexa_alocata ? '' : ' is-fara-anexa'}`}
+                className={`spatiu-anexa-indicator-cell${showFaraAnexaIndicator(spatiu) ? ' is-fara-anexa' : ''}`}
                 aria-hidden="true"
             />
             <td><Link className="table-name-link" href={`/spatii/${spatiu.id}/editare`} onClick={(event) => event.stopPropagation()}>{spatiu.identificator}</Link></td>
