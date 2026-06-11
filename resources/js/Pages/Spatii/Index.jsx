@@ -122,6 +122,7 @@ function SpatiuRow({
             <td className="spatiu-identificator-cell" title={spatiu.identificator}>
                 <Link className="table-name-link" href={`/spatii/${spatiu.id}/editare`} onClick={(event) => event.stopPropagation()}>{spatiu.identificator}</Link>
             </td>
+            <td>{spatiu.etaj || '—'}</td>
             <td>{spatiu.suprafata_contractuala_mp ? `${spatiu.suprafata_contractuala_mp} mp` : '—'}</td>
             <td>{statusLabel(spatiu.status)}</td>
             <td>
@@ -273,6 +274,7 @@ export default function Index({ imobile = [], imobil = null, spatii = [], locali
                 {canReorder ? <th className="drag-handle-header" aria-label="Reordonează" /> : null}
                 <th className="spatiu-anexa-indicator-header" aria-hidden="true" />
                 <th className="spatiu-identificator-header">Identificat</th>
+                <th>Etaj</th>
                 <th>Suprafață</th>
                 <th>Status</th>
                 <th>

@@ -1,5 +1,6 @@
 <?php
 
+use App\Services\BackupService;
 use App\Models\Imobil;
 use App\Models\Spatiu;
 use Illuminate\Support\Facades\File;
@@ -32,8 +33,13 @@ $chiriasiCsv = BackupExportValidator::parseCsvFile($dir.'/chiriasi.csv');
 $spatiiFiles = collect(File::files($dir.'/spatii'))->filter(fn ($f) => str_ends_with($f->getFilename(), '.csv'));
 $spatiiRows = $spatiiFiles->sum(fn ($f) => count(BackupExportValidator::parseCsvFile($f->getPathname())['rows']));
 
+$spatiiToatePath = $dir.'/'.BackupService::ALL_SPATII_CSV_FILENAME;
+$spatiiToateRows = is_file($spatiiToatePath)
+    ? count(BackupExportValidator::parseCsvFile($spatiiToatePath)['rows'])
+    : 0;
+
 echo "Imobile DB: {$imobileDb} | CSV: ".count($imobileCsv['rows'])."\n";
-echo "Spatii DB: {$spatiiDb} | CSV total: {$spatiiRows} (".count($spatiiFiles)." fisiere)\n";
+echo "Spatii DB: {$spatiiDb} | CSV total: {$spatiiRows} (".count($spatiiFiles)." fisiere) | Toate: {$spatiiToateRows}\n";
 echo "Chiriasi DB: {$chiriasiDb} | CSV: ".count($chiriasiCsv['rows'])."\n";
 
 $source = config('database.connections.sqlite.database');
@@ -48,7 +54,10 @@ if ($mismatches) {
     exit(1);
 }
 
-foreach ([$dir.'/imobile.csv', $dir.'/chiriasi.csv', ...$spatiiFiles->map->getPathname()->all()] as $file) {
+foreach ([$dir.'/imobile.csv', $dir.'/chiriasi.csv', $spatiiToatePath, ...$spatiiFiles->map->getPathname()->all()] as $file) {
+    if (! is_file($file)) {
+        continue;
+    }
     $ok = BackupExportValidator::assertNoDiacritics(File::get($file));
     echo basename($file).': diacritice '.($ok ? 'OK' : 'GASITE')."\n";
 }

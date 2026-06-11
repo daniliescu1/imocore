@@ -1,6 +1,7 @@
 import React from 'react';
 import { Link, router, useForm } from '@inertiajs/react';
 import AppLayout from '../../Layouts/AppLayout';
+import FacadeRentalCalendar from './FacadeRentalCalendar';
 
 const etajOptions = ['-1', 'Parter', '1', '2', '3', '4', '5', 'Acoperiș', 'Fațadă'];
 const etajeFaraPersoane = ['Acoperiș', 'Fațadă'];
@@ -169,7 +170,7 @@ function applyEtajChange(etaj, data) {
     return { ...data, etaj };
 }
 
-export default function Create({ imobile, locatori, configurariAnexe = {}, campuriSpatiuVizibile = {}, spatiu = null, initialImobilId = null }) {
+export default function Create({ imobile, locatori, configurariAnexe = {}, campuriSpatiuVizibile = {}, spatiu = null, initialImobilId = null, perioadeFatada = [] }) {
     const isEditing = Boolean(spatiu);
     const initialStatus = spatiu?.status || 'inchiriat';
     const { data, setData, post, put, processing, errors, transform } = useForm({
@@ -202,6 +203,7 @@ export default function Create({ imobile, locatori, configurariAnexe = {}, campu
     const esteAdministrativ = data.status === 'administrativ';
     const esteComun = data.status === 'comun';
     const etajFaraPersoane = etajeFaraPersoane.includes(data.etaj);
+    const esteFatada = data.etaj === 'Fațadă';
     const ultimaIndexare = numericValue(data.indexare_2026) ?? numericValue(data.indexare_2025);
     const suprafataPentruIndexare = numericValue(data.suprafata_contractuala_mp);
     const pretMpUltimaIndexare = ultimaIndexare !== null && suprafataPentruIndexare
@@ -410,11 +412,18 @@ export default function Create({ imobile, locatori, configurariAnexe = {}, campu
                         </label>
                     ) : null}
 
-                    {showField('chirias') && !esteAdministrativ ? (
+                    {showField('chirias') && !esteAdministrativ && !esteFatada ? (
                         <label className="form-field">
                             <span>Chiriaș</span>
                             <input type="text" value={data.chirias} onChange={(event) => setData('chirias', event.target.value)} />
                             {errors.chirias ? <small>{errors.chirias}</small> : null}
+                        </label>
+                    ) : null}
+
+                    {showField('chirias') && !esteAdministrativ && esteFatada && isEditing ? (
+                        <label className="form-field">
+                            <span>Chiriaș curent</span>
+                            <input type="text" value={data.chirias || '—'} readOnly tabIndex={-1} aria-readonly="true" />
                         </label>
                     ) : null}
 
@@ -481,7 +490,7 @@ export default function Create({ imobile, locatori, configurariAnexe = {}, campu
                     {errors.marcat_galben ? <small>{errors.marcat_galben}</small> : null}
                     {errors.marcat_verde ? <small>{errors.marcat_verde}</small> : null}
 
-                    {!esteAdministrativ && (showField('indexare_2025') || showField('indexare_2026') || (showField('pret_mp_ultima_indexare') && ultimaIndexare !== null && pretMpUltimaIndexare)) ? (
+                    {!esteAdministrativ && !esteFatada && (showField('indexare_2025') || showField('indexare_2026') || (showField('pret_mp_ultima_indexare') && ultimaIndexare !== null && pretMpUltimaIndexare)) ? (
                     <div className="form-grid">
                         {showField('indexare_2025') ? (
                             <label className="form-field">
@@ -509,6 +518,14 @@ export default function Create({ imobile, locatori, configurariAnexe = {}, campu
                     ) : null}
                 </section>
             </form>
+
+            {esteFatada && isEditing ? (
+                <FacadeRentalCalendar spatiuId={spatiu.id} />
+            ) : null}
+
+            {esteFatada && !isEditing ? (
+                <p className="fatada-calendar-note">Salvează spațiul pentru a gestiona calendarul anual de închiriere pe fațadă.</p>
+            ) : null}
         </AppLayout>
     );
 }

@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Services\BackupService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\File;
+use Illuminate\Support\Str;
 use Inertia\Inertia;
 use Inertia\Response;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
@@ -21,6 +22,7 @@ class BackupController extends Controller
             'retentionDays' => BackupService::RETENTION_DAYS,
             'latestBackupAt' => $latest['created_at'] ?? null,
             'nextScheduledAt' => now()->addDay()->startOfDay()->addHours(3)->toIso8601String(),
+            'allSpatiiDownloadUrl' => route('backup.download.spatii-toate'),
         ]);
     }
 
@@ -55,5 +57,21 @@ class BackupController extends Controller
         return response()->download($path, $filename, [
             'Content-Type' => File::mimeType($path) ?: 'text/csv',
         ]);
+    }
+
+    public function downloadAllSpatii(BackupService $backupService): BinaryFileResponse
+    {
+        $tempDirectory = storage_path('app/temp');
+
+        if (! File::isDirectory($tempDirectory)) {
+            File::makeDirectory($tempDirectory, 0755, true);
+        }
+
+        $tempPath = $tempDirectory.DIRECTORY_SEPARATOR.'spatii-toate-'.Str::uuid().'.csv';
+        $backupService->exportAllSpatiiCsv($tempPath, now()->format('Y-m-d H:i:s'));
+
+        return response()->download($tempPath, $backupService->onDemandAllSpatiiDownloadFilename(), [
+            'Content-Type' => 'text/csv',
+        ])->deleteFileAfterSend();
     }
 }

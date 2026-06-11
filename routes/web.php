@@ -14,6 +14,7 @@ use App\Http\Controllers\LocatorController;
 use App\Http\Controllers\ReguliImobilController;
 use App\Http\Controllers\SetariController;
 use App\Http\Controllers\SimpleCrudController;
+use App\Http\Controllers\PerioadaInchiriereFatadaController;
 use App\Http\Controllers\SpatiuController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
@@ -45,6 +46,8 @@ Route::get('/spatii/adauga', [SpatiuController::class, 'create'])->name('spatii.
 Route::post('/spatii', [SpatiuController::class, 'store'])->name('spatii.store');
 Route::get('/spatii/{spatiu}/editare', [SpatiuController::class, 'edit'])->name('spatii.edit');
 Route::patch('/spatii/{spatiu}/marcaj', [SpatiuController::class, 'updateMarcaj'])->name('spatii.marcaj');
+Route::post('/spatii/{spatiu}/perioade-fatada', [PerioadaInchiriereFatadaController::class, 'store'])->name('spatii.perioade-fatada.store');
+Route::put('/spatii/{spatiu}/perioade-fatada/{perioada}', [PerioadaInchiriereFatadaController::class, 'update'])->name('spatii.perioade-fatada.update');
 Route::put('/spatii/{spatiu}', [SpatiuController::class, 'update'])->name('spatii.update');
 Route::get('/locatori', [LocatorController::class, 'index'])->name('locatori.index');
 Route::get('/locatori/adauga', [LocatorController::class, 'create'])->name('locatori.create');
@@ -73,6 +76,7 @@ Route::put('/reguli-imobile/{imobil}', [ReguliImobilController::class, 'update']
 Route::get('/setari', [SetariController::class, 'index'])->name('setari.index');
 Route::get('/backup', [BackupController::class, 'index'])->name('backup.index');
 Route::post('/backup', [BackupController::class, 'store'])->name('backup.store');
+Route::get('/backup/spatii-toate', [BackupController::class, 'downloadAllSpatii'])->name('backup.download.spatii-toate');
 Route::get('/backup/{date}/{type}', [BackupController::class, 'download'])->name('backup.download');
 Route::get('/backup/{date}/spatii/{file}', [BackupController::class, 'downloadSpatii'])->name('backup.download.spatii');
 

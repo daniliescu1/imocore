@@ -66,15 +66,23 @@ export default function BackupIndex({
     retentionDays = 7,
     latestBackupAt = null,
     nextScheduledAt = null,
+    allSpatiiDownloadUrl = null,
 }) {
     const topbarActions = (
-        <button
-            type="button"
-            className="primary-button"
-            onClick={() => router.post('/backup')}
-        >
-            Backup acum
-        </button>
+        <>
+            {allSpatiiDownloadUrl ? (
+                <a className="secondary-button button-link" href={allSpatiiDownloadUrl}>
+                    Descarcă toate spațiile
+                </a>
+            ) : null}
+            <button
+                type="button"
+                className="primary-button"
+                onClick={() => router.post('/backup')}
+            >
+                Backup acum
+            </button>
+        </>
     );
 
     return (
@@ -147,6 +155,12 @@ export default function BackupIndex({
                                     </td>
                                     <td>
                                         <div className="backup-spatii-downloads">
+                                            <DownloadLink
+                                                href={backup.spatii_toate_csv_url}
+                                                icon={Download}
+                                                label="Descarcă toate spațiile"
+                                                size={backup.spatii_toate_csv_size}
+                                            />
                                             {(backup.spatii_files || []).map((file) => (
                                                 <DownloadLink
                                                     key={file.filename}

@@ -131,4 +131,9 @@ class Spatiu extends Model
     {
         return $this->hasMany(PvPredare::class);
     }
+
+    public function perioadeInchiriereFatada(): HasMany
+    {
+        return $this->hasMany(PerioadaInchiriereFatada::class);
+    }
 }

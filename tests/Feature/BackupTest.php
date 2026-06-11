@@ -10,6 +10,7 @@ use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\File;
 use Inertia\Testing\AssertableInertia as Assert;
+use Tests\Support\BackupExportValidator;
 use Tests\TestCase;
 
 class BackupTest extends TestCase
@@ -64,6 +65,7 @@ class BackupTest extends TestCase
         $this->assertFileExists($directory.'/imobile.csv');
         $this->assertFileExists($directory.'/chiriasi.csv');
         $this->assertFileExists($directory.'/manifest.json');
+        $this->assertFileExists($directory.'/'.BackupService::ALL_SPATII_CSV_FILENAME);
 
         $imobileCsv = File::get($directory.'/imobile.csv');
         $spatiiCsv = File::get($imobilCsv);
@@ -134,6 +136,56 @@ class BackupTest extends TestCase
         $this->get(route('backup.download', ['date' => 'manual', 'type' => 'chiriasi']))
             ->assertOk()
             ->assertDownload('imocore-chiriasi-manual.csv');
+
+        $this->get(route('backup.download', ['date' => 'manual', 'type' => 'spatii-toate']))
+            ->assertOk()
+            ->assertDownload('imocore-spatii-toate-manual.csv');
+    }
+
+    public function test_on_demand_all_spatii_download_returns_csv(): void
+    {
+        $this->seedSpatiu();
+
+        $this->get(route('backup.download.spatii-toate'))
+            ->assertOk()
+            ->assertDownload('imocore-spatii-toate-'.now()->format('Y-m-d').'.csv');
+    }
+
+    public function test_unified_spatii_csv_contains_all_imobile_in_order(): void
+    {
+        $spatiuUnu = $this->seedSpatiu();
+        $imobilDoi = Imobil::query()->create([
+            'nume' => 'Imobil doi',
+            'strada' => 'Strada 2',
+            'numar' => '2',
+            'localitate' => 'Timișoara',
+        ]);
+
+        $spatiuDoi = Spatiu::query()->create([
+            'imobil_id' => $imobilDoi->id,
+            'identificator' => 'D201',
+            'status' => 'liber',
+            'moneda' => 'EUR',
+            'ordine' => 1,
+        ]);
+
+        $this->post(route('backup.store'));
+
+        $csv = BackupExportValidator::parseCsvFile(
+            storage_path('app/backups/manual/'.BackupService::ALL_SPATII_CSV_FILENAME)
+        );
+
+        $this->assertSame(
+            BackupExportValidator::expectedAllSpatiiHeaders(BackupExportValidator::allSpatiiEditableFieldsUnion()),
+            $csv['headers']
+        );
+        $this->assertCount(2, $csv['rows']);
+        $this->assertSame((string) $spatiuUnu->imobil_id, $csv['rows'][0][0]);
+        $this->assertSame('Imobil backup', $csv['rows'][0][1]);
+        $this->assertSame($spatiuUnu->identificator, $csv['rows'][0][3]);
+        $this->assertSame((string) $imobilDoi->id, $csv['rows'][1][0]);
+        $this->assertSame('Imobil doi', $csv['rows'][1][1]);
+        $this->assertSame($spatiuDoi->identificator, $csv['rows'][1][3]);
     }
 
     public function test_daily_command_creates_automatic_backup(): void

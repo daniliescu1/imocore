@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\PerioadaInchiriereFatada;
 use App\Models\ConfigurareAnexaImobil;
 use App\Models\Imobil;
 use App\Models\Locator;
@@ -158,6 +159,7 @@ class SpatiuController extends Controller
             'id' => $spatiu->id,
             'imobil_id' => $spatiu->imobil_id,
             'identificator' => $spatiu->identificator,
+            'etaj' => $spatiu->etaj ?: '—',
             'imobil' => $spatiu->imobil?->nume ?: '—',
             'localitate' => $spatiu->imobil?->localitate ?: '—',
             'suprafata_contractuala_mp' => $suprafata,
@@ -186,6 +188,7 @@ class SpatiuController extends Controller
             'configurariAnexe' => $this->configurariAnexeForSelect(),
             'campuriSpatiuVizibile' => $this->campuriSpatiuVizibileForSelect(),
             'initialImobilId' => $request->integer('imobil_id') ?: null,
+            'perioadeFatada' => [],
         ]);
     }
 
@@ -220,6 +223,21 @@ class SpatiuController extends Controller
                 'marcat_galben' => (bool) $spatiu->marcat_galben,
                 'marcat_verde' => (bool) $spatiu->marcat_verde,
             ],
+            'perioadeFatada' => $spatiu->etaj === 'Fațadă'
+                ? $spatiu->perioadeInchiriereFatada()
+                    ->orderBy('data_start')
+                    ->get()
+                    ->map(fn (PerioadaInchiriereFatada $perioada): array => [
+                        'id' => $perioada->id,
+                        'data_start' => $perioada->data_start->format('Y-m-d'),
+                        'data_end' => $perioada->data_end->format('Y-m-d'),
+                        'chirias' => $perioada->chirias,
+                        'chirie_lunara' => $perioada->chirie_lunara,
+                        'moneda' => $perioada->moneda,
+                    ])
+                    ->values()
+                    ->all()
+                : [],
         ]);
     }
 

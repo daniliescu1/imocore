@@ -49,6 +49,7 @@ class BackupCompletenessTest extends TestCase
 
         $this->assertImobileCsvComplete($dataset['imobil']);
         $this->assertSpatiiCsvComplete($dataset['imobil'], $dataset['spatiu']);
+        $this->assertAllSpatiiCsvComplete($dataset['imobil'], $dataset['spatiu']);
         $this->assertChiriasiCsvComplete($dataset['imobil'], $dataset['spatiu']);
         $this->assertDatabaseBackupComplete();
         $this->assertAllCsvFilesHaveNoDiacritics();
@@ -97,6 +98,40 @@ class BackupCompletenessTest extends TestCase
         }
     }
 
+    private function assertAllSpatiiCsvComplete(Imobil $imobil, Spatiu $spatiu): void
+    {
+        $imobil->load(['spatii.locatorEntitate', 'spatii.configurareAnexa']);
+        $columnFields = BackupExportValidator::allSpatiiEditableFieldsUnion();
+        $editableFields = BackupExportValidator::editableSpatiuFieldsForImobil($imobil);
+        $path = $this->backupDirectory.'/'.BackupService::ALL_SPATII_CSV_FILENAME;
+
+        $this->assertFileExists($path);
+
+        $csv = BackupExportValidator::parseCsvFile($path);
+
+        $this->assertSame(BackupExportValidator::expectedAllSpatiiHeaders($columnFields), $csv['headers']);
+        $this->assertCount($imobil->spatii->count(), $csv['rows']);
+
+        $spatiu->refresh()->load(['locatorEntitate', 'configurareAnexa']);
+        $expected = BackupExportValidator::expectedAllSpatiuRow(
+            $spatiu,
+            $imobil->fresh(),
+            $columnFields,
+            $editableFields,
+            $this->exportDate,
+        );
+        $row = BackupExportValidator::findMatchingRow($csv, [
+            'Identificat la locator cu numarul' => $expected['Identificat la locator cu numarul'],
+            'ID imobil' => $expected['ID imobil'],
+        ]);
+
+        $this->assertNotNull($row, 'Spatiul nu apare in spatii-toate.csv');
+
+        foreach ($expected as $header => $value) {
+            $this->assertSame($value, $row[$header], "Coloana spatii-toate.csv [{$header}] nu corespunde.");
+        }
+    }
+
     private function assertChiriasiCsvComplete(Imobil $imobil, Spatiu $spatiu): void
     {
         $csv = BackupExportValidator::parseCsvFile($this->backupDirectory.'/chiriasi.csv');
@@ -138,7 +173,11 @@ class BackupCompletenessTest extends TestCase
     private function assertAllCsvFilesHaveNoDiacritics(): void
     {
         $files = array_merge(
-            [ $this->backupDirectory.'/imobile.csv', $this->backupDirectory.'/chiriasi.csv' ],
+            [
+                $this->backupDirectory.'/imobile.csv',
+                $this->backupDirectory.'/chiriasi.csv',
+                $this->backupDirectory.'/'.BackupService::ALL_SPATII_CSV_FILENAME,
+            ],
             collect(File::files($this->backupDirectory.'/spatii'))
                 ->map(fn (\SplFileInfo $file): string => $file->getPathname())
                 ->all()

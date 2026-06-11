@@ -116,6 +116,72 @@ class BackupExportValidator
      * @param  list<string>  $editableFields
      * @return list<string>
      */
+    public static function expectedAllSpatiiHeaders(array $editableFields): array
+    {
+        return [
+            'ID imobil',
+            'Imobil',
+            'Localitate',
+            ...self::expectedSpatiiHeaders($editableFields),
+        ];
+    }
+
+    /**
+     * @param  list<string>  $columnFields
+     * @param  list<string>  $imobilEditableFields
+     * @return array<string, string>
+     */
+    public static function expectedAllSpatiuRow(
+        Spatiu $spatiu,
+        Imobil $imobil,
+        array $columnFields,
+        array $imobilEditableFields,
+        string $exportDate,
+    ): array {
+        $spatiuRow = self::expectedSpatiuRow($spatiu, $imobilEditableFields, $exportDate);
+
+        $row = [
+            'ID imobil' => (string) $imobil->id,
+            'Imobil' => self::ascii($imobil->nume),
+            'Localitate' => self::ascii($imobil->localitate),
+            'Identificat la locator cu numarul' => $spatiuRow['Identificat la locator cu numarul'],
+            'Status' => $spatiuRow['Status'],
+        ];
+
+        foreach ($columnFields as $field) {
+            $label = self::ascii(Imobil::CAMPURI_SPATIU_CONFIGURABILE[$field] ?? $field);
+            $row[$label] = in_array($field, $imobilEditableFields, true)
+                ? ($spatiuRow[$label] ?? '')
+                : '';
+        }
+
+        $row['Data export'] = $exportDate;
+
+        return $row;
+    }
+
+    /**
+     * @return list<string>
+     */
+    public static function allSpatiiEditableFieldsUnion(): array
+    {
+        $usedFields = Imobil::query()
+            ->get()
+            ->flatMap(fn (Imobil $imobil): array => self::editableSpatiuFieldsForImobil($imobil))
+            ->unique()
+            ->all();
+
+        return collect(array_keys(Imobil::CAMPURI_SPATIU_CONFIGURABILE))
+            ->reject(fn (string $field): bool => in_array($field, ['persoane_standard', 'pret_mp_ultima_indexare'], true))
+            ->filter(fn (string $field): bool => in_array($field, $usedFields, true))
+            ->values()
+            ->all();
+    }
+
+    /**
+     * @param  list<string>  $editableFields
+     * @return list<string>
+     */
     public static function expectedSpatiiHeaders(array $editableFields): array
     {
         $headers = [
