@@ -137,6 +137,17 @@ export default function Index({ spatii = [], localitati = [], filters = {} }) {
             <section className="table-card module-table-card">
                 <div className="responsive-table">
                     <table className="indexare-chirii-table">
+                        <colgroup>
+                            <col />
+                            <col className="indexare-identificator-col" />
+                            <col />
+                            <col />
+                            <col />
+                            <col />
+                            <col />
+                            <col />
+                            <col />
+                        </colgroup>
                         <thead>
                             <tr>
                                 <th>Imobil</th>

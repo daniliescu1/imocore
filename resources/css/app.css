@@ -2464,18 +2464,26 @@ tr:last-child td {
     min-width: 100%;
 }
 
+.indexare-chirii-table col.indexare-identificator-col {
+    width: 14.75rem;
+}
+
 .indexare-chirii-table .spatiu-identificator-header,
 .indexare-chirii-table .spatiu-identificator-cell {
-    max-width: 10rem;
-    width: 10rem;
-    min-width: 10rem;
+    box-sizing: border-box;
+    max-width: 14.75rem;
+    width: 14.75rem;
+    min-width: 14.75rem;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+    padding-left: 16px;
+    padding-right: 16px;
 }
 
 .indexare-chirii-table .spatiu-identificator-cell .table-name-link {
     display: block;
+    max-width: 100%;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
