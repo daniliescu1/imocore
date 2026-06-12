@@ -42,8 +42,8 @@ function IndexareRow({ spatiu, savingId, onSave }) {
     return (
         <tr>
             <td>{spatiu.imobil}</td>
-            <td className="spatiu-identificator-cell">
-                <Link className="table-name-link" href={`/spatii/${spatiu.id}/editare`}>{spatiu.identificator}</Link>
+            <td className="spatiu-identificator-cell" title={spatiu.identificator}>
+                <Link className="table-name-link" href={`/spatii/${spatiu.id}/editare`} title={spatiu.identificator}>{spatiu.identificator}</Link>
             </td>
             <td>{spatiu.etaj}</td>
             <td>{spatiu.suprafata_contractuala_mp ? `${spatiu.suprafata_contractuala_mp} mp` : '—'}</td>
