@@ -24,7 +24,8 @@ class ImobilController extends Controller
                 'spatii as spatii_inchiriate_live' => fn ($query) => $query->where('status', 'inchiriat'),
                 'spatii as spatii_comune_live' => fn ($query) => $query->where('status', 'comun'),
             ])
-            ->orderBy('nume');
+            ->orderBy('ordine')
+            ->orderBy('id');
 
         if ($localitate !== '') {
             $query->where('localitate', $localitate);
@@ -122,11 +123,36 @@ class ImobilController extends Controller
     {
         $validated = $this->validatedData($request);
         $validated['numere_cf'] = $this->syncCfPhotos($request, $validated['numere_cf']);
+        $validated['ordine'] = $this->nextOrdineForImobile();
 
         $imobil = Imobil::create($validated);
         $this->syncConfigurariAnexe($request, $imobil);
 
         return redirect('/imobile')->with('success', 'Imobilul a fost adăugat.');
+    }
+
+    public function reorder(Request $request): RedirectResponse
+    {
+        $validated = $request->validate([
+            'ordine' => ['required', 'array', 'min:1'],
+            'ordine.*' => ['integer', 'distinct', 'exists:imobile,id'],
+        ]);
+
+        $ids = collect($validated['ordine'])->map(fn ($id) => (int) $id)->values();
+
+        abort_unless(
+            Imobil::query()->whereIn('id', $ids)->count() === $ids->count(),
+            422,
+            'Ordinea conține imobile invalide.'
+        );
+
+        foreach ($ids as $index => $imobilId) {
+            Imobil::query()
+                ->whereKey($imobilId)
+                ->update(['ordine' => $index + 1]);
+        }
+
+        return back();
     }
 
     public function update(Request $request, Imobil $imobil): RedirectResponse
@@ -462,5 +488,12 @@ class ImobilController extends Controller
             ->implode(', ');
 
         return $numereCf !== '' ? $numereCf : '—';
+    }
+
+    private function nextOrdineForImobile(): int
+    {
+        $maxOrdine = Imobil::query()->max('ordine');
+
+        return ((int) $maxOrdine) + 1;
     }
 }

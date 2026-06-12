@@ -32,6 +32,21 @@ function formatNumber(value) {
     return Number(value || 0).toLocaleString('ro-RO', { maximumFractionDigits: 2 });
 }
 
+function CurrencyTotals({ sumaEur, mpEur, sumaLei, mpLei }) {
+    return (
+        <>
+            <div className="stat-meta-block">
+                <div><strong>Total sumă:</strong> {formatNumber(sumaEur)} EUR</div>
+                <div><strong>Total suprafață:</strong> {formatNumber(mpEur)} mp</div>
+            </div>
+            <div className="stat-meta-block">
+                <div><strong>Total sumă:</strong> {formatNumber(sumaLei)} Lei</div>
+                <div><strong>Total suprafață:</strong> {formatNumber(mpLei)} mp</div>
+            </div>
+        </>
+    );
+}
+
 export default function Dashboard({ today, stats, freeSpaces, overdue, endings }) {
     const { isOwner = false } = usePage().props;
 
@@ -40,15 +55,21 @@ export default function Dashboard({ today, stats, freeSpaces, overdue, endings }
             <div className="stats-grid">
                 <StatCard tone="total" icon={Building2} label="Spații totale" value={stats.total} />
                 <StatCard tone="free" icon={DoorOpen} label="Spații libere" value={stats.libere}>
-                    <div><strong>Suma:</strong> {formatNumber(stats.libere_suma)} EUR</div>
-                    <div><strong>Suprafață:</strong> {formatNumber(stats.libere_mp)} mp</div>
+                    <CurrencyTotals
+                        sumaEur={stats.libere_suma_eur}
+                        mpEur={stats.libere_mp_eur}
+                        sumaLei={stats.libere_suma_lei}
+                        mpLei={stats.libere_mp_lei}
+                    />
                 </StatCard>
                 <StatCard tone="rented" icon={UsersRound} label="Spații închiriate" value={stats.inchiriate}>
-                    {isOwner && stats.inchiriate_suma !== undefined ? (
-                        <>
-                            <div><strong>Total sumă:</strong> {formatNumber(stats.inchiriate_suma)} EUR</div>
-                            <div><strong>Total suprafață:</strong> {formatNumber(stats.inchiriate_mp)} mp</div>
-                        </>
+                    {isOwner ? (
+                        <CurrencyTotals
+                            sumaEur={stats.inchiriate_suma_eur}
+                            mpEur={stats.inchiriate_mp_eur}
+                            sumaLei={stats.inchiriate_suma_lei}
+                            mpLei={stats.inchiriate_mp_lei}
+                        />
                     ) : null}
                 </StatCard>
             </div>

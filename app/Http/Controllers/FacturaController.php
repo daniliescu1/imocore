@@ -67,9 +67,18 @@ class FacturaController extends Controller
         }
 
         foreach ($anexe as $anexa) {
-            $chirieEur = (float) ($anexa->contract?->chirie ?? 0);
-            $chirieLei = round($chirieEur * $cursEur, 2);
+            $chirie = (float) ($anexa->contract?->chirie ?? 0);
+            $moneda = $anexa->contract?->moneda ?: 'EUR';
             $penalitati = 0;
+
+            if ($moneda === 'RON') {
+                $chirieEur = 0;
+                $chirieLei = $chirie;
+            } else {
+                $chirieEur = $chirie;
+                $chirieLei = round($chirieEur * $cursEur, 2);
+            }
+
             Factura::query()->create([
                 'anexa_id' => $anexa->id,
                 'numar_factura' => $this->nextInvoiceNumber(),
@@ -291,8 +300,15 @@ class FacturaController extends Controller
                 $totalChirieEur = Spatiu::query()
                     ->where('imobil_id', $imobil->id)
                     ->where('status', 'inchiriat')
-                    ->get(['pret_lunar', 'indexare_2025', 'indexare_2026'])
-                    ->sum(fn (Spatiu $spatiu): float => (float) ($spatiu->indexare_2026 ?: $spatiu->indexare_2025 ?: $spatiu->pret_lunar ?: 0));
+                    ->where(fn ($query) => $query->whereNull('moneda')->orWhere('moneda', '!=', 'RON'))
+                    ->get(['pret_lunar', 'indexare_2026'])
+                    ->sum(fn (Spatiu $spatiu): float => (float) ($spatiu->indexare_2026 ?: $spatiu->pret_lunar ?: 0));
+                $totalChirieLei = Spatiu::query()
+                    ->where('imobil_id', $imobil->id)
+                    ->where('status', 'inchiriat')
+                    ->where('moneda', 'RON')
+                    ->get(['pret_lunar', 'indexare_2026'])
+                    ->sum(fn (Spatiu $spatiu): float => (float) ($spatiu->indexare_2026 ?: $spatiu->pret_lunar ?: 0));
                 $anexeEmise = Anexa::query()
                     ->whereHas('contract.spatiu', fn ($query) => $query->where('imobil_id', $imobil->id))
                     ->count();
@@ -305,7 +321,7 @@ class FacturaController extends Controller
                     'anexe_emise' => $anexeEmise,
                     'facturi_emise' => $facturi->count(),
                     'total_chirie_eur' => $totalChirieEur,
-                    'total_chirie_lei' => round($totalChirieEur * $cursEur, 2),
+                    'total_chirie_lei' => round($totalChirieEur * $cursEur, 2) + $totalChirieLei,
                     'total_utilitati' => $facturi->sum(fn (Factura $factura): float => (float) ($factura->anexa?->total ?? 0)),
                     'total_facturat' => $facturi->sum(fn (Factura $factura): float => (float) $factura->total),
                 ];

@@ -67,12 +67,24 @@ export default function BackupIndex({
     latestBackupAt = null,
     nextScheduledAt = null,
     allSpatiiDownloadUrl = null,
+    marcateSpatiiDownloadUrl = null,
+    faraAnexaSpatiiDownloadUrl = null,
 }) {
     const topbarActions = (
         <>
             {allSpatiiDownloadUrl ? (
                 <a className="secondary-button button-link" href={allSpatiiDownloadUrl}>
                     Descarcă toate spațiile
+                </a>
+            ) : null}
+            {marcateSpatiiDownloadUrl ? (
+                <a className="secondary-button button-link" href={marcateSpatiiDownloadUrl}>
+                    Descarcă spații marcate
+                </a>
+            ) : null}
+            {faraAnexaSpatiiDownloadUrl ? (
+                <a className="secondary-button button-link" href={faraAnexaSpatiiDownloadUrl}>
+                    Descarcă spații fără anexă
                 </a>
             ) : null}
             <button
@@ -160,6 +172,18 @@ export default function BackupIndex({
                                                 icon={Download}
                                                 label="Descarcă toate spațiile"
                                                 size={backup.spatii_toate_csv_size}
+                                            />
+                                            <DownloadLink
+                                                href={backup.spatii_marcate_csv_url}
+                                                icon={Download}
+                                                label="Descarcă spații marcate"
+                                                size={backup.spatii_marcate_csv_size}
+                                            />
+                                            <DownloadLink
+                                                href={backup.spatii_fara_anexa_csv_url}
+                                                icon={Download}
+                                                label="Descarcă spații fără anexă"
+                                                size={backup.spatii_fara_anexa_csv_size}
                                             />
                                             {(backup.spatii_files || []).map((file) => (
                                                 <DownloadLink

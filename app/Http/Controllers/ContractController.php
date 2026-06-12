@@ -127,7 +127,8 @@ class ContractController extends Controller
             'observatii' => ['nullable', 'string', 'max:5000'],
         ]);
 
-        $validated['moneda'] = 'EUR';
+        $spatiu = Spatiu::query()->findOrFail($validated['spatiu_id']);
+        $validated['moneda'] = Spatiu::normalizeMoneda($spatiu->etaj, $validated['moneda'] ?? $spatiu->moneda);
         $validated['persoane_declarate'] = isset($validated['persoane_declarate'])
             ? (int) $validated['persoane_declarate']
             : null;
@@ -173,7 +174,7 @@ class ContractController extends Controller
                 ->get()
                 ->map(function (Spatiu $spatiu): array {
                     $suprafata = $spatiu->suprafata_contractuala_mp;
-                    $chirieCurenta = $spatiu->indexare_2026 ?: ($spatiu->indexare_2025 ?: $spatiu->pret_lunar);
+                    $chirieCurenta = $spatiu->indexare_2026 ?: $spatiu->pret_lunar;
 
                     return [
                         'id' => $spatiu->id,
@@ -186,7 +187,6 @@ class ContractController extends Controller
                         'persoane_declarate' => $spatiu->persoane_declarate,
                         'suprafata_contractuala_mp' => $suprafata,
                         'pret_lunar' => $spatiu->pret_lunar,
-                        'indexare_2025' => $spatiu->indexare_2025,
                         'indexare_2026' => $spatiu->indexare_2026,
                         'chirie_curenta' => $chirieCurenta,
                         'moneda' => $spatiu->moneda ?: 'EUR',

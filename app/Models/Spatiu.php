@@ -8,7 +8,9 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Spatiu extends Model
 {
-    public const ETAJE_FARA_PERSOANE = ['Acoperiș', 'Fațadă'];
+    public const ETAJ_PARCARE = 'Parcare';
+
+    public const ETAJE_FARA_PERSOANE = ['Acoperiș', 'Fațadă', self::ETAJ_PARCARE];
 
     protected $table = 'spatii';
 
@@ -27,7 +29,6 @@ class Spatiu extends Model
         'activ',
         'arhivat_la',
         'pret_lunar',
-        'indexare_2025',
         'indexare_2026',
         'moneda',
         'locator_id',
@@ -36,6 +37,7 @@ class Spatiu extends Model
         'chirias',
         'observatii',
         'de_lamurit',
+        'de_lamurit_detaliu',
         'marcat_galben',
         'marcat_verde',
     ];
@@ -43,7 +45,6 @@ class Spatiu extends Model
     protected $casts = [
         'suprafata_contractuala_mp' => 'decimal:2',
         'pret_lunar' => 'decimal:2',
-        'indexare_2025' => 'decimal:2',
         'indexare_2026' => 'decimal:2',
         'retim_direct' => 'boolean',
         'activ' => 'boolean',
@@ -66,6 +67,27 @@ class Spatiu extends Model
     public static function etajFaraPersoane(?string $etaj): bool
     {
         return in_array($etaj, self::ETAJE_FARA_PERSOANE, true);
+    }
+
+    public static function esteParcare(?string $etaj): bool
+    {
+        return $etaj === self::ETAJ_PARCARE;
+    }
+
+    public static function normalizeMoneda(?string $etaj, ?string $moneda): string
+    {
+        if (! self::esteParcare($etaj)) {
+            return 'EUR';
+        }
+
+        $moneda = strtoupper(trim((string) $moneda));
+
+        return in_array($moneda, ['EUR', 'RON'], true) ? $moneda : 'RON';
+    }
+
+    public function monedaLabel(): string
+    {
+        return $this->moneda === 'RON' ? 'Lei' : 'EUR';
     }
 
     public static function calculeazaPersoaneStandard(float|string|null $suprafata): int
@@ -99,7 +121,7 @@ class Spatiu extends Model
 
     public function chirieCurenta(): float
     {
-        return (float) ($this->indexare_2026 ?: $this->indexare_2025 ?: $this->pret_lunar ?: 0);
+        return (float) ($this->indexare_2026 ?: $this->pret_lunar ?: 0);
     }
 
     public function imobil(): BelongsTo

@@ -611,6 +611,12 @@ a {
     line-height: 1.5;
 }
 
+.stat-meta-block + .stat-meta-block {
+    margin-top: 10px;
+    padding-top: 10px;
+    border-top: 1px solid rgba(0, 0, 0, 0.08);
+}
+
 .table-card {
     overflow: hidden;
     border: 1px solid var(--border);
@@ -1736,6 +1742,10 @@ tr:last-child td {
     margin-top: 16px;
 }
 
+.de-lamurit-detaliu-field {
+    margin-top: 16px;
+}
+
 .spatiu-marcaj-switches {
     display: flex;
     flex-wrap: wrap;
@@ -2447,4 +2457,38 @@ tr:last-child td {
     display: flex;
     flex-direction: column;
     gap: 8px;
+}
+
+.indexare-chirii-table {
+    min-width: 1100px;
+}
+
+.indexare-chirii-input-cell {
+    min-width: 9rem;
+}
+
+.indexare-chirii-input {
+    width: 100%;
+    min-width: 7rem;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 8px 10px;
+    background: #fff;
+    color: var(--text-dark);
+    font-size: 13px;
+    font-weight: 700;
+}
+
+.indexare-chirii-input:focus {
+    outline: none;
+    border-color: var(--title-green);
+    box-shadow: 0 0 0 2px rgba(27, 94, 32, 0.12);
+}
+
+.indexare-chirii-saving {
+    display: block;
+    margin-top: 4px;
+    color: var(--text-secondary);
+    font-size: 11px;
+    font-weight: 700;
 }

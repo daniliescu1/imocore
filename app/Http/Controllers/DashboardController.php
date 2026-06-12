@@ -22,17 +22,12 @@ class DashboardController extends Controller
             'total' => $totalSpatii,
             'libere' => (clone $spatiiLibere)->count(),
             'inchiriate' => (clone $spatiiInchiriateQuery)->count(),
-            'libere_suma' => (float) (clone $spatiiLibere)->sum('pret_lunar'),
-            'libere_mp' => (float) (clone $spatiiLibere)->sum('suprafata_contractuala_mp'),
         ];
 
-        if ($isOwner) {
-            $spatiiInchiriate = (clone $spatiiInchiriateQuery)->get();
+        $stats = array_merge($stats, $this->sumStatsByMoneda((clone $spatiiLibere)->get(), 'libere'));
 
-            $stats['inchiriate_suma'] = (float) $spatiiInchiriate->sum(
-                fn (Spatiu $spatiu): float => $spatiu->chirieCurenta()
-            );
-            $stats['inchiriate_mp'] = (float) $spatiiInchiriate->sum('suprafata_contractuala_mp');
+        if ($isOwner) {
+            $stats = array_merge($stats, $this->sumStatsByMoneda((clone $spatiiInchiriateQuery)->get(), 'inchiriate'));
         }
 
         return Inertia::render('Dashboard', [
@@ -47,12 +42,38 @@ class DashboardController extends Controller
                     'spatiu' => $spatiu->identificator,
                     'imobil' => $spatiu->imobil?->nume ?: '—',
                     'suprafata' => $spatiu->suprafata_contractuala_mp ? "{$spatiu->suprafata_contractuala_mp} mp" : '—',
-                    'pret' => $spatiu->pret_lunar ? "{$spatiu->pret_lunar} {$spatiu->moneda}" : '—',
+                    'pret' => $spatiu->pret_lunar ? "{$spatiu->pret_lunar} {$spatiu->monedaLabel()}" : '—',
                     'data_liber' => '—',
                 ]),
             'overdue' => [],
             'endings' => [],
         ]);
+    }
+
+    /**
+     * @param  \Illuminate\Support\Collection<int, Spatiu>  $spatii
+     * @return array<string, float>
+     */
+    private function sumStatsByMoneda($spatii, string $prefix): array
+    {
+        $eur = $spatii->filter(fn (Spatiu $spatiu): bool => $spatiu->moneda !== 'RON');
+        $lei = $spatii->filter(fn (Spatiu $spatiu): bool => $spatiu->moneda === 'RON');
+
+        return [
+            "{$prefix}_suma_eur" => (float) $eur->sum(fn (Spatiu $spatiu): float => $this->chiriePentruStat($spatiu)),
+            "{$prefix}_mp_eur" => (float) $eur->sum('suprafata_contractuala_mp'),
+            "{$prefix}_suma_lei" => (float) $lei->sum(fn (Spatiu $spatiu): float => $this->chiriePentruStat($spatiu)),
+            "{$prefix}_mp_lei" => (float) $lei->sum('suprafata_contractuala_mp'),
+        ];
+    }
+
+    private function chiriePentruStat(Spatiu $spatiu): float
+    {
+        if ($spatiu->status === 'liber') {
+            return (float) ($spatiu->pret_lunar ?: 0);
+        }
+
+        return $spatiu->chirieCurenta();
     }
 
     private function isOwner(?User $user): bool

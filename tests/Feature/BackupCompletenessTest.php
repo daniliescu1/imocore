@@ -228,7 +228,6 @@ class BackupCompletenessTest extends TestCase
             'etaj' => 'Parter',
             'status' => 'inchiriat',
             'pret_lunar' => 1500.00,
-            'indexare_2025' => 1600.25,
             'indexare_2026' => 1750.75,
             'regim_incalzire' => 'partial',
             'procent_incalzire_override' => 60,

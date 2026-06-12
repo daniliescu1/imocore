@@ -10,6 +10,7 @@ use App\Http\Controllers\ContabilitatePrimaraController;
 use App\Http\Controllers\ContractController;
 use App\Http\Controllers\FacturaController;
 use App\Http\Controllers\ImobilController;
+use App\Http\Controllers\IndexareChiriiController;
 use App\Http\Controllers\LocatorController;
 use App\Http\Controllers\ReguliImobilController;
 use App\Http\Controllers\SetariController;
@@ -23,6 +24,7 @@ Route::get('/', DashboardController::class)->name('dashboard');
 Route::get('/contabilitate-primara', [ContabilitatePrimaraController::class, 'index'])->name('contabilitate-primara.index');
 
 Route::get('/imobile', [ImobilController::class, 'index'])->name('imobile.index');
+Route::put('/imobile/reordonare', [ImobilController::class, 'reorder'])->name('imobile.reorder');
 Route::get('/imobile/adauga', [ImobilController::class, 'create'])->name('imobile.create');
 Route::post('/imobile', [ImobilController::class, 'store'])->name('imobile.store');
 Route::get('/imobile/{imobil}/editare', [ImobilController::class, 'edit'])->name('imobile.edit');
@@ -77,6 +79,10 @@ Route::get('/setari', [SetariController::class, 'index'])->name('setari.index');
 Route::get('/backup', [BackupController::class, 'index'])->name('backup.index');
 Route::post('/backup', [BackupController::class, 'store'])->name('backup.store');
 Route::get('/backup/spatii-toate', [BackupController::class, 'downloadAllSpatii'])->name('backup.download.spatii-toate');
+Route::get('/backup/spatii-marcate', [BackupController::class, 'downloadMarcateSpatii'])->name('backup.download.spatii-marcate');
+Route::get('/backup/spatii-fara-anexa', [BackupController::class, 'downloadFaraAnexaSpatii'])->name('backup.download.spatii-fara-anexa');
+Route::get('/indexare-chirii', [IndexareChiriiController::class, 'index'])->name('indexare-chirii.index');
+Route::patch('/indexare-chirii/{spatiu}', [IndexareChiriiController::class, 'update'])->name('indexare-chirii.update');
 Route::get('/backup/{date}/{type}', [BackupController::class, 'download'])->name('backup.download');
 Route::get('/backup/{date}/spatii/{file}', [BackupController::class, 'downloadSpatii'])->name('backup.download.spatii');
 
@@ -90,7 +96,6 @@ foreach (['rezervari', 'pv-predare', 'contoare', 'utilitati'] as $crudModule) {
 
 $modules = [
     '/cheltuieli' => 'Cheltuieli',
-    '/indexare-chirii' => 'Indexare chirii',
     '/operr-app' => 'Operr App',
 ];
 

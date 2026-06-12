@@ -122,7 +122,21 @@ class BackupExportValidator
             'ID imobil',
             'Imobil',
             'Localitate',
-            ...self::expectedSpatiiHeaders($editableFields),
+            ...self::expectedSpatiiContentHeaders($editableFields),
+            'Detaliu de lamurit',
+            'Data export',
+        ];
+    }
+
+    /**
+     * @param  list<string>  $editableFields
+     * @return list<string>
+     */
+    public static function expectedFilteredAllSpatiiHeaders(array $editableFields): array
+    {
+        return [
+            'Marcaj',
+            ...self::expectedAllSpatiiHeaders($editableFields),
         ];
     }
 
@@ -155,6 +169,9 @@ class BackupExportValidator
                 : '';
         }
 
+        $row['Detaliu de lamurit'] = $spatiu->de_lamurit
+            ? self::ascii($spatiu->de_lamurit_detaliu ?? '')
+            : '';
         $row['Data export'] = $exportDate;
 
         return $row;
@@ -184,6 +201,18 @@ class BackupExportValidator
      */
     public static function expectedSpatiiHeaders(array $editableFields): array
     {
+        return [
+            ...self::expectedSpatiiContentHeaders($editableFields),
+            'Data export',
+        ];
+    }
+
+    /**
+     * @param  list<string>  $editableFields
+     * @return list<string>
+     */
+    public static function expectedSpatiiContentHeaders(array $editableFields): array
+    {
         $headers = [
             'Identificat la locator cu numarul',
             'Status',
@@ -192,8 +221,6 @@ class BackupExportValidator
         foreach ($editableFields as $field) {
             $headers[] = self::ascii(Imobil::CAMPURI_SPATIU_CONFIGURABILE[$field] ?? $field);
         }
-
-        $headers[] = 'Data export';
 
         return $headers;
     }
@@ -223,7 +250,6 @@ class BackupExportValidator
                 'corp' => $spatiu->corp,
                 'etaj' => $spatiu->etaj,
                 'pret_lunar' => self::csvDecimal($spatiu->pret_lunar),
-                'indexare_2025' => self::csvDecimal($spatiu->indexare_2025),
                 'indexare_2026' => self::csvDecimal($spatiu->indexare_2026),
                 'regim_incalzire' => match ($spatiu->regim_incalzire) {
                     'integral' => 'Incalzit integral',
@@ -252,10 +278,10 @@ class BackupExportValidator
     public static function expectedChiriasRow(Spatiu $spatiu, Imobil $imobil, string $exportDate): array
     {
         $suprafata = $spatiu->suprafata_contractuala_mp;
-        $chirieCurenta = $spatiu->indexare_2026 ?: ($spatiu->indexare_2025 ?: $spatiu->pret_lunar);
+        $chirieCurenta = $spatiu->indexare_2026 ?: $spatiu->pret_lunar;
         $sursaChirieCurenta = $spatiu->indexare_2026
             ? 'Indexare 2026'
-            : ($spatiu->indexare_2025 ? 'Indexare 2025' : 'Chirie lunara');
+            : 'Chirie lunara';
         $pretMpCurent = $suprafata && $chirieCurenta
             ? number_format((float) $chirieCurenta / (float) $suprafata, 2, '.', '')
             : '';
@@ -269,7 +295,6 @@ class BackupExportValidator
             'Chirie lunara EUR' => self::csvDecimal($spatiu->pret_lunar),
             'Chirie curenta EUR' => self::csvDecimal($chirieCurenta),
             'Sursa chirie curenta' => self::ascii($sursaChirieCurenta),
-            'Indexare 2025' => self::csvDecimal($spatiu->indexare_2025),
             'Indexare 2026' => self::csvDecimal($spatiu->indexare_2026),
             'Pret mp curent' => self::csvDecimal($pretMpCurent),
             'Data export' => $exportDate,

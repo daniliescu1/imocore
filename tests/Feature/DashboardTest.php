@@ -13,7 +13,7 @@ class DashboardTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_owner_vede_total_suma_si_suprafata_la_spatii_inchiriate(): void
+    public function test_owner_vede_totaluri_eur_si_lei_la_spatii_inchiriate(): void
     {
         $this->seedInchiriate();
 
@@ -22,9 +22,11 @@ class DashboardTest extends TestCase
             ->assertOk()
             ->assertInertia(fn (Assert $page) => $page
                 ->component('Dashboard')
-                ->where('stats.inchiriate', 2)
-                ->where('stats.inchiriate_suma', 2907.5)
-                ->where('stats.inchiriate_mp', 205)
+                ->where('stats.inchiriate', 3)
+                ->where('stats.inchiriate_suma_eur', 2907.5)
+                ->where('stats.inchiriate_mp_eur', 205)
+                ->where('stats.inchiriate_suma_lei', 350)
+                ->where('stats.inchiriate_mp_lei', 12)
                 ->where('isOwner', true)
             );
     }
@@ -38,9 +40,11 @@ class DashboardTest extends TestCase
             ->assertOk()
             ->assertInertia(fn (Assert $page) => $page
                 ->component('Dashboard')
-                ->where('stats.inchiriate', 2)
-                ->missing('stats.inchiriate_suma')
-                ->missing('stats.inchiriate_mp')
+                ->where('stats.inchiriate', 3)
+                ->missing('stats.inchiriate_suma_eur')
+                ->missing('stats.inchiriate_mp_eur')
+                ->missing('stats.inchiriate_suma_lei')
+                ->missing('stats.inchiriate_mp_lei')
                 ->where('isOwner', false)
             );
     }
@@ -66,9 +70,9 @@ class DashboardTest extends TestCase
 
         foreach ([
             ['identificator' => 'LIB', 'status' => 'liber', 'pret_lunar' => 900, 'indexare_2026' => 1100],
-            ['identificator' => 'REZ', 'status' => 'rezervat', 'pret_lunar' => 800, 'indexare_2025' => 950],
+            ['identificator' => 'REZ', 'status' => 'rezervat', 'pret_lunar' => 800, 'indexare_2026' => 950],
             ['identificator' => 'COM', 'status' => 'comun', 'pret_lunar' => 700, 'indexare_2026' => 850],
-            ['identificator' => 'ADM', 'status' => 'administrativ', 'pret_lunar' => 600, 'indexare_2025' => 750],
+            ['identificator' => 'ADM', 'status' => 'administrativ', 'pret_lunar' => 600],
         ] as $spatiu) {
             Spatiu::query()->create([
                 'imobil_id' => $imobil->id,
@@ -76,7 +80,6 @@ class DashboardTest extends TestCase
                 'status' => $spatiu['status'],
                 'suprafata_contractuala_mp' => 50,
                 'pret_lunar' => $spatiu['pret_lunar'],
-                'indexare_2025' => $spatiu['indexare_2025'] ?? null,
                 'indexare_2026' => $spatiu['indexare_2026'] ?? null,
                 'moneda' => 'EUR',
             ]);
@@ -88,8 +91,10 @@ class DashboardTest extends TestCase
             ->assertInertia(fn (Assert $page) => $page
                 ->component('Dashboard')
                 ->where('stats.inchiriate', 1)
-                ->where('stats.inchiriate_suma', 1200)
-                ->where('stats.inchiriate_mp', 100)
+                ->where('stats.inchiriate_suma_eur', 1200)
+                ->where('stats.inchiriate_mp_eur', 100)
+                ->where('stats.inchiriate_suma_lei', 0)
+                ->where('stats.inchiriate_mp_lei', 0)
             );
     }
 
@@ -118,8 +123,18 @@ class DashboardTest extends TestCase
             'status' => 'inchiriat',
             'suprafata_contractuala_mp' => 85,
             'pret_lunar' => 850,
-            'indexare_2025' => 1407.5,
+            'indexare_2026' => 1407.5,
             'moneda' => 'EUR',
+        ]);
+
+        Spatiu::query()->create([
+            'imobil_id' => $imobil->id,
+            'identificator' => 'P1',
+            'etaj' => 'Parcare',
+            'status' => 'inchiriat',
+            'suprafata_contractuala_mp' => 12,
+            'pret_lunar' => 350,
+            'moneda' => 'RON',
         ]);
     }
 }

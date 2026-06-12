@@ -56,7 +56,6 @@ class SpatiuStatusTest extends TestCase
             'locator_id' => $locator->id,
             'configurare_anexa_id' => $configurare->id,
             'chirias' => 'Nu ar trebui salvat',
-            'indexare_2025' => '100',
             'indexare_2026' => '120',
         ])->assertRedirect('/spatii?imobil_id='.$imobil->id);
 
@@ -67,7 +66,6 @@ class SpatiuStatusTest extends TestCase
         $this->assertNull($spatiu->locator_id);
         $this->assertNull($spatiu->configurare_anexa_id);
         $this->assertNull($spatiu->chirias);
-        $this->assertNull($spatiu->indexare_2025);
         $this->assertNull($spatiu->indexare_2026);
     }
 

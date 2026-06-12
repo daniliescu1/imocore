@@ -23,6 +23,8 @@ class BackupController extends Controller
             'latestBackupAt' => $latest['created_at'] ?? null,
             'nextScheduledAt' => now()->addDay()->startOfDay()->addHours(3)->toIso8601String(),
             'allSpatiiDownloadUrl' => route('backup.download.spatii-toate'),
+            'marcateSpatiiDownloadUrl' => route('backup.download.spatii-marcate'),
+            'faraAnexaSpatiiDownloadUrl' => route('backup.download.spatii-fara-anexa'),
         ]);
     }
 
@@ -71,6 +73,49 @@ class BackupController extends Controller
         $backupService->exportAllSpatiiCsv($tempPath, now()->format('Y-m-d H:i:s'));
 
         return response()->download($tempPath, $backupService->onDemandAllSpatiiDownloadFilename(), [
+            'Content-Type' => 'text/csv',
+        ])->deleteFileAfterSend();
+    }
+
+    public function downloadMarcateSpatii(BackupService $backupService): BinaryFileResponse
+    {
+        return $this->downloadOnDemandSpatiiCsv(
+            $backupService,
+            fn (string $path, string $exportDate) => $backupService->exportMarcateSpatiiCsv($path, $exportDate),
+            'spatii-marcate-',
+            $backupService->onDemandMarcateSpatiiDownloadFilename(),
+        );
+    }
+
+    public function downloadFaraAnexaSpatii(BackupService $backupService): BinaryFileResponse
+    {
+        return $this->downloadOnDemandSpatiiCsv(
+            $backupService,
+            fn (string $path, string $exportDate) => $backupService->exportFaraAnexaSpatiiCsv($path, $exportDate),
+            'spatii-fara-anexa-',
+            $backupService->onDemandFaraAnexaSpatiiDownloadFilename(),
+        );
+    }
+
+    /**
+     * @param  callable(string, string): void  $exporter
+     */
+    private function downloadOnDemandSpatiiCsv(
+        BackupService $backupService,
+        callable $exporter,
+        string $tempPrefix,
+        string $downloadFilename,
+    ): BinaryFileResponse {
+        $tempDirectory = storage_path('app/temp');
+
+        if (! File::isDirectory($tempDirectory)) {
+            File::makeDirectory($tempDirectory, 0755, true);
+        }
+
+        $tempPath = $tempDirectory.DIRECTORY_SEPARATOR.$tempPrefix.Str::uuid().'.csv';
+        $exporter($tempPath, now()->format('Y-m-d H:i:s'));
+
+        return response()->download($tempPath, $downloadFilename, [
             'Content-Type' => 'text/csv',
         ])->deleteFileAfterSend();
     }

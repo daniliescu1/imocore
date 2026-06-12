@@ -35,7 +35,6 @@ const defaultCampuriSpatiuConfigurabile = [
     'etaj',
     'persoane_standard',
     'pret_lunar',
-    'indexare_2025',
     'indexare_2026',
     'pret_mp_ultima_indexare',
     'regim_incalzire',

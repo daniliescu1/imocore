@@ -66,6 +66,8 @@ class BackupTest extends TestCase
         $this->assertFileExists($directory.'/chiriasi.csv');
         $this->assertFileExists($directory.'/manifest.json');
         $this->assertFileExists($directory.'/'.BackupService::ALL_SPATII_CSV_FILENAME);
+        $this->assertFileExists($directory.'/'.BackupService::MARCATE_SPATII_CSV_FILENAME);
+        $this->assertFileExists($directory.'/'.BackupService::FARA_ANEXA_SPATII_CSV_FILENAME);
 
         $imobileCsv = File::get($directory.'/imobile.csv');
         $spatiiCsv = File::get($imobilCsv);
@@ -140,6 +142,83 @@ class BackupTest extends TestCase
         $this->get(route('backup.download', ['date' => 'manual', 'type' => 'spatii-toate']))
             ->assertOk()
             ->assertDownload('imocore-spatii-toate-manual.csv');
+
+        $this->get(route('backup.download', ['date' => 'manual', 'type' => 'spatii-marcate']))
+            ->assertOk()
+            ->assertDownload('imocore-spatii-marcate-manual.csv');
+
+        $this->get(route('backup.download', ['date' => 'manual', 'type' => 'spatii-fara-anexa']))
+            ->assertOk()
+            ->assertDownload('imocore-spatii-fara-anexa-manual.csv');
+    }
+
+    public function test_on_demand_marcate_and_fara_anexa_downloads_return_csv(): void
+    {
+        $this->seedSpatiu();
+
+        $this->get(route('backup.download.spatii-marcate'))
+            ->assertOk()
+            ->assertDownload('imocore-spatii-marcate-'.now()->format('Y-m-d').'.csv');
+
+        $this->get(route('backup.download.spatii-fara-anexa'))
+            ->assertOk()
+            ->assertDownload('imocore-spatii-fara-anexa-'.now()->format('Y-m-d').'.csv');
+    }
+
+    public function test_marcate_spatii_csv_exports_only_marked_spaces(): void
+    {
+        $spatiu = $this->seedSpatiu();
+        $spatiu->update([
+            'de_lamurit' => true,
+            'de_lamurit_detaliu' => 'Text de lamurit',
+        ]);
+
+        Spatiu::query()->create([
+            'imobil_id' => $spatiu->imobil_id,
+            'identificator' => 'B102',
+            'status' => 'liber',
+            'moneda' => 'EUR',
+            'ordine' => 2,
+        ]);
+
+        $this->post(route('backup.store'));
+
+        $csv = BackupExportValidator::parseCsvFile(
+            storage_path('app/backups/manual/'.BackupService::MARCATE_SPATII_CSV_FILENAME)
+        );
+
+        $this->assertSame(
+            BackupExportValidator::expectedFilteredAllSpatiiHeaders(BackupExportValidator::allSpatiiEditableFieldsUnion()),
+            $csv['headers']
+        );
+        $this->assertCount(1, $csv['rows']);
+        $this->assertSame('De lamurit', $csv['rows'][0][0]);
+        $this->assertSame($spatiu->identificator, $csv['rows'][0][4]);
+        $this->assertSame('Text de lamurit', $csv['rows'][0][count($csv['headers']) - 2]);
+    }
+
+    public function test_fara_anexa_spatii_csv_exports_only_inchiriate_without_annex(): void
+    {
+        $spatiu = $this->seedSpatiu();
+
+        Spatiu::query()->create([
+            'imobil_id' => $spatiu->imobil_id,
+            'identificator' => 'B102',
+            'status' => 'liber',
+            'moneda' => 'EUR',
+            'ordine' => 2,
+        ]);
+
+        $this->post(route('backup.store'));
+
+        $csv = BackupExportValidator::parseCsvFile(
+            storage_path('app/backups/manual/'.BackupService::FARA_ANEXA_SPATII_CSV_FILENAME)
+        );
+
+        $this->assertCount(1, $csv['rows']);
+        $this->assertSame('Fara anexa', $csv['rows'][0][0]);
+        $this->assertSame($spatiu->identificator, $csv['rows'][0][4]);
+        $this->assertSame('', $csv['rows'][0][count($csv['headers']) - 2]);
     }
 
     public function test_on_demand_all_spatii_download_returns_csv(): void
@@ -186,6 +265,29 @@ class BackupTest extends TestCase
         $this->assertSame((string) $imobilDoi->id, $csv['rows'][1][0]);
         $this->assertSame('Imobil doi', $csv['rows'][1][1]);
         $this->assertSame($spatiuDoi->identificator, $csv['rows'][1][3]);
+    }
+
+    public function test_unified_spatii_csv_includes_detaliu_de_lamurit_before_data_export(): void
+    {
+        $spatiu = $this->seedSpatiu();
+        $spatiu->update([
+            'de_lamurit' => true,
+            'de_lamurit_detaliu' => 'Suprafata de confirmat',
+        ]);
+
+        $this->post(route('backup.store'));
+
+        $csv = BackupExportValidator::parseCsvFile(
+            storage_path('app/backups/manual/'.BackupService::ALL_SPATII_CSV_FILENAME)
+        );
+
+        $detaliuIndex = array_search('Detaliu de lamurit', $csv['headers'], true);
+        $exportIndex = array_search('Data export', $csv['headers'], true);
+
+        $this->assertNotFalse($detaliuIndex);
+        $this->assertNotFalse($exportIndex);
+        $this->assertSame($exportIndex - 1, $detaliuIndex);
+        $this->assertSame('Suprafata de confirmat', $csv['rows'][0][$detaliuIndex]);
     }
 
     public function test_daily_command_creates_automatic_backup(): void

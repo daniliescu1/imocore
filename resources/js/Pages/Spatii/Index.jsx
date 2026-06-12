@@ -53,14 +53,14 @@ function buildFilters(filters, overrides = {}) {
     };
 }
 
-function reorderSpatii(items, draggedId, targetId) {
+function reorderItems(items, draggedId, targetId, idKey = 'id') {
     if (!draggedId || draggedId === targetId) {
         return items;
     }
 
     const next = [...items];
-    const fromIndex = next.findIndex((spatiu) => spatiu.id === draggedId);
-    const toIndex = next.findIndex((spatiu) => spatiu.id === targetId);
+    const fromIndex = next.findIndex((item) => item[idKey] === draggedId);
+    const toIndex = next.findIndex((item) => item[idKey] === targetId);
 
     if (fromIndex === -1 || toIndex === -1) {
         return items;
@@ -70,6 +70,68 @@ function reorderSpatii(items, draggedId, targetId) {
     next.splice(toIndex, 0, moved);
 
     return next;
+}
+
+function reorderSpatii(items, draggedId, targetId) {
+    return reorderItems(items, draggedId, targetId);
+}
+
+function reorderImobile(items, draggedId, targetId) {
+    return reorderItems(items, draggedId, targetId);
+}
+
+function ImobilListRow({
+    imobil,
+    onOpen,
+    canReorder,
+    isDragging,
+    onDragStart,
+    onDragOver,
+    onDrop,
+    onDragEnd,
+}) {
+    const skipClickRef = useRef(false);
+
+    function handleClick() {
+        if (skipClickRef.current) {
+            skipClickRef.current = false;
+            return;
+        }
+
+        onOpen(imobil);
+    }
+
+    function handleDragEnd() {
+        skipClickRef.current = true;
+        onDragEnd();
+    }
+
+    return (
+        <tr
+            className={`clickable-row${isDragging ? ' is-dragging' : ''}${canReorder ? ' draggable-row' : ''}`}
+            draggable={canReorder}
+            onDragStart={(event) => onDragStart(event, imobil.id)}
+            onDragOver={(event) => onDragOver(event, imobil.id)}
+            onDrop={(event) => onDrop(event, imobil.id)}
+            onDragEnd={handleDragEnd}
+            onClick={handleClick}
+        >
+            {canReorder ? (
+                <td className="drag-handle-cell" onClick={(event) => event.stopPropagation()}>
+                    <span className="drag-handle" title="Trage pentru a reordona">
+                        <GripVertical size={16} strokeWidth={2.2} />
+                    </span>
+                </td>
+            ) : null}
+            <td><span className="table-name-link">{imobil.nume}</span></td>
+            <td>{imobil.localitate}</td>
+            <td>{imobil.spatii_total}</td>
+            <td>{imobil.spatii_libere}</td>
+            <td>{imobil.spatii_inchiriate}</td>
+            <td>{imobil.spatii_comune}</td>
+            <td>{imobil.spatii_administrative}</td>
+        </tr>
+    );
 }
 
 function SpatiuRow({
@@ -101,6 +163,7 @@ function SpatiuRow({
     return (
         <tr
             className={`clickable-row${marcajRowClass(spatiu)}${isDragging ? ' is-dragging' : ''}${canReorder ? ' draggable-row' : ''}`}
+            title={spatiu.de_lamurit && spatiu.de_lamurit_detaliu ? spatiu.de_lamurit_detaliu : undefined}
             draggable={canReorder}
             onDragStart={(event) => onDragStart(event, spatiu.id)}
             onDragOver={(event) => onDragOver(event, spatiu.id)}
@@ -128,12 +191,12 @@ function SpatiuRow({
             <td>
                 {spatiu.chirie_lunara_curenta ? (
                     <div className="stacked-cell">
-                        <strong>{spatiu.chirie_lunara_curenta} {spatiu.moneda}</strong>
+                        <strong>{spatiu.chirie_lunara_curenta} {spatiu.moneda_label || spatiu.moneda}</strong>
                         {spatiu.sursa_chirie_curenta ? <small>{spatiu.sursa_chirie_curenta}</small> : null}
                     </div>
                 ) : '—'}
             </td>
-            <td>{spatiu.pret_mp_curent ? `${spatiu.pret_mp_curent} ${spatiu.moneda}/mp` : '—'}</td>
+            <td>{spatiu.pret_mp_curent ? `${spatiu.pret_mp_curent} ${spatiu.moneda_label || spatiu.moneda}/mp` : '—'}</td>
             <td>{spatiu.locator}</td>
             <td>{spatiu.chirias}</td>
         </tr>
@@ -142,8 +205,10 @@ function SpatiuRow({
 
 export default function Index({ imobile = [], imobil = null, spatii = [], localitati, filters }) {
     const isInsideImobil = Boolean(imobil);
-    const canReorder = isInsideImobil && !filters.search && !filters.status && !filters.regim_incalzire && spatii.length > 1;
+    const canReorderSpatii = isInsideImobil && !filters.search && !filters.status && !filters.regim_incalzire && spatii.length > 1;
+    const canReorderImobile = !isInsideImobil && !filters.search && !filters.localitate && imobile.length > 1;
     const [orderedSpatii, setOrderedSpatii] = useState(spatii);
+    const [orderedImobile, setOrderedImobile] = useState(imobile);
     const [draggingId, setDraggingId] = useState(null);
     const totalSpatii = isInsideImobil
         ? spatii.length
@@ -152,6 +217,10 @@ export default function Index({ imobile = [], imobil = null, spatii = [], locali
     useEffect(() => {
         setOrderedSpatii(spatii);
     }, [spatii]);
+
+    useEffect(() => {
+        setOrderedImobile(imobile);
+    }, [imobile]);
 
     function updateFilters(overrides = {}) {
         router.get('/spatii', buildFilters(filters, overrides), { preserveState: true, preserveScroll: true });
@@ -183,19 +252,40 @@ export default function Index({ imobile = [], imobil = null, spatii = [], locali
             return;
         }
 
-        const next = reorderSpatii(orderedSpatii, draggingId, targetId);
+        if (isInsideImobil) {
+            const next = reorderSpatii(orderedSpatii, draggingId, targetId);
 
-        if (next === orderedSpatii) {
+            if (next === orderedSpatii) {
+                setDraggingId(null);
+                return;
+            }
+
+            setOrderedSpatii(next);
+            setDraggingId(null);
+
+            router.put('/spatii/reordonare', {
+                imobil_id: imobil.id,
+                ordine: next.map((spatiu) => spatiu.id),
+            }, {
+                preserveScroll: true,
+                preserveState: true,
+            });
+
+            return;
+        }
+
+        const next = reorderImobile(orderedImobile, draggingId, targetId);
+
+        if (next === orderedImobile) {
             setDraggingId(null);
             return;
         }
 
-        setOrderedSpatii(next);
+        setOrderedImobile(next);
         setDraggingId(null);
 
-        router.put('/spatii/reordonare', {
-            imobil_id: imobil.id,
-            ordine: next.map((spatiu) => spatiu.id),
+        router.put('/imobile/reordonare', {
+            ordine: next.map((row) => row.id),
         }, {
             preserveScroll: true,
             preserveState: true,
@@ -271,7 +361,7 @@ export default function Index({ imobile = [], imobil = null, spatii = [], locali
     const tableHead = (
         <thead>
             <tr>
-                {canReorder ? <th className="drag-handle-header" aria-label="Reordonează" /> : null}
+                {canReorderSpatii ? <th className="drag-handle-header" aria-label="Reordonează" /> : null}
                 <th className="spatiu-anexa-indicator-header" aria-hidden="true" />
                 <th className="spatiu-identificator-header">Identificat</th>
                 <th>Etaj</th>
@@ -306,7 +396,7 @@ export default function Index({ imobile = [], imobil = null, spatii = [], locali
                     </section>
                 ) : (
                     <section className="table-card module-table-card">
-                        {canReorder ? (
+                        {canReorderSpatii ? (
                             <p className="spaces-reorder-hint">Trage rândurile pentru a reordona spațiile.</p>
                         ) : null}
                         <div className="responsive-table">
@@ -318,7 +408,7 @@ export default function Index({ imobile = [], imobil = null, spatii = [], locali
                                             key={spatiu.id}
                                             spatiu={spatiu}
                                             onOpen={openSpatiu}
-                                            canReorder={canReorder}
+                                            canReorder={canReorderSpatii}
                                             isDragging={draggingId === spatiu.id}
                                             onDragStart={handleDragStart}
                                             onDragOver={handleDragOver}
@@ -333,10 +423,14 @@ export default function Index({ imobile = [], imobil = null, spatii = [], locali
                 )
             ) : (
                 <section className="table-card module-table-card">
+                    {canReorderImobile ? (
+                        <p className="spaces-reorder-hint">Trage rândurile pentru a reordona imobilele.</p>
+                    ) : null}
                     <div className="responsive-table">
                         <table className="spaces-table">
                             <thead>
                                 <tr>
+                                    {canReorderImobile ? <th className="drag-handle-header" aria-label="Reordonează" /> : null}
                                     <th>Imobil</th>
                                     <th>Localitate</th>
                                     <th>Spații</th>
@@ -347,20 +441,22 @@ export default function Index({ imobile = [], imobil = null, spatii = [], locali
                                 </tr>
                             </thead>
                             <tbody>
-                                {imobile.map((row) => (
-                                    <tr key={row.id} className="clickable-row" onClick={() => openImobil(row)}>
-                                        <td><span className="table-name-link">{row.nume}</span></td>
-                                        <td>{row.localitate}</td>
-                                        <td>{row.spatii_total}</td>
-                                        <td>{row.spatii_libere}</td>
-                                        <td>{row.spatii_inchiriate}</td>
-                                        <td>{row.spatii_comune}</td>
-                                        <td>{row.spatii_administrative}</td>
-                                    </tr>
+                                {orderedImobile.map((row) => (
+                                    <ImobilListRow
+                                        key={row.id}
+                                        imobil={row}
+                                        onOpen={openImobil}
+                                        canReorder={canReorderImobile}
+                                        isDragging={draggingId === row.id}
+                                        onDragStart={handleDragStart}
+                                        onDragOver={handleDragOver}
+                                        onDrop={handleDrop}
+                                        onDragEnd={handleDragEnd}
+                                    />
                                 ))}
-                                {imobile.length === 0 ? (
+                                {orderedImobile.length === 0 ? (
                                     <tr>
-                                        <td colSpan="7">Nu există imobile pentru filtrul selectat.</td>
+                                        <td colSpan={canReorderImobile ? 8 : 7}>Nu există imobile pentru filtrul selectat.</td>
                                     </tr>
                                 ) : null}
                             </tbody>

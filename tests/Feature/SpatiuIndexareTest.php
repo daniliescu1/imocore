@@ -28,20 +28,17 @@ class SpatiuIndexareTest extends TestCase
             'suprafata_contractuala_mp' => '10',
             'status' => 'liber',
             'moneda' => 'EUR',
-            'indexare_2025' => '125.50',
             'indexare_2026' => '140.75',
         ])->assertRedirect('/spatii?imobil_id='.$imobil->id);
 
         $spatiu = Spatiu::query()->where('identificator', 'S1')->firstOrFail();
 
-        $this->assertSame('125.50', $spatiu->indexare_2025);
         $this->assertSame('140.75', $spatiu->indexare_2026);
 
         $this->get(route('spatii.edit', $spatiu))
             ->assertOk()
             ->assertInertia(fn (Assert $page) => $page
                 ->component('Spatii/Create')
-                ->where('spatiu.indexare_2025', '125.50')
                 ->where('spatiu.indexare_2026', '140.75')
             );
 
@@ -71,14 +68,14 @@ class SpatiuIndexareTest extends TestCase
             'pret_lunar' => '1407,50',
             'status' => 'inchiriat',
             'moneda' => 'EUR',
-            'indexare_2025' => '1500,25',
+            'indexare_2026' => '1500,25',
         ])->assertRedirect('/spatii?imobil_id='.$imobil->id);
 
         $spatiu = Spatiu::query()->where('identificator', 'S2')->firstOrFail();
 
         $this->assertSame('598.31', $spatiu->suprafata_contractuala_mp);
         $this->assertSame('1407.50', $spatiu->pret_lunar);
-        $this->assertSame('1500.25', $spatiu->indexare_2025);
+        $this->assertSame('1500.25', $spatiu->indexare_2026);
     }
 
     public function test_de_lamurit_se_salveaza_si_apare_in_lista(): void
@@ -96,18 +93,22 @@ class SpatiuIndexareTest extends TestCase
             'status' => 'inchiriat',
             'moneda' => 'EUR',
             'de_lamurit' => true,
-            'observatii' => 'de lamurit mp',
+            'de_lamurit_detaliu' => 'Suprafata de confirmat cu locatorul',
+            'observatii' => 'Acces din curte',
         ])->assertRedirect('/spatii?imobil_id='.$imobil->id);
 
         $spatiu = Spatiu::query()->where('identificator', 'S3')->firstOrFail();
 
         $this->assertTrue($spatiu->de_lamurit);
+        $this->assertSame('Suprafata de confirmat cu locatorul', $spatiu->de_lamurit_detaliu);
+        $this->assertSame('Acces din curte', $spatiu->observatii);
 
         $this->get(route('spatii.edit', $spatiu))
             ->assertOk()
             ->assertInertia(fn (Assert $page) => $page
                 ->component('Spatii/Create')
                 ->where('spatiu.de_lamurit', true)
+                ->where('spatiu.de_lamurit_detaliu', 'Suprafata de confirmat cu locatorul')
             );
 
         $this->get(route('spatii.index', ['imobil_id' => $imobil->id]))
@@ -115,6 +116,7 @@ class SpatiuIndexareTest extends TestCase
             ->assertInertia(fn (Assert $page) => $page
                 ->component('Spatii/Index')
                 ->where('spatii.0.de_lamurit', true)
+                ->where('spatii.0.de_lamurit_detaliu', 'Suprafata de confirmat cu locatorul')
             );
 
         $this->put(route('spatii.update', $spatiu), [
@@ -123,9 +125,12 @@ class SpatiuIndexareTest extends TestCase
             'status' => 'inchiriat',
             'moneda' => 'EUR',
             'de_lamurit' => false,
+            'de_lamurit_detaliu' => 'ignorat',
         ])->assertRedirect('/spatii?imobil_id='.$imobil->id);
 
-        $this->assertFalse($spatiu->fresh()->de_lamurit);
+        $spatiu->refresh();
+        $this->assertFalse($spatiu->de_lamurit);
+        $this->assertNull($spatiu->de_lamurit_detaliu);
     }
 
     public function test_de_lamurit_se_salveaza_automat_la_toggle(): void
@@ -234,6 +239,61 @@ class SpatiuIndexareTest extends TestCase
         $this->assertFalse($spatiu->de_lamurit);
     }
 
+    public function test_de_lamurit_toggle_sterge_detaliul(): void
+    {
+        $imobil = Imobil::query()->create([
+            'nume' => 'Imobil toggle detaliu',
+            'strada' => 'Strada Test',
+            'numar' => '7',
+            'localitate' => 'Timișoara',
+        ]);
+
+        $spatiu = Spatiu::query()->create([
+            'imobil_id' => $imobil->id,
+            'identificator' => 'S7',
+            'status' => 'inchiriat',
+            'moneda' => 'EUR',
+            'de_lamurit' => true,
+            'de_lamurit_detaliu' => 'Chirie de verificat',
+        ]);
+
+        $this->from(route('spatii.edit', $spatiu))
+            ->patch(route('spatii.marcaj', $spatiu), ['field' => 'de_lamurit', 'value' => false])
+            ->assertRedirect(route('spatii.edit', $spatiu));
+
+        $spatiu->refresh();
+        $this->assertFalse($spatiu->de_lamurit);
+        $this->assertNull($spatiu->de_lamurit_detaliu);
+    }
+
+    public function test_marcaj_galben_sterge_detaliul_de_lamurit(): void
+    {
+        $imobil = Imobil::query()->create([
+            'nume' => 'Imobil marcaj switch',
+            'strada' => 'Strada Test',
+            'numar' => '8',
+            'localitate' => 'Timișoara',
+        ]);
+
+        $spatiu = Spatiu::query()->create([
+            'imobil_id' => $imobil->id,
+            'identificator' => 'S8',
+            'status' => 'inchiriat',
+            'moneda' => 'EUR',
+            'de_lamurit' => true,
+            'de_lamurit_detaliu' => 'De clarificat',
+        ]);
+
+        $this->from(route('spatii.edit', $spatiu))
+            ->patch(route('spatii.marcaj', $spatiu), ['field' => 'marcat_galben', 'value' => true])
+            ->assertRedirect(route('spatii.edit', $spatiu));
+
+        $spatiu->refresh();
+        $this->assertTrue($spatiu->marcat_galben);
+        $this->assertFalse($spatiu->de_lamurit);
+        $this->assertNull($spatiu->de_lamurit_detaliu);
+    }
+
     public function test_acoperis_si_fatada_au_zero_persoane(): void
     {
         $imobil = Imobil::query()->create([
@@ -243,7 +303,7 @@ class SpatiuIndexareTest extends TestCase
             'localitate' => 'Timișoara',
         ]);
 
-        foreach (['Acoperiș', 'Fațadă'] as $etaj) {
+        foreach (['Acoperiș', 'Fațadă', 'Parcare'] as $etaj) {
             $this->post(route('spatii.store'), [
                 'imobil_id' => $imobil->id,
                 'identificator' => $etaj,

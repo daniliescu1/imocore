@@ -40,7 +40,8 @@ class SpatiuController extends Controller
                 'spatii as spatii_comune_live' => fn ($query) => $query->where('status', 'comun'),
                 'spatii as spatii_administrative_live' => fn ($query) => $query->where('status', 'administrativ'),
             ])
-            ->orderBy('nume');
+            ->orderBy('ordine')
+            ->orderBy('id');
 
         if ($localitate !== '') {
             $query->where('localitate', $localitate);
@@ -147,10 +148,8 @@ class SpatiuController extends Controller
     private function mapSpatiuForList(Spatiu $spatiu): array
     {
         $suprafata = $spatiu->suprafata_contractuala_mp;
-        $chirieCurenta = $spatiu->indexare_2026 ?: ($spatiu->indexare_2025 ?: $spatiu->pret_lunar);
-        $sursaChirieCurenta = $spatiu->indexare_2026
-            ? 'Indexare 2026'
-            : ($spatiu->indexare_2025 ? 'Indexare 2025' : null);
+        $chirieCurenta = $spatiu->indexare_2026 ?: $spatiu->pret_lunar;
+        $sursaChirieCurenta = $spatiu->indexare_2026 ? 'Indexare 2026' : null;
         $pretMpCurent = $suprafata && $chirieCurenta
             ? number_format((float) $chirieCurenta / (float) $suprafata, 2, '.', '')
             : null;
@@ -165,15 +164,16 @@ class SpatiuController extends Controller
             'suprafata_contractuala_mp' => $suprafata,
             'status' => $spatiu->status,
             'pret_lunar' => $spatiu->pret_lunar,
-            'indexare_2025' => $spatiu->indexare_2025,
             'indexare_2026' => $spatiu->indexare_2026,
             'chirie_lunara_curenta' => $chirieCurenta,
             'sursa_chirie_curenta' => $sursaChirieCurenta,
             'pret_mp_curent' => $pretMpCurent,
             'moneda' => $spatiu->moneda,
+            'moneda_label' => $spatiu->monedaLabel(),
             'locator' => $spatiu->locatorEntitate?->nume ?: ($spatiu->getAttribute('locator') ?: '—'),
             'chirias' => $spatiu->chirias ?: '—',
             'de_lamurit' => (bool) $spatiu->de_lamurit,
+            'de_lamurit_detaliu' => $spatiu->de_lamurit ? ($spatiu->de_lamurit_detaliu ?: null) : null,
             'marcat_galben' => (bool) $spatiu->marcat_galben,
             'marcat_verde' => (bool) $spatiu->marcat_verde,
             'are_anexa_alocata' => $spatiu->configurare_anexa_id !== null,
@@ -212,14 +212,15 @@ class SpatiuController extends Controller
                 'retim_direct' => $spatiu->retim_direct,
                 'status' => $spatiu->status,
                 'pret_lunar' => $spatiu->pret_lunar,
-                'indexare_2025' => $spatiu->indexare_2025,
                 'indexare_2026' => $spatiu->indexare_2026,
                 'moneda' => $spatiu->moneda,
+            'moneda_label' => $spatiu->monedaLabel(),
                 'locator_id' => $spatiu->locator_id,
                 'configurare_anexa_id' => $spatiu->configurare_anexa_id,
                 'chirias' => $spatiu->chirias,
                 'observatii' => $spatiu->observatii,
                 'de_lamurit' => (bool) $spatiu->de_lamurit,
+                'de_lamurit_detaliu' => $spatiu->de_lamurit_detaliu,
                 'marcat_galben' => (bool) $spatiu->marcat_galben,
                 'marcat_verde' => (bool) $spatiu->marcat_verde,
             ],
@@ -315,6 +316,10 @@ class SpatiuController extends Controller
             $updates[$validated['field']] = true;
         }
 
+        if (! ($updates['de_lamurit'] ?? false)) {
+            $updates['de_lamurit_detaliu'] = null;
+        }
+
         $spatiu->update($updates);
 
         return back();
@@ -333,20 +338,20 @@ class SpatiuController extends Controller
             'identificator' => ['required', 'string', 'max:255'],
             'suprafata_contractuala_mp' => ['nullable', 'numeric', 'min:0'],
             'corp' => ['nullable', 'string', 'max:255'],
-            'etaj' => ['nullable', 'string', 'in:-1,Parter,1,2,3,4,5,Acoperiș,Fațadă'],
+            'etaj' => ['nullable', 'string', 'in:-1,Parter,1,2,3,4,5,Acoperiș,Fațadă,Parcare'],
             'regim_incalzire' => ['nullable', 'in:integral,partial,neincalzit'],
             'procent_incalzire_override' => ['nullable', 'numeric', 'min:0', 'max:100'],
             'retim_direct' => ['boolean'],
             'status' => ['required', 'in:liber,rezervat,inchiriat,comun,administrativ'],
             'pret_lunar' => ['nullable', 'numeric', 'min:0'],
-            'indexare_2025' => ['nullable', 'numeric', 'min:0'],
             'indexare_2026' => ['nullable', 'numeric', 'min:0'],
-            'moneda' => ['nullable', 'string', 'size:3'],
+            'moneda' => ['nullable', 'string', 'in:EUR,RON'],
             'locator_id' => ['nullable', 'exists:locatori,id'],
             'configurare_anexa_id' => ['nullable', 'exists:configurari_anexe_imobil,id'],
             'chirias' => ['nullable', 'string', 'max:255'],
             'observatii' => ['nullable', 'string', 'max:5000'],
             'de_lamurit' => ['boolean'],
+            'de_lamurit_detaliu' => ['nullable', 'string', 'max:2000'],
             'marcat_galben' => ['boolean'],
             'marcat_verde' => ['boolean'],
         ]);
@@ -356,12 +361,17 @@ class SpatiuController extends Controller
         $validated['marcat_galben'] = (bool) ($validated['marcat_galben'] ?? false);
         $validated['marcat_verde'] = (bool) ($validated['marcat_verde'] ?? false);
         $validated = $this->normalizeMarcaje($validated);
+        $validated = $this->normalizeDeLamuritDetaliu($validated);
         $validated = $this->normalizeSpatiuByStatus($validated);
-        $validated['moneda'] = 'EUR';
 
         if (blank($validated['etaj'] ?? null)) {
             $validated['etaj'] = 'Parter';
         }
+
+        $validated['moneda'] = Spatiu::normalizeMoneda(
+            $validated['etaj'] ?? null,
+            $validated['moneda'] ?? null
+        );
 
         if ($spatiu && (int) $validated['imobil_id'] !== (int) $spatiu->imobil_id) {
             $validated['ordine'] = $this->nextOrdineForImobil((int) $validated['imobil_id']);
@@ -399,7 +409,6 @@ class SpatiuController extends Controller
         foreach ([
             'suprafata_contractuala_mp',
             'pret_lunar',
-            'indexare_2025',
             'indexare_2026',
             'procent_incalzire_override',
         ] as $field) {
@@ -436,6 +445,24 @@ class SpatiuController extends Controller
         return $validated;
     }
 
+    /**
+     * @param  array<string, mixed>  $validated
+     * @return array<string, mixed>
+     */
+    private function normalizeDeLamuritDetaliu(array $validated): array
+    {
+        if (! ($validated['de_lamurit'] ?? false)) {
+            $validated['de_lamurit_detaliu'] = null;
+
+            return $validated;
+        }
+
+        $detaliu = trim((string) ($validated['de_lamurit_detaliu'] ?? ''));
+        $validated['de_lamurit_detaliu'] = $detaliu !== '' ? $detaliu : null;
+
+        return $validated;
+    }
+
     private function normalizeSpatiuByStatus(array $validated): array
     {
         if (($validated['status'] ?? '') === 'administrativ') {
@@ -444,7 +471,6 @@ class SpatiuController extends Controller
             $validated['locator_id'] = null;
             $validated['configurare_anexa_id'] = null;
             $validated['chirias'] = null;
-            $validated['indexare_2025'] = null;
             $validated['indexare_2026'] = null;
 
             return $validated;
@@ -506,7 +532,8 @@ class SpatiuController extends Controller
     private function imobileForSelect()
     {
         return Imobil::query()
-            ->orderBy('nume')
+            ->orderBy('ordine')
+            ->orderBy('id')
             ->get(['id', 'nume', 'localitate'])
             ->map(fn (Imobil $imobil) => [
                 'id' => $imobil->id,
@@ -517,7 +544,8 @@ class SpatiuController extends Controller
     private function campuriSpatiuVizibileForSelect()
     {
         return Imobil::query()
-            ->orderBy('nume')
+            ->orderBy('ordine')
+            ->orderBy('id')
             ->get(['id', 'campuri_spatiu_vizibile'])
             ->mapWithKeys(fn (Imobil $imobil): array => [
                 $imobil->id => $imobil->campuriSpatiuVizibilePentruForm(),

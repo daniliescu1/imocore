@@ -34,7 +34,6 @@ class Imobil extends Model
         'etaj' => 'Etaj',
         'persoane_standard' => 'Persoane standard calculate',
         'pret_lunar' => 'Chirie lunară',
-        'indexare_2025' => 'Indexare 2025',
         'indexare_2026' => 'Indexare 2026',
         'pret_mp_ultima_indexare' => 'Preț / mp ultima indexare',
         'regim_incalzire' => 'Regim încălzire',
@@ -46,6 +45,7 @@ class Imobil extends Model
     ];
 
     protected $fillable = [
+        'ordine',
         'nume',
         'strada',
         'numar',
@@ -66,6 +66,7 @@ class Imobil extends Model
         'spatii_libere' => 'integer',
         'spatii_inchiriate' => 'integer',
         'spatii_comune' => 'integer',
+        'ordine' => 'integer',
         'numere_cf' => 'array',
         'campuri_spatiu_vizibile' => 'array',
     ];

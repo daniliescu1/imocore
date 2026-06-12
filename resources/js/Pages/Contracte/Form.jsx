@@ -146,7 +146,6 @@ export default function Form({ imobile = [], spatii = [], contract = null }) {
                             <div><span>Locator</span><strong>{selectedSpatiu.locator_nume || '—'}</strong></div>
                             <div><span>Suprafață</span><strong>{formatDecimal(selectedSpatiu.suprafata_contractuala_mp) || '—'} mp</strong></div>
                             <div><span>Chirie contractuală</span><strong>{formatDecimal(selectedSpatiu.pret_lunar) || '—'} EUR</strong></div>
-                            <div><span>Indexare 2025</span><strong>{formatDecimal(selectedSpatiu.indexare_2025) || '—'} EUR</strong></div>
                             <div><span>Indexare 2026</span><strong>{formatDecimal(selectedSpatiu.indexare_2026) || '—'} EUR</strong></div>
                             <div><span>Chirie curentă</span><strong>{formatDecimal(selectedSpatiu.chirie_curenta) || '—'} EUR</strong></div>
                             <div><span>Anexă spațiu</span><strong>{selectedSpatiu.configurare_anexa || '—'}</strong></div>

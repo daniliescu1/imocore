@@ -1,10 +1,14 @@
-import React from 'react';
+import React, { useRef } from 'react';
 import { Link, router, useForm } from '@inertiajs/react';
 import AppLayout from '../../Layouts/AppLayout';
 import FacadeRentalCalendar from './FacadeRentalCalendar';
 
-const etajOptions = ['-1', 'Parter', '1', '2', '3', '4', '5', 'Acoperiș', 'Fațadă'];
-const etajeFaraPersoane = ['Acoperiș', 'Fațadă'];
+const etajOptions = ['-1', 'Parter', '1', '2', '3', '4', '5', 'Acoperiș', 'Fațadă', 'Parcare'];
+const etajeFaraPersoane = ['Acoperiș', 'Fațadă', 'Parcare'];
+
+function monedaLabel(moneda) {
+    return moneda === 'RON' ? 'Lei' : 'EUR';
+}
 
 const defaultVisibleSpaceFields = [
     'suprafata_contractuala_mp',
@@ -12,7 +16,6 @@ const defaultVisibleSpaceFields = [
     'etaj',
     'persoane_standard',
     'pret_lunar',
-    'indexare_2025',
     'indexare_2026',
     'pret_mp_ultima_indexare',
     'regim_incalzire',
@@ -120,7 +123,6 @@ function applyStatusChange(status, data) {
             locator_id: '',
             configurare_anexa_id: '',
             chirias: '',
-            indexare_2025: '',
             indexare_2026: '',
         };
     }
@@ -156,6 +158,9 @@ function applyEtajChange(etaj, data) {
             regim_incalzire: 'neincalzit',
             procent_incalzire_override: '',
             configurare_anexa_id: '',
+            moneda: etaj === 'Parcare'
+                ? (data.etaj === 'Parcare' ? data.moneda : 'RON')
+                : 'EUR',
         };
     }
 
@@ -164,10 +169,11 @@ function applyEtajChange(etaj, data) {
             ...data,
             etaj,
             regim_incalzire: defaultRegimIncalzire(data.status, null),
+            moneda: 'EUR',
         };
     }
 
-    return { ...data, etaj };
+    return { ...data, etaj, moneda: 'EUR' };
 }
 
 export default function Create({ imobile, locatori, configurariAnexe = {}, campuriSpatiuVizibile = {}, spatiu = null, initialImobilId = null, perioadeFatada = [] }) {
@@ -184,14 +190,14 @@ export default function Create({ imobile, locatori, configurariAnexe = {}, campu
         retim_direct: Boolean(spatiu?.retim_direct),
         status: spatiu?.status || 'inchiriat',
         pret_lunar: spatiu?.pret_lunar || '',
-        indexare_2025: spatiu?.indexare_2025 || '',
         indexare_2026: spatiu?.indexare_2026 || '',
-        moneda: spatiu?.moneda || 'EUR',
+        moneda: spatiu?.moneda || (spatiu?.etaj === 'Parcare' ? 'RON' : 'EUR'),
         locator_id: spatiu?.locator_id || '',
         configurare_anexa_id: spatiu?.configurare_anexa_id || '',
         chirias: spatiu?.chirias || '',
         observatii: spatiu?.observatii || '',
         de_lamurit: Boolean(spatiu?.de_lamurit),
+        de_lamurit_detaliu: spatiu?.de_lamurit_detaliu || '',
         marcat_galben: Boolean(spatiu?.marcat_galben),
         marcat_verde: Boolean(spatiu?.marcat_verde),
     });
@@ -204,17 +210,20 @@ export default function Create({ imobile, locatori, configurariAnexe = {}, campu
     const esteComun = data.status === 'comun';
     const etajFaraPersoane = etajeFaraPersoane.includes(data.etaj);
     const esteFatada = data.etaj === 'Fațadă';
-    const ultimaIndexare = numericValue(data.indexare_2026) ?? numericValue(data.indexare_2025);
+    const esteParcare = data.etaj === 'Parcare';
+    const chirieMonedaLabel = monedaLabel(data.moneda);
+    const ultimaIndexare = numericValue(data.indexare_2026);
     const suprafataPentruIndexare = numericValue(data.suprafata_contractuala_mp);
     const pretMpUltimaIndexare = ultimaIndexare !== null && suprafataPentruIndexare
         ? (ultimaIndexare / suprafataPentruIndexare).toFixed(2)
         : '';
 
+    const lamuritDetaliuRef = useRef(null);
+
     transform((formData) => ({
         ...formData,
         suprafata_contractuala_mp: normalizeDecimalInput(formData.suprafata_contractuala_mp) ?? '',
         pret_lunar: normalizeDecimalInput(formData.pret_lunar) ?? '',
-        indexare_2025: normalizeDecimalInput(formData.indexare_2025) ?? '',
         indexare_2026: normalizeDecimalInput(formData.indexare_2026) ?? '',
         procent_incalzire_override: normalizeDecimalInput(formData.procent_incalzire_override) ?? '',
     }));
@@ -236,6 +245,7 @@ export default function Create({ imobile, locatori, configurariAnexe = {}, campu
             marcat_galben: data.marcat_galben,
             marcat_verde: data.marcat_verde,
             de_lamurit: data.de_lamurit,
+            de_lamurit_detaliu: data.de_lamurit_detaliu,
         };
 
         setData((current) => {
@@ -250,8 +260,20 @@ export default function Create({ imobile, locatori, configurariAnexe = {}, campu
                 next[field] = true;
             }
 
+            if (field === 'de_lamurit' && !activating) {
+                next.de_lamurit_detaliu = '';
+            }
+
+            if (field !== 'de_lamurit' && activating) {
+                next.de_lamurit_detaliu = '';
+            }
+
             return next;
         });
+
+        if (field === 'de_lamurit' && activating) {
+            setTimeout(() => lamuritDetaliuRef.current?.focus(), 0);
+        }
 
         if (!isEditing) {
             return;
@@ -315,11 +337,23 @@ export default function Create({ imobile, locatori, configurariAnexe = {}, campu
                     ) : null}
 
                     {showField('pret_lunar') ? (
-                        <label className="form-field">
-                            <span>Chirie lunară EUR</span>
-                            <input {...decimalInputProps('pret_lunar', data.pret_lunar, setData)} />
-                            {errors.pret_lunar ? <small>{errors.pret_lunar}</small> : null}
-                        </label>
+                        <>
+                            <label className="form-field">
+                                <span>Chirie lunară {esteParcare ? chirieMonedaLabel : 'EUR'}</span>
+                                <input {...decimalInputProps('pret_lunar', data.pret_lunar, setData)} />
+                                {errors.pret_lunar ? <small>{errors.pret_lunar}</small> : null}
+                            </label>
+                            {esteParcare ? (
+                                <label className="form-field">
+                                    <span>Monedă</span>
+                                    <select value={data.moneda} onChange={(event) => setData('moneda', event.target.value)}>
+                                        <option value="RON">Lei</option>
+                                        <option value="EUR">EUR</option>
+                                    </select>
+                                    {errors.moneda ? <small>{errors.moneda}</small> : null}
+                                </label>
+                            ) : null}
+                        </>
                     ) : null}
 
                     {showField('corp') ? (
@@ -490,16 +524,22 @@ export default function Create({ imobile, locatori, configurariAnexe = {}, campu
                     {errors.marcat_galben ? <small>{errors.marcat_galben}</small> : null}
                     {errors.marcat_verde ? <small>{errors.marcat_verde}</small> : null}
 
-                    {!esteAdministrativ && !esteFatada && (showField('indexare_2025') || showField('indexare_2026') || (showField('pret_mp_ultima_indexare') && ultimaIndexare !== null && pretMpUltimaIndexare)) ? (
-                    <div className="form-grid">
-                        {showField('indexare_2025') ? (
-                            <label className="form-field">
-                                <span>Indexare 2025</span>
-                                <input {...decimalInputProps('indexare_2025', data.indexare_2025, setData)} />
-                                {errors.indexare_2025 ? <small>{errors.indexare_2025}</small> : null}
-                            </label>
-                        ) : null}
+                    {data.de_lamurit ? (
+                        <label className="form-field form-field-full de-lamurit-detaliu-field">
+                            <span>Ce este de lămurit</span>
+                            <textarea
+                                ref={lamuritDetaliuRef}
+                                value={data.de_lamurit_detaliu}
+                                onChange={(event) => setData('de_lamurit_detaliu', event.target.value)}
+                                rows="3"
+                                placeholder="Ex.: suprafață de confirmat, chirie de verificat..."
+                            />
+                            {errors.de_lamurit_detaliu ? <small>{errors.de_lamurit_detaliu}</small> : null}
+                        </label>
+                    ) : null}
 
+                    {!esteAdministrativ && !esteFatada && (showField('indexare_2026') || (showField('pret_mp_ultima_indexare') && ultimaIndexare !== null && pretMpUltimaIndexare)) ? (
+                    <div className="form-grid">
                         {showField('indexare_2026') ? (
                             <label className="form-field">
                                 <span>Indexare 2026</span>
