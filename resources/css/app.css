@@ -2465,15 +2465,15 @@ tr:last-child td {
 }
 
 .indexare-chirii-table col.indexare-identificator-col {
-    width: 14.75rem;
+    width: calc(14.75rem - 25px);
 }
 
 .indexare-chirii-table .spatiu-identificator-header,
 .indexare-chirii-table .spatiu-identificator-cell {
     box-sizing: border-box;
-    max-width: 14.75rem;
-    width: 14.75rem;
-    min-width: 14.75rem;
+    max-width: calc(14.75rem - 25px);
+    width: calc(14.75rem - 25px);
+    min-width: calc(14.75rem - 25px);
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
@@ -2491,6 +2491,28 @@ tr:last-child td {
 
 .table-card.module-table-card {
     overflow: visible;
+}
+
+.table-card.module-table-card.indexare-chirii-table-card {
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    max-height: calc(100dvh - 11.75rem);
+}
+
+.indexare-chirii-table-card .responsive-table {
+    overflow: auto;
+    flex: 1 1 auto;
+    min-height: 0;
+    max-width: 100%;
+    -webkit-overflow-scrolling: touch;
+    padding: 0 0 10px;
+}
+
+.indexare-chirii-table-card .indexare-chirii-table thead th {
+    position: sticky;
+    top: 0;
+    z-index: 2;
 }
 
 .table-card.module-table-card .responsive-table {
@@ -2514,6 +2536,14 @@ tr:last-child td {
     color: var(--text-dark);
     font-size: 13px;
     font-weight: 700;
+    -moz-appearance: textfield;
+    appearance: textfield;
+}
+
+.indexare-chirii-input::-webkit-outer-spin-button,
+.indexare-chirii-input::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
 }
 
 .indexare-chirii-input:focus {

@@ -134,7 +134,7 @@ export default function Index({ spatii = [], localitati = [], filters = {} }) {
             showGlobalSearch={false}
             topbarActions={topbarActions}
         >
-            <section className="table-card module-table-card">
+            <section className="table-card module-table-card indexare-chirii-table-card">
                 <div className="responsive-table">
                     <table className="indexare-chirii-table">
                         <colgroup>
