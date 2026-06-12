@@ -2523,12 +2523,15 @@ tr:last-child td {
 }
 
 .indexare-chirii-input-cell {
-    min-width: 9rem;
+    width: 4.5rem;
+    min-width: 4.5rem;
+    max-width: 4.5rem;
 }
 
 .indexare-chirii-input {
     width: 100%;
-    min-width: 7rem;
+    min-width: 0;
+    max-width: 4.5rem;
     border: 1px solid var(--border);
     border-radius: 8px;
     padding: 8px 10px;
