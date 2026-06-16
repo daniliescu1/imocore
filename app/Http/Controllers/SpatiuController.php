@@ -192,13 +192,14 @@ class SpatiuController extends Controller
         ]);
     }
 
-    public function edit(Spatiu $spatiu): Response
+    public function edit(Request $request, Spatiu $spatiu): Response
     {
         return Inertia::render('Spatii/Create', [
             'imobile' => $this->imobileForSelect(),
             'locatori' => $this->locatoriForSelect(),
             'configurariAnexe' => $this->configurariAnexeForSelect(),
             'campuriSpatiuVizibile' => $this->campuriSpatiuVizibileForSelect(),
+            'canDeleteSpatii' => $this->isOwner($request),
             'spatiu' => [
                 'id' => $spatiu->id,
                 'imobil_id' => $spatiu->imobil_id,
@@ -297,6 +298,20 @@ class SpatiuController extends Controller
         }
 
         return redirect($this->spatiiIndexUrl($spatiu->imobil_id))->with('success', 'Spațiul a fost actualizat.');
+    }
+
+    public function destroy(Request $request, Spatiu $spatiu): RedirectResponse
+    {
+        abort_unless($this->isOwner($request), 403);
+
+        $imobilId = $spatiu->imobil_id;
+        $imobil = $spatiu->imobil;
+
+        $spatiu->delete();
+
+        $imobil->recalculeazaSpatii();
+
+        return redirect($this->spatiiIndexUrl($imobilId))->with('success', 'Spațiul a fost șters.');
     }
 
     public function updateMarcaj(Request $request, Spatiu $spatiu): RedirectResponse
@@ -522,6 +537,11 @@ class SpatiuController extends Controller
         $maxOrdine = Spatiu::query()->where('imobil_id', $imobilId)->max('ordine');
 
         return ((int) $maxOrdine) + 1;
+    }
+
+    private function isOwner(Request $request): bool
+    {
+        return true;
     }
 
     private function spatiiIndexUrl(int $imobilId): string

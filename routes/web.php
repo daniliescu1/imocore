@@ -51,6 +51,7 @@ Route::patch('/spatii/{spatiu}/marcaj', [SpatiuController::class, 'updateMarcaj'
 Route::post('/spatii/{spatiu}/perioade-fatada', [PerioadaInchiriereFatadaController::class, 'store'])->name('spatii.perioade-fatada.store');
 Route::put('/spatii/{spatiu}/perioade-fatada/{perioada}', [PerioadaInchiriereFatadaController::class, 'update'])->name('spatii.perioade-fatada.update');
 Route::put('/spatii/{spatiu}', [SpatiuController::class, 'update'])->name('spatii.update');
+Route::delete('/spatii/{spatiu}', [SpatiuController::class, 'destroy'])->name('spatii.destroy');
 Route::get('/locatori', [LocatorController::class, 'index'])->name('locatori.index');
 Route::get('/locatori/adauga', [LocatorController::class, 'create'])->name('locatori.create');
 Route::post('/locatori', [LocatorController::class, 'store'])->name('locatori.store');

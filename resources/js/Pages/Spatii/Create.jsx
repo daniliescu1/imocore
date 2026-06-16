@@ -1,5 +1,6 @@
 import React, { useRef } from 'react';
 import { Link, router, useForm } from '@inertiajs/react';
+import { Trash2 } from 'lucide-react';
 import AppLayout from '../../Layouts/AppLayout';
 import FacadeRentalCalendar from './FacadeRentalCalendar';
 
@@ -176,7 +177,7 @@ function applyEtajChange(etaj, data) {
     return { ...data, etaj, moneda: 'EUR' };
 }
 
-export default function Create({ imobile, locatori, configurariAnexe = {}, campuriSpatiuVizibile = {}, spatiu = null, initialImobilId = null, perioadeFatada = [] }) {
+export default function Create({ imobile, locatori, configurariAnexe = {}, campuriSpatiuVizibile = {}, spatiu = null, initialImobilId = null, perioadeFatada = [], canDeleteSpatii = false }) {
     const isEditing = Boolean(spatiu);
     const initialStatus = spatiu?.status || 'inchiriat';
     const { data, setData, post, put, processing, errors, transform } = useForm({
@@ -237,6 +238,14 @@ export default function Create({ imobile, locatori, configurariAnexe = {}, campu
         }
 
         post('/spatii');
+    }
+
+    function deleteSpatiu() {
+        if (!window.confirm('Are you sure?')) {
+            return;
+        }
+
+        router.delete(`/spatii/${spatiu.id}`);
     }
 
     function toggleMarcaj(field) {
@@ -555,6 +564,13 @@ export default function Create({ imobile, locatori, configurariAnexe = {}, campu
                             </label>
                         ) : null}
                     </div>
+                    ) : null}
+
+                    {isEditing && canDeleteSpatii ? (
+                        <button type="button" className="delete-imobil-button" onClick={deleteSpatiu}>
+                            <Trash2 size={16} strokeWidth={2.4} />
+                            <span>Șterge spațiu</span>
+                        </button>
                     ) : null}
                 </section>
             </form>
