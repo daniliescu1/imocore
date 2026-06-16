@@ -1,0 +1,616 @@
+<?php
+
+namespace Tests\Feature;
+
+use App\Models\ConfigurareAnexaImobil;
+use App\Models\Contract;
+use App\Models\Imobil;
+use App\Models\Locator;
+use App\Models\Spatiu;
+use App\Support\ContractCompleteness;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+use Inertia\Testing\AssertableInertia as Assert;
+use Tests\TestCase;
+
+class ContractChiriasTest extends TestCase
+{
+    use RefreshDatabase;
+
+    /**
+     * @return array{locator_id: int, data_end: string}
+     */
+    private function contractRequiredFields(?Locator $locator = null): array
+    {
+        $locator ??= Locator::query()->create(['nume' => 'Locator Test SRL']);
+
+        return [
+            'locator_id' => $locator->id,
+            'data_end' => '2025-12-31',
+        ];
+    }
+
+    public function test_contract_pf_salveaza_datele_structurate_si_actualizeaza_spatiul(): void
+    {
+        $imobil = Imobil::query()->create([
+            'nume' => '700 Office',
+            'strada' => 'Strada Test',
+            'numar' => '1',
+            'localitate' => 'Timișoara',
+        ]);
+
+        $spatiu = Spatiu::query()->create([
+            'imobil_id' => $imobil->id,
+            'identificator' => 'D204',
+            'status' => 'liber',
+            'ordine' => 1,
+        ]);
+
+        $this->post('/contracte', [
+            'spatiu_id' => $spatiu->id,
+            ...$this->contractRequiredFields(),
+            'numar_contract' => 'C-PF-1',
+            'chirias_tip' => 'pf',
+            'chirias_pf' => [
+                'nume_complet' => 'Ion Popescu',
+                'serie_ci' => 'RX',
+                'numar_ci' => '123456',
+                'cnp' => '1234567890123',
+                'domiciliu' => 'Timișoara, str. Exemplu 1',
+                'email' => 'ion@example.com',
+                'telefon' => '0722000000',
+            ],
+            'data_start' => '2025-01-01',
+            'chirie' => 900,
+            'moneda' => 'EUR',
+        ])->assertRedirect('/contracte');
+
+        $contract = Contract::query()->firstOrFail();
+
+        $this->assertSame('activ', $contract->status);
+        $this->assertSame('pf', $contract->chirias_tip);
+        $this->assertSame('Ion Popescu', $contract->chirias);
+        $this->assertSame('RX', $contract->chirias_date['serie_ci']);
+        $this->assertSame('1234567890123', $contract->chirias_date['cnp']);
+        $this->assertSame('Ion Popescu', $spatiu->fresh()->chirias);
+    }
+
+    public function test_contract_pj_salveaza_firma_si_administrator(): void
+    {
+        $imobil = Imobil::query()->create([
+            'nume' => '700 Office',
+            'strada' => 'Strada Test',
+            'numar' => '1',
+            'localitate' => 'Timișoara',
+        ]);
+
+        $spatiu = Spatiu::query()->create([
+            'imobil_id' => $imobil->id,
+            'identificator' => 'D205',
+            'status' => 'liber',
+            'ordine' => 1,
+        ]);
+
+        $this->post('/contracte', [
+            'spatiu_id' => $spatiu->id,
+            ...$this->contractRequiredFields(),
+            'numar_contract' => 'C-PJ-1',
+            'chirias_tip' => 'pj',
+            'chirias_pj' => [
+                'denumire' => 'SC Exemplu SRL',
+                'sediu_social' => 'Timișoara, str. Firma 2',
+                'telefon' => '0256000000',
+                'email' => 'office@exemplu.ro',
+                'email_2' => 'contact@exemplu.ro',
+                'banca' => 'BCR',
+                'cont_bancar' => 'RO49RNCB0000000000000001',
+                'nr_reg_comert' => 'J35/123/2020',
+                'cui' => 'RO12345678',
+                'administrator' => [
+                    'nume_complet' => 'Maria Ionescu',
+                    'serie_ci' => 'TM',
+                    'numar_ci' => '654321',
+                    'cnp' => '2980101123456',
+                    'domiciliu' => 'Timișoara, str. Admin 3',
+                    'email' => 'maria@exemplu.ro',
+                    'telefon' => '0733000000',
+                ],
+            ],
+            'data_start' => '2025-01-01',
+            'chirie' => 1200,
+            'moneda' => 'EUR',
+        ])->assertRedirect('/contracte');
+
+        $contract = Contract::query()->firstOrFail();
+
+        $this->assertSame('activ', $contract->status);
+        $this->assertSame('pj', $contract->chirias_tip);
+        $this->assertSame('SC Exemplu SRL', $contract->chirias);
+        $this->assertSame('RO12345678', $contract->chirias_date['cui']);
+        $this->assertSame('office@exemplu.ro', $contract->chirias_date['email']);
+        $this->assertSame('contact@exemplu.ro', $contract->chirias_date['email_2']);
+        $this->assertSame('BCR', $contract->chirias_date['banca']);
+        $this->assertSame('RO49RNCB0000000000000001', $contract->chirias_date['cont_bancar']);
+        $this->assertSame('Maria Ionescu', $contract->chirias_date['administrator']['nume_complet']);
+        $this->assertSame('SC Exemplu SRL', $spatiu->fresh()->chirias);
+    }
+
+    public function test_edit_contract_pastreaza_tipul_salvat(): void
+    {
+        $imobil = Imobil::query()->create([
+            'nume' => '700 Office',
+            'strada' => 'Strada Test',
+            'numar' => '1',
+            'localitate' => 'Timișoara',
+        ]);
+
+        $spatiu = Spatiu::query()->create([
+            'imobil_id' => $imobil->id,
+            'identificator' => 'D206',
+            'status' => 'inchiriat',
+            'ordine' => 1,
+        ]);
+
+        $contract = Contract::query()->create([
+            'spatiu_id' => $spatiu->id,
+            'numar_contract' => 'C-EDIT',
+            'chirias' => 'Ion Popescu',
+            'chirias_tip' => 'pf',
+            'chirias_date' => [
+                'serie_ci' => 'RX',
+                'numar_ci' => '123456',
+                'cnp' => '1234567890123',
+                'domiciliu' => 'Timișoara',
+                'email' => null,
+                'telefon' => null,
+            ],
+            'data_start' => '2025-01-01',
+            'chirie' => 800,
+            'moneda' => 'EUR',
+            'status' => 'activ',
+        ]);
+
+        $this->get(route('contracte.edit', $contract))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('Contracte/Form')
+                ->where('contract.chirias_tip', 'pf')
+                ->where('contract.chirias_pf.nume_complet', 'Ion Popescu')
+                ->where('contract.chirias_pf.serie_ci', 'RX')
+            );
+    }
+
+    public function test_contract_store_salveaza_configurare_anexa_id_pe_spatiu(): void
+    {
+        $imobil = Imobil::query()->create([
+            'nume' => '700 Office',
+            'strada' => 'Strada Test',
+            'numar' => '1',
+            'localitate' => 'Timișoara',
+        ]);
+
+        $configurare = ConfigurareAnexaImobil::query()->create([
+            'imobil_id' => $imobil->id,
+            'denumire' => 'Anexă utilități',
+            'implicit' => true,
+            'activ' => true,
+        ]);
+
+        $spatiu = Spatiu::query()->create([
+            'imobil_id' => $imobil->id,
+            'identificator' => 'D207',
+            'status' => 'liber',
+            'ordine' => 1,
+        ]);
+
+        $this->post('/contracte', [
+            'spatiu_id' => $spatiu->id,
+            ...$this->contractRequiredFields(),
+            'numar_contract' => 'C-ANEXA-1',
+            'chirias_tip' => 'pf',
+            'chirias_pf' => [
+                'nume_complet' => 'Ion Popescu',
+                'serie_ci' => 'RX',
+                'numar_ci' => '123456',
+                'cnp' => '1234567890123',
+                'domiciliu' => 'Timișoara',
+                'email' => 'ion@example.com',
+                'telefon' => '0722111111',
+            ],
+            'data_start' => '2025-01-01',
+            'chirie' => 900,
+            'moneda' => 'EUR',
+            'configurare_anexa_id' => $configurare->id,
+        ])->assertRedirect('/contracte');
+
+        $this->assertSame($configurare->id, $spatiu->fresh()->configurare_anexa_id);
+    }
+
+    public function test_contract_update_salveaza_configurare_anexa_id_pe_spatiu(): void
+    {
+        $imobil = Imobil::query()->create([
+            'nume' => '700 Office',
+            'strada' => 'Strada Test',
+            'numar' => '1',
+            'localitate' => 'Timișoara',
+        ]);
+
+        $configurare = ConfigurareAnexaImobil::query()->create([
+            'imobil_id' => $imobil->id,
+            'denumire' => 'Anexă utilități',
+            'implicit' => true,
+            'activ' => true,
+        ]);
+
+        $spatiu = Spatiu::query()->create([
+            'imobil_id' => $imobil->id,
+            'identificator' => 'D208',
+            'status' => 'inchiriat',
+            'ordine' => 1,
+        ]);
+
+        $contract = Contract::query()->create([
+            'spatiu_id' => $spatiu->id,
+            'numar_contract' => 'C-ANEXA-EDIT',
+            'chirias' => 'Ion Popescu',
+            'chirias_tip' => 'pf',
+            'chirias_date' => [
+                'serie_ci' => 'RX',
+                'numar_ci' => '123456',
+                'cnp' => '1234567890123',
+                'domiciliu' => 'Timișoara',
+                'email' => null,
+                'telefon' => null,
+            ],
+            'data_start' => '2025-01-01',
+            'chirie' => 800,
+            'moneda' => 'EUR',
+            'status' => 'activ',
+        ]);
+
+        $this->put(route('contracte.update', $contract), [
+            'spatiu_id' => $spatiu->id,
+            ...$this->contractRequiredFields(),
+            'numar_contract' => 'C-ANEXA-EDIT',
+            'chirias_tip' => 'pf',
+            'chirias_pf' => [
+                'nume_complet' => 'Ion Popescu',
+                'serie_ci' => 'RX',
+                'numar_ci' => '123456',
+                'cnp' => '1234567890123',
+                'domiciliu' => 'Timișoara',
+                'email' => 'ion@example.com',
+                'telefon' => '0722111111',
+            ],
+            'data_start' => '2025-01-01',
+            'chirie' => 850,
+            'moneda' => 'EUR',
+            'configurare_anexa_id' => $configurare->id,
+        ])->assertRedirect('/contracte');
+
+        $this->assertSame($configurare->id, $spatiu->fresh()->configurare_anexa_id);
+    }
+
+    public function test_contract_incomplet_se_salveaza_fara_a_marca_spatiul_inchiriat(): void
+    {
+        $imobil = Imobil::query()->create([
+            'nume' => '700 Office',
+            'strada' => 'Strada Test',
+            'numar' => '1',
+            'localitate' => 'Timișoara',
+        ]);
+
+        $spatiu = Spatiu::query()->create([
+            'imobil_id' => $imobil->id,
+            'identificator' => 'D209',
+            'status' => 'liber',
+            'ordine' => 1,
+        ]);
+
+        $this->post('/contracte', [
+            'spatiu_id' => $spatiu->id,
+            'chirias_tip' => 'pj',
+            'chirias_pj' => [
+                'denumire' => 'SC Parțial SRL',
+            ],
+        ])->assertRedirect();
+
+        $contract = Contract::query()->firstOrFail();
+
+        $this->assertSame('incomplet', $contract->status);
+        $this->assertSame('SC Parțial SRL', $contract->chirias);
+        $this->assertSame('liber', $spatiu->fresh()->status);
+        $this->assertNull($spatiu->fresh()->chirias);
+    }
+
+    public function test_contract_incomplet_fara_numar_contract_si_data_start_se_creeaza_fara_eroare(): void
+    {
+        $imobil = Imobil::query()->create([
+            'nume' => '700 Office',
+            'strada' => 'Strada Test',
+            'numar' => '1',
+            'localitate' => 'Timișoara',
+        ]);
+
+        $spatiu = Spatiu::query()->create([
+            'imobil_id' => $imobil->id,
+            'identificator' => 'D214',
+            'status' => 'liber',
+            'ordine' => 1,
+        ]);
+
+        $this->post('/contracte', [
+            'spatiu_id' => $spatiu->id,
+            'numar_contract' => '',
+            'chirias_tip' => 'pj',
+            'chirias_pj' => [
+                'denumire' => 'sc cucu srl',
+            ],
+            'data_start' => '',
+            'chirie' => 1560,
+            'moneda' => 'EUR',
+        ])->assertRedirect();
+
+        $contract = Contract::query()->firstOrFail();
+
+        $this->assertSame('incomplet', $contract->status);
+        $this->assertSame('sc cucu srl', $contract->chirias);
+        $this->assertSame(\App\Support\ContractIncompleteStorage::NUMAR_PLACEHOLDER, $contract->numar_contract);
+        $this->assertSame('1970-01-01', $contract->data_start->format('Y-m-d'));
+    }
+
+    public function test_contract_incomplet_cu_campuri_chirias_goale_se_actualizeaza_fara_eroare(): void
+    {
+        $imobil = Imobil::query()->create([
+            'nume' => '700 Office',
+            'strada' => 'Strada Test',
+            'numar' => '1',
+            'localitate' => 'Timișoara',
+        ]);
+
+        $spatiu = Spatiu::query()->create([
+            'imobil_id' => $imobil->id,
+            'identificator' => 'D213',
+            'status' => 'liber',
+            'ordine' => 1,
+        ]);
+
+        $contract = Contract::query()->create([
+            'spatiu_id' => $spatiu->id,
+            'numar_contract' => 'test',
+            'chirias' => 'SC Exemplu SRL',
+            'chirias_tip' => 'pj',
+            'chirias_date' => [
+                'denumire' => 'SC Exemplu SRL',
+            ],
+            'data_start' => '2026-02-04',
+            'chirie' => 1860,
+            'moneda' => 'EUR',
+            'status' => 'activ',
+        ]);
+
+        $this->put(route('contracte.update', $contract), [
+            'spatiu_id' => $spatiu->id,
+            'numar_contract' => 'test',
+            'chirias_tip' => 'pj',
+            'chirias_pj' => [
+                'denumire' => '',
+                'sediu_social' => '',
+                'telefon' => '',
+                'email' => '',
+                'nr_reg_comert' => '',
+                'cui' => '',
+                'administrator' => [
+                    'nume_complet' => '',
+                    'serie_ci' => '',
+                    'numar_ci' => '',
+                    'cnp' => '',
+                    'domiciliu' => '',
+                    'email' => '',
+                    'telefon' => '',
+                ],
+            ],
+            'data_start' => '2026-02-04',
+            'data_end' => '2026-06-19',
+            'chirie' => 1860,
+            'moneda' => 'EUR',
+        ])->assertRedirect();
+
+        $contract->refresh();
+
+        $this->assertSame('incomplet', $contract->status);
+        $this->assertSame(\App\Support\ContractIncompleteStorage::CHIRIAS_PLACEHOLDER, $contract->chirias);
+    }
+
+    public function test_contract_incomplet_devine_activ_cand_sunt_complete_toate_campurile(): void
+    {
+        $imobil = Imobil::query()->create([
+            'nume' => '700 Office',
+            'strada' => 'Strada Test',
+            'numar' => '1',
+            'localitate' => 'Timișoara',
+        ]);
+
+        $spatiu = Spatiu::query()->create([
+            'imobil_id' => $imobil->id,
+            'identificator' => 'D210',
+            'status' => 'liber',
+            'ordine' => 1,
+        ]);
+
+        $contract = Contract::query()->create([
+            'spatiu_id' => $spatiu->id,
+            'numar_contract' => null,
+            'chirias' => 'SC Parțial SRL',
+            'chirias_tip' => 'pj',
+            'chirias_date' => [
+                'denumire' => 'SC Parțial SRL',
+            ],
+            'data_start' => null,
+            'chirie' => 0,
+            'moneda' => 'EUR',
+            'status' => 'incomplet',
+        ]);
+
+        $this->put(route('contracte.update', $contract), [
+            'spatiu_id' => $spatiu->id,
+            ...$this->contractRequiredFields(),
+            'numar_contract' => 'C-COMPLETE-1',
+            'chirias_tip' => 'pj',
+            'chirias_pj' => [
+                'denumire' => 'SC Parțial SRL',
+                'sediu_social' => 'Timișoara',
+                'telefon' => '0256111111',
+                'email' => 'office@partial.ro',
+                'nr_reg_comert' => 'J35/1/2020',
+                'cui' => 'RO111',
+                'administrator' => [
+                    'nume_complet' => 'Admin Test',
+                    'serie_ci' => 'TM',
+                    'numar_ci' => '111111',
+                    'cnp' => '1234567890123',
+                    'domiciliu' => 'Timișoara',
+                    'email' => 'admin@partial.ro',
+                ],
+            ],
+            'data_start' => '2025-01-01',
+            'chirie' => 1000,
+            'moneda' => 'EUR',
+        ])->assertRedirect('/contracte');
+
+        $contract->refresh();
+        $spatiu->refresh();
+
+        $this->assertSame('activ', $contract->status);
+        $this->assertSame('inchiriat', $spatiu->status);
+        $this->assertSame('SC Parțial SRL', $spatiu->chirias);
+    }
+
+    public function test_edit_contract_incomplet_expune_campurile_lipsa(): void
+    {
+        $imobil = Imobil::query()->create([
+            'nume' => '700 Office',
+            'strada' => 'Strada Test',
+            'numar' => '1',
+            'localitate' => 'Timișoara',
+        ]);
+
+        $spatiu = Spatiu::query()->create([
+            'imobil_id' => $imobil->id,
+            'identificator' => 'D211',
+            'status' => 'liber',
+            'ordine' => 1,
+        ]);
+
+        $contract = Contract::query()->create([
+            'spatiu_id' => $spatiu->id,
+            'numar_contract' => null,
+            'chirias' => 'SC Parțial SRL',
+            'chirias_tip' => 'pj',
+            'chirias_date' => [
+                'denumire' => 'SC Parțial SRL',
+            ],
+            'data_start' => null,
+            'chirie' => 0,
+            'moneda' => 'EUR',
+            'status' => 'incomplet',
+        ]);
+
+        $this->get(route('contracte.edit', $contract))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('Contracte/Form')
+                ->where('contract.status', 'incomplet')
+                ->where('contract.missing_field_labels', fn ($labels) => collect($labels)->isNotEmpty())
+            );
+
+        $missing = \App\Support\ContractCompleteness::missingFieldKeys([
+            'spatiu_id' => $spatiu->id,
+            'locator_id' => null,
+            'numar_contract' => null,
+            'data_start' => null,
+            'data_end' => null,
+            'chirie' => 0,
+            'chirias_tip' => 'pj',
+            'chirias_pj' => [
+                'denumire' => 'SC Parțial SRL',
+                'sediu_social' => '',
+                'email' => '',
+                'nr_reg_comert' => '',
+                'cui' => '',
+                'administrator' => [
+                    'nume_complet' => '',
+                    'serie_ci' => '',
+                    'numar_ci' => '',
+                    'cnp' => '',
+                    'domiciliu' => '',
+                    'email' => '',
+                ],
+            ],
+        ]);
+
+        $this->assertContains('numar_contract', $missing);
+        $this->assertContains('locator_id', $missing);
+        $this->assertContains('data_start', $missing);
+        $this->assertContains('data_end', $missing);
+    }
+
+    public function test_contract_fara_telefon_chirias_ramane_incomplet(): void
+    {
+        $imobil = Imobil::query()->create([
+            'nume' => '700 Office',
+            'strada' => 'Strada Test',
+            'numar' => '1',
+            'localitate' => 'Timișoara',
+        ]);
+
+        $spatiu = Spatiu::query()->create([
+            'imobil_id' => $imobil->id,
+            'identificator' => 'D212',
+            'status' => 'liber',
+            'ordine' => 1,
+        ]);
+
+        $locator = Locator::query()->create(['nume' => 'Locator Test SRL']);
+
+        $this->post('/contracte', [
+            'spatiu_id' => $spatiu->id,
+            'locator_id' => $locator->id,
+            'data_end' => '2025-12-31',
+            'numar_contract' => 'C-FARA-TEL',
+            'chirias_tip' => 'pf',
+            'chirias_pf' => [
+                'nume_complet' => 'Ion Popescu',
+                'serie_ci' => 'RX',
+                'numar_ci' => '123456',
+                'cnp' => '1234567890123',
+                'domiciliu' => 'Timișoara',
+                'email' => 'ion@example.com',
+            ],
+            'data_start' => '2025-01-01',
+            'chirie' => 900,
+            'moneda' => 'EUR',
+        ])->assertRedirect();
+
+        $contract = Contract::query()->firstOrFail();
+
+        $this->assertSame('incomplet', $contract->status);
+        $this->assertContains('chirias_pf.telefon', ContractCompleteness::missingFieldKeys([
+            'spatiu_id' => $spatiu->id,
+            'locator_id' => $locator->id,
+            'numar_contract' => 'C-FARA-TEL',
+            'data_start' => '2025-01-01',
+            'data_end' => '2025-12-31',
+            'chirie' => 900,
+            'chirias_tip' => 'pf',
+            'chirias_pf' => [
+                'nume_complet' => 'Ion Popescu',
+                'serie_ci' => 'RX',
+                'numar_ci' => '123456',
+                'cnp' => '1234567890123',
+                'domiciliu' => 'Timișoara',
+                'email' => 'ion@example.com',
+                'telefon' => '',
+            ],
+        ]));
+    }
+}

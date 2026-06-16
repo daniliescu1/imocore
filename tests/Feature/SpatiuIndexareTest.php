@@ -364,4 +364,95 @@ class SpatiuIndexareTest extends TestCase
                 ->where('spatii.1.are_anexa_alocata', true)
             );
     }
+
+    public function test_lista_indica_daca_spatiul_are_contract_activ(): void
+    {
+        $imobil = Imobil::query()->create([
+            'nume' => 'Imobil contract',
+            'strada' => 'Strada Test',
+            'numar' => '8',
+            'localitate' => 'Timișoara',
+        ]);
+
+        $configurare = ConfigurareAnexaImobil::query()->create([
+            'imobil_id' => $imobil->id,
+            'denumire' => 'Anexa test',
+            'implicit' => true,
+            'activ' => true,
+        ]);
+
+        $spatiuComplet = Spatiu::query()->create([
+            'imobil_id' => $imobil->id,
+            'identificator' => 'Complet',
+            'status' => 'inchiriat',
+            'moneda' => 'EUR',
+            'configurare_anexa_id' => $configurare->id,
+        ]);
+
+        $spatiuFaraContract = Spatiu::query()->create([
+            'imobil_id' => $imobil->id,
+            'identificator' => 'Fara contract',
+            'status' => 'inchiriat',
+            'moneda' => 'EUR',
+            'configurare_anexa_id' => $configurare->id,
+        ]);
+
+        $spatiuFaraAnexa = Spatiu::query()->create([
+            'imobil_id' => $imobil->id,
+            'identificator' => 'Fara anexa',
+            'status' => 'inchiriat',
+            'moneda' => 'EUR',
+        ]);
+
+        $spatiuFaraAmbele = Spatiu::query()->create([
+            'imobil_id' => $imobil->id,
+            'identificator' => 'Fara ambele',
+            'status' => 'liber',
+            'moneda' => 'EUR',
+        ]);
+
+        \App\Models\Contract::query()->create([
+            'spatiu_id' => $spatiuComplet->id,
+            'numar_contract' => 'C-1',
+            'chirias' => 'Chiriaș activ',
+            'data_start' => '2025-01-01',
+            'chirie' => 1000,
+            'moneda' => 'EUR',
+            'status' => 'activ',
+        ]);
+
+        \App\Models\Contract::query()->create([
+            'spatiu_id' => $spatiuFaraAnexa->id,
+            'numar_contract' => 'C-2',
+            'chirias' => 'Chiriaș cu contract',
+            'data_start' => '2025-01-01',
+            'chirie' => 900,
+            'moneda' => 'EUR',
+            'status' => 'activ',
+        ]);
+
+        \App\Models\Contract::query()->create([
+            'spatiu_id' => $spatiuFaraContract->id,
+            'numar_contract' => 'C-3',
+            'chirias' => 'Chiriaș incomplet',
+            'data_start' => '2025-01-01',
+            'chirie' => 800,
+            'moneda' => 'EUR',
+            'status' => 'incomplet',
+        ]);
+
+        $this->get(route('spatii.index', ['imobil_id' => $imobil->id]))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('Spatii/Index')
+                ->where('spatii', fn ($spatii) => collect($spatii)->firstWhere('identificator', 'Complet')['are_contract_activ'] === true
+                    && collect($spatii)->firstWhere('identificator', 'Complet')['are_anexa_alocata'] === true
+                    && collect($spatii)->firstWhere('identificator', 'Fara contract')['are_contract_activ'] === false
+                    && collect($spatii)->firstWhere('identificator', 'Fara contract')['are_anexa_alocata'] === true
+                    && collect($spatii)->firstWhere('identificator', 'Fara anexa')['are_contract_activ'] === true
+                    && collect($spatii)->firstWhere('identificator', 'Fara anexa')['are_anexa_alocata'] === false
+                    && collect($spatii)->firstWhere('identificator', 'Fara ambele')['are_contract_activ'] === false
+                    && collect($spatii)->firstWhere('identificator', 'Fara ambele')['are_anexa_alocata'] === false)
+            );
+    }
 }

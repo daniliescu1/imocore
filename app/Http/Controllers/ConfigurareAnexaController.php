@@ -5,6 +5,8 @@ namespace App\Http\Controllers;
 use App\Models\ConfigurareAnexaImobil;
 use App\Models\Imobil;
 use App\Models\ServiciuStandardAnexa;
+use App\Models\Spatiu;
+use App\Support\InternalReturnUrl;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -44,12 +46,15 @@ class ConfigurareAnexaController extends Controller
     public function create(Request $request): Response
     {
         $imobilId = $request->integer('imobil_id') ?: null;
+        $returnUrl = InternalReturnUrl::normalize($request->string('return_url')->toString());
 
         return Inertia::render('ConfigurareAnexa/Form', [
             'imobile' => $this->imobileForSelect(),
             'selectedImobilId' => $imobilId,
             'anexa' => null,
             'serviciiStandard' => ServiciuStandardAnexa::optionsForForm(),
+            'returnUrl' => $returnUrl,
+            'spatiuId' => $request->integer('spatiu_id') ?: null,
         ]);
     }
 
@@ -63,20 +68,39 @@ class ConfigurareAnexaController extends Controller
         $imobil = Imobil::query()->findOrFail($validated['imobil_id']);
         $configurare = $this->saveConfigurare($validated, $imobil);
 
+        $returnUrl = InternalReturnUrl::normalize($request->input('return_url'));
+        $spatiuId = $request->integer('spatiu_id') ?: null;
+
+        if ($returnUrl && $spatiuId) {
+            Spatiu::query()
+                ->whereKey($spatiuId)
+                ->where('imobil_id', $imobil->id)
+                ->update(['configurare_anexa_id' => $configurare->id]);
+
+            return redirect($returnUrl)->with('success', 'Anexa a fost adăugată și alocată spațiului.');
+        }
+
         return redirect()
             ->route('configurare-anexa.edit', $configurare)
             ->with('success', 'Anexa a fost adăugată.');
     }
 
-    public function edit(ConfigurareAnexaImobil $configurare): Response
+    public function edit(Request $request, ConfigurareAnexaImobil $configurare): Response
     {
         $configurare->load(['imobil', 'linii']);
+        $returnUrl = InternalReturnUrl::normalize($request->string('return_url')->toString());
+        $spatiiCount = Spatiu::query()->where('configurare_anexa_id', $configurare->id)->count();
 
         return Inertia::render('ConfigurareAnexa/Form', [
             'imobile' => $this->imobileForSelect(),
             'selectedImobilId' => $configurare->imobil_id,
             'anexa' => $this->configurareForForm($configurare),
             'serviciiStandard' => ServiciuStandardAnexa::optionsForForm(),
+            'returnUrl' => $returnUrl,
+            'spatiuId' => null,
+            'context' => [
+                'spatii_count' => $spatiiCount,
+            ],
         ]);
     }
 
@@ -89,6 +113,12 @@ class ConfigurareAnexaController extends Controller
         $validated = $request->validate($this->validationRules(requireImobil: true));
         $imobil = Imobil::query()->findOrFail($validated['imobil_id']);
         $configurare = $this->saveConfigurare($validated, $imobil, $configurare);
+
+        $returnUrl = InternalReturnUrl::normalize($request->input('return_url'));
+
+        if ($returnUrl) {
+            return redirect($returnUrl)->with('success', 'Anexa a fost actualizată.');
+        }
 
         return redirect()
             ->route('configurare-anexa.edit', $configurare)

@@ -1,5 +1,5 @@
-import React from 'react';
-import { Link, useForm } from '@inertiajs/react';
+import React, { useMemo, useState } from 'react';
+import { Link, router, useForm } from '@inertiajs/react';
 import AppLayout from '../../Layouts/AppLayout';
 
 function formatDecimal(value) {
@@ -11,37 +11,274 @@ function spatiuInfo(spatii, spatiuId) {
     return spatii.find((spatiu) => Number(spatiu.id) === Number(spatiuId)) || null;
 }
 
-export default function Form({ imobile = [], spatii = [], contract = null }) {
+function isBlank(value) {
+    return value === null || value === undefined || String(value).trim() === '';
+}
+
+function missingFieldKeysForForm(data) {
+    const missing = [];
+
+    if (!data.spatiu_id) missing.push('spatiu_id');
+    if (!data.locator_id) missing.push('locator_id');
+    if (isBlank(data.numar_contract)) missing.push('numar_contract');
+    if (isBlank(data.data_start)) missing.push('data_start');
+    if (isBlank(data.data_end)) missing.push('data_end');
+    if (isBlank(data.chirie) && data.chirie !== 0) missing.push('chirie');
+
+    if (data.chirias_tip === 'pf') {
+        if (isBlank(data.chirias_pf?.nume_complet)) missing.push('chirias_pf.nume_complet');
+        if (isBlank(data.chirias_pf?.serie_ci)) missing.push('chirias_pf.serie_ci');
+        if (isBlank(data.chirias_pf?.numar_ci)) missing.push('chirias_pf.numar_ci');
+        if (isBlank(data.chirias_pf?.cnp)) missing.push('chirias_pf.cnp');
+        if (isBlank(data.chirias_pf?.domiciliu)) missing.push('chirias_pf.domiciliu');
+        if (isBlank(data.chirias_pf?.email)) missing.push('chirias_pf.email');
+        if (isBlank(data.chirias_pf?.telefon)) missing.push('chirias_pf.telefon');
+    } else {
+        if (isBlank(data.chirias_pj?.denumire)) missing.push('chirias_pj.denumire');
+        if (isBlank(data.chirias_pj?.sediu_social)) missing.push('chirias_pj.sediu_social');
+        if (isBlank(data.chirias_pj?.email)) missing.push('chirias_pj.email');
+        if (isBlank(data.chirias_pj?.telefon)) missing.push('chirias_pj.telefon');
+        if (isBlank(data.chirias_pj?.nr_reg_comert)) missing.push('chirias_pj.nr_reg_comert');
+        if (isBlank(data.chirias_pj?.cui)) missing.push('chirias_pj.cui');
+        if (isBlank(data.chirias_pj?.administrator?.nume_complet)) missing.push('chirias_pj.administrator.nume_complet');
+        if (isBlank(data.chirias_pj?.administrator?.serie_ci)) missing.push('chirias_pj.administrator.serie_ci');
+        if (isBlank(data.chirias_pj?.administrator?.numar_ci)) missing.push('chirias_pj.administrator.numar_ci');
+        if (isBlank(data.chirias_pj?.administrator?.cnp)) missing.push('chirias_pj.administrator.cnp');
+        if (isBlank(data.chirias_pj?.administrator?.domiciliu)) missing.push('chirias_pj.administrator.domiciliu');
+    }
+
+    return missing;
+}
+
+const fieldLabels = {
+    spatiu_id: 'Spațiu',
+    locator_id: 'Locator',
+    numar_contract: 'Număr contract',
+    data_start: 'Data start',
+    data_end: 'Data end',
+    chirie: 'Chirie lunară',
+    'chirias_pf.nume_complet': 'Nume complet chiriaș',
+    'chirias_pf.serie_ci': 'Serie CI chiriaș',
+    'chirias_pf.numar_ci': 'Număr CI chiriaș',
+    'chirias_pf.cnp': 'CNP chiriaș',
+    'chirias_pf.domiciliu': 'Domiciliu chiriaș',
+    'chirias_pf.email': 'Email chiriaș',
+    'chirias_pf.telefon': 'Telefon chiriaș',
+    'chirias_pj.denumire': 'Denumire firmă',
+    'chirias_pj.sediu_social': 'Sediu social',
+    'chirias_pj.email': 'Email firmă',
+    'chirias_pj.telefon': 'Telefon firmă',
+    'chirias_pj.nr_reg_comert': 'Registrul Comerțului',
+    'chirias_pj.cui': 'CUI',
+    'chirias_pj.administrator.nume_complet': 'Nume administrator',
+    'chirias_pj.administrator.serie_ci': 'Serie CI administrator',
+    'chirias_pj.administrator.numar_ci': 'Număr CI administrator',
+    'chirias_pj.administrator.cnp': 'CNP administrator',
+    'chirias_pj.administrator.domiciliu': 'Domiciliu administrator',
+    'chirias_pj.administrator.email': 'Email administrator',
+};
+
+const emptyPf = {
+    nume_complet: '',
+    serie_ci: '',
+    numar_ci: '',
+    cnp: '',
+    domiciliu: '',
+    email: '',
+    email_2: '',
+    telefon: '',
+    banca: '',
+    cont_bancar: '',
+};
+
+const emptyAdministrator = {
+    nume_complet: '',
+    serie_ci: '',
+    numar_ci: '',
+    cnp: '',
+    domiciliu: '',
+    email: '',
+    email_2: '',
+    telefon: '',
+};
+
+const emptyPj = {
+    denumire: '',
+    sediu_social: '',
+    telefon: '',
+    email: '',
+    email_2: '',
+    nr_reg_comert: '',
+    cui: '',
+    banca: '',
+    cont_bancar: '',
+    administrator: { ...emptyAdministrator },
+};
+
+function PfField({ label, value, onChange, error, type = 'text', required = false, incomplete = false, gridSpan = 2 }) {
+    return (
+        <label className={`form-field form-grid-span-${gridSpan}${incomplete ? ' form-field-incomplete' : ''}`}>
+            <span>{label}{required ? ' *' : ''}</span>
+            <input type={type} value={value} onChange={(event) => onChange(event.target.value)} />
+            {error ? <small>{error}</small> : null}
+        </label>
+    );
+}
+
+export default function Form({
+    imobile = [],
+    spatii = [],
+    locatori = [],
+    configurariAnexe = {},
+    contract = null,
+    returnUrl = null,
+    initialImobilId = null,
+    initialSpatiuId = null,
+}) {
     const isEditing = Boolean(contract);
-    const { data, setData, post, put, processing, errors } = useForm({
-        imobil_id: contract?.imobil_id || '',
-        spatiu_id: contract?.spatiu_id || '',
-        locator_nume: contract?.locator_nume || '',
+    const [anexaEditDialogOpen, setAnexaEditDialogOpen] = useState(false);
+    const initialSpatiu = spatiuInfo(spatii, initialSpatiuId);
+    const { data, setData, post, put, processing, errors, transform } = useForm({
+        imobil_id: contract?.imobil_id || initialImobilId || initialSpatiu?.imobil_id || '',
+        spatiu_id: contract?.spatiu_id || initialSpatiuId || '',
+        locator_id: contract?.locator_id || initialSpatiu?.locator_id || '',
         numar_contract: contract?.numar_contract || '',
-        chirias: contract?.chirias || '',
-        persoane_declarate: contract?.persoane_declarate ?? '',
+        chirias_tip: contract?.chirias_tip || 'pj',
+        chirias_pf: contract?.chirias_pf || {
+            ...emptyPf,
+            nume_complet: contract?.chirias_tip === 'pf' ? (contract?.chirias || initialSpatiu?.chirias || '') : '',
+        },
+        chirias_pj: contract?.chirias_pj || {
+            ...emptyPj,
+            denumire: contract?.chirias_tip === 'pj' || !contract?.chirias_tip
+                ? (contract?.chirias || initialSpatiu?.chirias || '')
+                : '',
+            administrator: { ...emptyAdministrator },
+        },
+        persoane_declarate: contract?.persoane_declarate ?? initialSpatiu?.persoane_declarate ?? '',
         data_start: contract?.data_start || '',
         data_end: contract?.data_end || '',
-        chirie: formatDecimal(contract?.chirie) || '',
-        moneda: contract?.moneda || 'EUR',
-        status: contract?.status || 'activ',
+        chirie: formatDecimal(contract?.chirie) || formatDecimal(initialSpatiu?.chirie_curenta) || '',
+        moneda: contract?.moneda || initialSpatiu?.moneda || 'EUR',
         observatii: contract?.observatii || '',
+        configurare_anexa_id: contract?.configurare_anexa_id || initialSpatiu?.configurare_anexa_id || '',
     });
+
+    transform((formData) => ({
+        ...formData,
+        return_url: returnUrl || '',
+    }));
 
     const spatiiPentruImobil = data.imobil_id ? spatii.filter((spatiu) => Number(spatiu.imobil_id) === Number(data.imobil_id)) : [];
     const selectedSpatiu = spatiuInfo(spatii, data.spatiu_id);
+    const configurariPentruImobil = data.imobil_id ? (configurariAnexe[data.imobil_id] || []) : [];
+    const anexaAlocataCurenta = configurariPentruImobil.find(
+        (configurare) => Number(configurare.id) === Number(data.configurare_anexa_id),
+    ) || null;
+    const encodedOriginalReturnUrl = returnUrl ? encodeURIComponent(returnUrl) : '';
+    const contractPageUrl = isEditing
+        ? `/contracte/${contract.id}/editare${returnUrl ? `?return_url=${encodedOriginalReturnUrl}` : ''}`
+        : `/contracte/adauga?imobil_id=${data.imobil_id || ''}${data.spatiu_id ? `&spatiu_id=${data.spatiu_id}` : ''}${returnUrl ? `&return_url=${encodedOriginalReturnUrl}` : ''}`;
+    const encodedContractReturnUrl = encodeURIComponent(contractPageUrl);
+    const anexaCreateUrl = data.imobil_id && data.spatiu_id
+        ? `/configurare-anexa/adauga?imobil_id=${data.imobil_id}&spatiu_id=${data.spatiu_id}&return_url=${encodedContractReturnUrl}`
+        : null;
+    const anexaEditUrl = data.configurare_anexa_id
+        ? `/configurare-anexa/${data.configurare_anexa_id}/editare?return_url=${encodedContractReturnUrl}`
+        : null;
+    const spatiuEditUrl = data.spatiu_id
+        ? `/spatii/${data.spatiu_id}/editare?return_url=${encodedContractReturnUrl}`
+        : null;
     const spatiuAdministrativ = selectedSpatiu?.status === 'administrativ';
+    const estePf = data.chirias_tip === 'pf';
+    const contractStatus = contract?.status || null;
+    const isActiveContract = contractStatus === 'activ';
+    const isIncompleteContract = contractStatus === 'incomplet';
+    const missingKeys = useMemo(() => {
+        if (isActiveContract) {
+            return [];
+        }
+
+        if (isIncompleteContract || isEditing) {
+            return missingFieldKeysForForm(data);
+        }
+
+        return contract?.missing_field_keys || [];
+    }, [contract?.missing_field_keys, data, isActiveContract, isEditing, isIncompleteContract]);
+    const missingLabels = missingKeys.map((key) => fieldLabels[key] || key);
+    const showIncompleteHints = isIncompleteContract || (isEditing && missingKeys.length > 0);
+    const fieldIncomplete = (key) => showIncompleteHints && missingKeys.includes(key);
+
+    function fieldClassName(key, extra = '') {
+        return `form-field${extra ? ` ${extra}` : ''}${fieldIncomplete(key) ? ' form-field-incomplete' : ''}`;
+    }
+
+    function updatePf(field, value) {
+        setData('chirias_pf', { ...data.chirias_pf, [field]: value });
+    }
+
+    function updatePj(field, value) {
+        setData('chirias_pj', { ...data.chirias_pj, [field]: value });
+    }
+
+    function updateAdministrator(field, value) {
+        setData('chirias_pj', {
+            ...data.chirias_pj,
+            administrator: { ...data.chirias_pj.administrator, [field]: value },
+        });
+    }
 
     function applySpatiu(spatiuId) {
         const spatiu = spatiuInfo(spatii, spatiuId);
         setData({
             ...data,
             spatiu_id: spatiuId,
-            locator_nume: spatiu?.locator_nume || data.locator_nume,
-            chirias: spatiu?.chirias || data.chirias,
+            locator_id: spatiu?.locator_id || data.locator_id,
+            chirias_pf: {
+                ...data.chirias_pf,
+                nume_complet: spatiu?.chirias || data.chirias_pf.nume_complet,
+            },
+            chirias_pj: {
+                ...data.chirias_pj,
+                denumire: spatiu?.chirias || data.chirias_pj.denumire,
+            },
             persoane_declarate: spatiu?.status === 'administrativ' ? '' : (spatiu?.persoane_declarate ?? data.persoane_declarate),
             chirie: formatDecimal(spatiu?.chirie_curenta) || data.chirie,
             moneda: 'EUR',
+            configurare_anexa_id: spatiu?.configurare_anexa_id || '',
+        });
+    }
+
+    function openAnexaEditFlow() {
+        if (!anexaEditUrl || !anexaAlocataCurenta) {
+            return;
+        }
+
+        if ((anexaAlocataCurenta.spatii_count ?? 1) <= 1) {
+            window.location.href = anexaEditUrl;
+            return;
+        }
+
+        setAnexaEditDialogOpen(true);
+    }
+
+    function editAnexaPartajata() {
+        if (!anexaEditUrl) {
+            return;
+        }
+
+        setAnexaEditDialogOpen(false);
+        window.location.href = anexaEditUrl;
+    }
+
+    function createAnexaIndividuala() {
+        if (!data.spatiu_id) {
+            return;
+        }
+
+        setAnexaEditDialogOpen(false);
+        router.post(`/spatii/${data.spatiu_id}/anexa-individuala`, {
+            return_url: contractPageUrl,
         });
     }
 
@@ -55,19 +292,45 @@ export default function Form({ imobile = [], spatii = [], contract = null }) {
         post('/contracte');
     }
 
-    const topbarActions = <Link className="secondary-button button-link" href="/contracte">Înapoi</Link>;
+    const topbarActions = <Link className="secondary-button button-link" href={returnUrl || '/contracte'}>Înapoi</Link>;
+    const editTitle = isEditing ? `Editare contract ${contract.numar_contract || ''}`.trim() : '';
+    const contractStatusBadge = isEditing && isActiveContract ? (
+        <span className="contract-status-topbar-badge contract-status-topbar-badge-activ">Activ. Date complete.</span>
+    ) : isEditing && isIncompleteContract ? (
+        <span className="contract-status-topbar-badge contract-status-topbar-badge-incomplet">Incomplet</span>
+    ) : null;
+    const topbarTitle = isEditing ? (
+        <div className="topbar-page-title">
+            <div className="topbar-page-title-row">
+                <h1>{editTitle}</h1>
+                {contractStatusBadge}
+            </div>
+            <p>Alege imobilul, apoi spațiul; datele spațiului completează contractul.</p>
+        </div>
+    ) : null;
 
     return (
-        <AppLayout title={isEditing ? `Editare contract ${contract.numar_contract}` : 'Adaugă contract'} subtitle="Alege imobilul, apoi spațiul; datele spațiului completează contractul." showGlobalSearch={false} topbarActions={topbarActions}>
+        <AppLayout title={isEditing ? editTitle : 'Adaugă contract'} subtitle="Alege imobilul, apoi spațiul; datele spațiului completează contractul." showGlobalSearch={false} topbarActions={topbarActions} topbarTitle={topbarTitle}>
             <form className="form-card" onSubmit={submit}>
-                <div className="form-grid">
-                    <label className="form-field">
+                {isEditing && isIncompleteContract ? (
+                    <div className="contract-status-banner contract-status-banner-incomplet">
+                        <span>
+                            {missingLabels.length
+                                ? `Contract Incomplet. Mai trebuie: ${missingLabels.slice(0, 5).join(', ')}${missingLabels.length > 5 ? ` (+${missingLabels.length - 5})` : ''}`
+                                : 'Contract Incomplet. Completează câmpurile obligatorii pentru activare.'}
+                        </span>
+                    </div>
+                ) : null}
+
+                <div className="form-grid form-grid-chirias">
+                    <label className="form-field form-field-full">
                         <span>Imobil *</span>
                         <select value={data.imobil_id} onChange={(event) => {
                             setData({
                                 ...data,
                                 imobil_id: event.target.value,
                                 spatiu_id: '',
+                                configurare_anexa_id: '',
                             });
                         }}>
                             <option value="">Alege imobilul</option>
@@ -75,7 +338,7 @@ export default function Form({ imobile = [], spatii = [], contract = null }) {
                         </select>
                     </label>
 
-                    <label className="form-field">
+                    <label className={`${fieldClassName('spatiu_id')} form-grid-span-1`.trim()}>
                         <span>Spațiu *</span>
                         <select value={data.spatiu_id} onChange={(event) => applySpatiu(event.target.value)} disabled={!data.imobil_id}>
                             <option value="">{data.imobil_id ? 'Alege spațiul' : 'Alege mai întâi imobilul'}</option>
@@ -84,60 +347,125 @@ export default function Form({ imobile = [], spatii = [], contract = null }) {
                         {errors.spatiu_id ? <small>{errors.spatiu_id}</small> : null}
                     </label>
 
-                    <label className="form-field">
+                    <label className={`${fieldClassName('locator_id')} form-grid-span-1`.trim()}>
+                        <span>Locator *</span>
+                        <select value={data.locator_id} onChange={(event) => setData('locator_id', event.target.value)}>
+                            <option value="">Alege locator existent</option>
+                            {locatori.map((locator) => <option value={locator.id} key={locator.id}>{locator.nume}</option>)}
+                        </select>
+                        {errors.locator_id ? <small>{errors.locator_id}</small> : null}
+                    </label>
+
+                    <label className={`${fieldClassName('numar_contract')} form-grid-span-1`.trim()}>
                         <span>Număr contract *</span>
                         <input type="text" value={data.numar_contract} onChange={(event) => setData('numar_contract', event.target.value)} />
                         {errors.numar_contract ? <small>{errors.numar_contract}</small> : null}
                     </label>
 
-                    <label className="form-field">
-                        <span>Nume locator</span>
-                        <input type="text" value={data.locator_nume} onChange={(event) => setData('locator_nume', event.target.value)} />
-                        {errors.locator_nume ? <small>{errors.locator_nume}</small> : null}
-                    </label>
-
-                    <label className="form-field">
-                        <span>Chiriaș *</span>
-                        <input type="text" value={data.chirias} onChange={(event) => setData('chirias', event.target.value)} />
-                        {errors.chirias ? <small>{errors.chirias}</small> : null}
-                    </label>
-
-                    {!spatiuAdministrativ ? (
-                        <label className="form-field">
-                            <span>Persoane declarate</span>
-                            <input type="number" min="0" step="1" value={data.persoane_declarate} onChange={(event) => setData('persoane_declarate', event.target.value)} />
-                            {errors.persoane_declarate ? <small>{errors.persoane_declarate}</small> : null}
-                        </label>
-                    ) : null}
-
-                    <label className="form-field">
-                        <span>Data start *</span>
-                        <input type="date" value={data.data_start} onChange={(event) => setData('data_start', event.target.value)} />
-                        {errors.data_start ? <small>{errors.data_start}</small> : null}
-                    </label>
-
-                    <label className="form-field">
-                        <span>Data end</span>
-                        <input type="date" value={data.data_end} onChange={(event) => setData('data_end', event.target.value)} />
-                        {errors.data_end ? <small>{errors.data_end}</small> : null}
-                    </label>
-
-                    <label className="form-field">
+                    <label className={`${fieldClassName('chirie')} form-grid-span-1`.trim()}>
                         <span>Chirie lunară EUR *</span>
                         <input type="number" min="0" step="0.01" value={data.chirie} onChange={(event) => setData('chirie', event.target.value)} />
                         {errors.chirie ? <small>{errors.chirie}</small> : null}
                     </label>
 
-                    <label className="form-field">
-                        <span>Status</span>
-                        <select value={data.status} onChange={(event) => setData('status', event.target.value)}>
-                            <option value="activ">Activ</option>
-                            <option value="inactiv">Inactiv</option>
-                            <option value="incetat">Încetat</option>
-                        </select>
-                        {errors.status ? <small>{errors.status}</small> : null}
+                    <label className={`${fieldClassName('data_start')} form-grid-span-1`.trim()}>
+                        <span>Data start *</span>
+                        <input type="date" value={data.data_start} onChange={(event) => setData('data_start', event.target.value)} />
+                        {errors.data_start ? <small>{errors.data_start}</small> : null}
+                    </label>
+
+                    <label className={`${fieldClassName('data_end')} form-grid-span-1`.trim()}>
+                        <span>Data end *</span>
+                        <input type="date" value={data.data_end} onChange={(event) => setData('data_end', event.target.value)} />
+                        {errors.data_end ? <small>{errors.data_end}</small> : null}
                     </label>
                 </div>
+
+                <section className="contract-chirias-section">
+                    <div className="contract-chirias-heading">
+                        <h2>Date chiriaș</h2>
+                        <div className="contract-chirias-tip-toggle">
+                            <label className="contract-chirias-tip-option">
+                                <input
+                                    type="radio"
+                                    name="chirias_tip"
+                                    value="pj"
+                                    checked={!estePf}
+                                    onChange={() => setData('chirias_tip', 'pj')}
+                                />
+                                <span>Persoană juridică</span>
+                            </label>
+                            <label className="contract-chirias-tip-option">
+                                <input
+                                    type="radio"
+                                    name="chirias_tip"
+                                    value="pf"
+                                    checked={estePf}
+                                    onChange={() => setData('chirias_tip', 'pf')}
+                                />
+                                <span>Persoană fizică</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    {errors.chirias_tip ? <small>{errors.chirias_tip}</small> : null}
+
+                    {estePf ? (
+                        <div className="form-grid form-grid-chirias">
+                            <PfField label="Nume complet" value={data.chirias_pf.nume_complet} onChange={(value) => updatePf('nume_complet', value)} error={errors['chirias_pf.nume_complet']} required incomplete={fieldIncomplete('chirias_pf.nume_complet')} />
+                            <PfField label="Serie CI" value={data.chirias_pf.serie_ci} onChange={(value) => updatePf('serie_ci', value)} error={errors['chirias_pf.serie_ci']} required incomplete={fieldIncomplete('chirias_pf.serie_ci')} />
+                            <PfField label="Număr CI" value={data.chirias_pf.numar_ci} onChange={(value) => updatePf('numar_ci', value)} error={errors['chirias_pf.numar_ci']} required incomplete={fieldIncomplete('chirias_pf.numar_ci')} />
+                            <PfField label="Domiciliu" value={data.chirias_pf.domiciliu} onChange={(value) => updatePf('domiciliu', value)} error={errors['chirias_pf.domiciliu']} required incomplete={fieldIncomplete('chirias_pf.domiciliu')} />
+                            <PfField label="CNP" value={data.chirias_pf.cnp} onChange={(value) => updatePf('cnp', value)} error={errors['chirias_pf.cnp']} required incomplete={fieldIncomplete('chirias_pf.cnp')} />
+                            <PfField label="Email" value={data.chirias_pf.email} onChange={(value) => updatePf('email', value)} error={errors['chirias_pf.email']} type="email" required incomplete={fieldIncomplete('chirias_pf.email')} gridSpan={1} />
+                            <PfField label="Email" value={data.chirias_pf.email_2} onChange={(value) => updatePf('email_2', value)} error={errors['chirias_pf.email_2']} type="email" gridSpan={1} />
+                            <PfField label="Telefon" value={data.chirias_pf.telefon} onChange={(value) => updatePf('telefon', value)} error={errors['chirias_pf.telefon']} required incomplete={fieldIncomplete('chirias_pf.telefon')} />
+                            <PfField label="Banca" value={data.chirias_pf.banca} onChange={(value) => updatePf('banca', value)} error={errors['chirias_pf.banca']} />
+                            <PfField label="Cont bancar" value={data.chirias_pf.cont_bancar} onChange={(value) => updatePf('cont_bancar', value)} error={errors['chirias_pf.cont_bancar']} />
+                            {!spatiuAdministrativ ? (
+                                <label className="form-field form-grid-span-2">
+                                    <span>Persoane declarate</span>
+                                    <input type="number" min="0" step="1" value={data.persoane_declarate} onChange={(event) => setData('persoane_declarate', event.target.value)} />
+                                    {errors.persoane_declarate ? <small>{errors.persoane_declarate}</small> : null}
+                                </label>
+                            ) : null}
+                        </div>
+                    ) : (
+                        <>
+                            <div className="form-grid form-grid-chirias">
+                                <PfField label="Denumire" value={data.chirias_pj.denumire} onChange={(value) => updatePj('denumire', value)} error={errors['chirias_pj.denumire']} required incomplete={fieldIncomplete('chirias_pj.denumire')} gridSpan={2} />
+                                <PfField label="Sediul social" value={data.chirias_pj.sediu_social} onChange={(value) => updatePj('sediu_social', value)} error={errors['chirias_pj.sediu_social']} required incomplete={fieldIncomplete('chirias_pj.sediu_social')} gridSpan={2} />
+                                <PfField label="Registrul Comerțului" value={data.chirias_pj.nr_reg_comert} onChange={(value) => updatePj('nr_reg_comert', value)} error={errors['chirias_pj.nr_reg_comert']} required incomplete={fieldIncomplete('chirias_pj.nr_reg_comert')} gridSpan={1} />
+                                <PfField label="CUI" value={data.chirias_pj.cui} onChange={(value) => updatePj('cui', value)} error={errors['chirias_pj.cui']} required incomplete={fieldIncomplete('chirias_pj.cui')} gridSpan={1} />
+                                <PfField label="Email" value={data.chirias_pj.email} onChange={(value) => updatePj('email', value)} error={errors['chirias_pj.email']} type="email" required incomplete={fieldIncomplete('chirias_pj.email')} gridSpan={1} />
+                                <PfField label="Email" value={data.chirias_pj.email_2} onChange={(value) => updatePj('email_2', value)} error={errors['chirias_pj.email_2']} type="email" gridSpan={1} />
+                                <PfField label="Telefon" value={data.chirias_pj.telefon} onChange={(value) => updatePj('telefon', value)} error={errors['chirias_pj.telefon']} required incomplete={fieldIncomplete('chirias_pj.telefon')} gridSpan={1} />
+                                <PfField label="Banca" value={data.chirias_pj.banca} onChange={(value) => updatePj('banca', value)} error={errors['chirias_pj.banca']} gridSpan={1} />
+                                <PfField label="Cont bancar" value={data.chirias_pj.cont_bancar} onChange={(value) => updatePj('cont_bancar', value)} error={errors['chirias_pj.cont_bancar']} gridSpan={1} />
+                                {!spatiuAdministrativ ? (
+                                    <label className="form-field form-grid-span-1">
+                                        <span>Persoane declarate</span>
+                                        <input type="number" min="0" step="1" value={data.persoane_declarate} onChange={(event) => setData('persoane_declarate', event.target.value)} />
+                                        {errors.persoane_declarate ? <small>{errors.persoane_declarate}</small> : null}
+                                    </label>
+                                ) : null}
+                            </div>
+
+                            <div className="contract-chirias-subsection">
+                                <h3>Reprezentată legal prin</h3>
+                                <div className="form-grid form-grid-chirias">
+                                    <PfField label="Nume complet" value={data.chirias_pj.administrator.nume_complet} onChange={(value) => updateAdministrator('nume_complet', value)} error={errors['chirias_pj.administrator.nume_complet']} required incomplete={fieldIncomplete('chirias_pj.administrator.nume_complet')} />
+                                    <PfField label="Serie CI" value={data.chirias_pj.administrator.serie_ci} onChange={(value) => updateAdministrator('serie_ci', value)} error={errors['chirias_pj.administrator.serie_ci']} required incomplete={fieldIncomplete('chirias_pj.administrator.serie_ci')} />
+                                    <PfField label="Număr CI" value={data.chirias_pj.administrator.numar_ci} onChange={(value) => updateAdministrator('numar_ci', value)} error={errors['chirias_pj.administrator.numar_ci']} required incomplete={fieldIncomplete('chirias_pj.administrator.numar_ci')} />
+                                    <PfField label="Domiciliu" value={data.chirias_pj.administrator.domiciliu} onChange={(value) => updateAdministrator('domiciliu', value)} error={errors['chirias_pj.administrator.domiciliu']} required incomplete={fieldIncomplete('chirias_pj.administrator.domiciliu')} />
+                                    <PfField label="CNP" value={data.chirias_pj.administrator.cnp} onChange={(value) => updateAdministrator('cnp', value)} error={errors['chirias_pj.administrator.cnp']} required incomplete={fieldIncomplete('chirias_pj.administrator.cnp')} />
+                                    <PfField label="Email" value={data.chirias_pj.administrator.email} onChange={(value) => updateAdministrator('email', value)} error={errors['chirias_pj.administrator.email']} type="email" />
+                                    <PfField label="Telefon" value={data.chirias_pj.administrator.telefon} onChange={(value) => updateAdministrator('telefon', value)} error={errors['chirias_pj.administrator.telefon']} />
+                                </div>
+                            </div>
+                        </>
+                    )}
+                </section>
 
                 {selectedSpatiu ? (
                     <div className="readonly-info-card contract-space-summary">
@@ -159,14 +487,84 @@ export default function Form({ imobile = [], spatii = [], contract = null }) {
                     {errors.observatii ? <small>{errors.observatii}</small> : null}
                 </label>
 
+                {data.spatiu_id ? (
+                    <div className="spatiu-documente-zone">
+                        <div className="spatiu-documente-row">
+                            <span className="spatiu-documente-label">Anexă</span>
+                            <div className="spatiu-documente-summary spatiu-documente-summary-anexa">
+                                <select
+                                    className="spatiu-documente-select"
+                                    value={data.configurare_anexa_id}
+                                    onChange={(event) => setData('configurare_anexa_id', event.target.value)}
+                                    disabled={!data.imobil_id || configurariPentruImobil.length === 0}
+                                >
+                                    <option value="">{configurariPentruImobil.length ? 'Alege anexa alocată' : 'Nu există anexă pe imobil'}</option>
+                                    {configurariPentruImobil.map((configurare) => (
+                                        <option value={configurare.id} key={configurare.id}>{configurare.denumire}</option>
+                                    ))}
+                                </select>
+                                {anexaAlocataCurenta ? (
+                                    <span className="spatiu-documente-meta">
+                                        {anexaAlocataCurenta.linii_count ?? '—'} servicii
+                                        {(anexaAlocataCurenta.spatii_count ?? 0) > 1
+                                            ? ` · folosită de ${anexaAlocataCurenta.spatii_count} spații`
+                                            : ' · doar acest spațiu'}
+                                    </span>
+                                ) : (
+                                    <span className="spatiu-documente-empty">Nicio anexă alocată</span>
+                                )}
+                                {errors.configurare_anexa_id ? <small>{errors.configurare_anexa_id}</small> : null}
+                            </div>
+                            <div className="spatiu-documente-actions">
+                                {data.configurare_anexa_id ? (
+                                    <button type="button" className="secondary-button" onClick={openAnexaEditFlow}>Editează anexa</button>
+                                ) : null}
+                                {anexaCreateUrl ? (
+                                    <Link className="secondary-button button-link" href={anexaCreateUrl}>+ Adaugă anexă</Link>
+                                ) : null}
+                            </div>
+                        </div>
+                    </div>
+                ) : null}
+
                 <div className="form-footer-actions">
                     <span />
-                    <div className="form-actions">
-                        <Link className="secondary-button button-link" href="/contracte">Anulează</Link>
-                        <button className="primary-button" type="submit" disabled={processing}>{processing ? 'Se salvează...' : 'Salvează contract'}</button>
+                    <div className="form-actions-column">
+                        <div className="form-actions">
+                            <Link className="secondary-button button-link" href={returnUrl || '/contracte'}>Anulează</Link>
+                            <button className="primary-button" type="submit" disabled={processing}>{processing ? 'Se salvează...' : 'Salvează contract'}</button>
+                        </div>
+                        {spatiuEditUrl ? (
+                            <div className="form-actions">
+                                <Link className="secondary-button button-link" href={spatiuEditUrl}>Mergi la spațiu</Link>
+                            </div>
+                        ) : null}
                     </div>
                 </div>
             </form>
+
+            {anexaEditDialogOpen && anexaAlocataCurenta ? (
+                <div className="spatiu-dialog-backdrop" onClick={() => setAnexaEditDialogOpen(false)}>
+                    <div className="spatiu-dialog-card" onClick={(event) => event.stopPropagation()} role="dialog" aria-modal="true" aria-labelledby="contract-anexa-edit-dialog-title">
+                        <h3 id="contract-anexa-edit-dialog-title">Anexa e folosită de {anexaAlocataCurenta.spatii_count} spații</h3>
+                        <p>
+                            Anexa «{anexaAlocataCurenta.denumire}» e alocată la mai multe spații.
+                            Modificările se pot aplica tuturor sau doar acestui spațiu.
+                        </p>
+                        <div className="spatiu-dialog-actions">
+                            <button type="button" className="primary-button" onClick={editAnexaPartajata}>
+                                Schimb anexa celor {anexaAlocataCurenta.spatii_count} spații
+                            </button>
+                            <button type="button" className="secondary-button" onClick={createAnexaIndividuala}>
+                                Creez anexă individuală doar pentru acest spațiu
+                            </button>
+                            <button type="button" className="secondary-button" onClick={() => setAnexaEditDialogOpen(false)}>
+                                Anulează
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            ) : null}
         </AppLayout>
     );
 }

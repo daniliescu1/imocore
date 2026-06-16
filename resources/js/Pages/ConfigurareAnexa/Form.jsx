@@ -186,7 +186,15 @@ function AnnexColumnHeader({ showActions = false, lineIndex = null, onMoveUp, on
     );
 }
 
-export default function Form({ anexa = null, imobile = [], selectedImobilId = null, serviciiStandard = {} }) {
+export default function Form({
+    anexa = null,
+    imobile = [],
+    selectedImobilId = null,
+    serviciiStandard = {},
+    returnUrl = null,
+    spatiuId = null,
+    context = null,
+}) {
     const isEditing = Boolean(anexa);
     const { data, setData, post, put, processing, errors, transform } = useForm(buildFormState(anexa, selectedImobilId));
 
@@ -236,6 +244,8 @@ export default function Form({ anexa = null, imobile = [], selectedImobilId = nu
         transform((payload) => ({
             ...payload,
             linii: normalizeLiniiForSave(payload.linii),
+            return_url: returnUrl || '',
+            spatiu_id: spatiuId || '',
         }));
 
         if (isEditing) {
@@ -309,10 +319,15 @@ export default function Form({ anexa = null, imobile = [], selectedImobilId = nu
     const tvaOptions = serviciiStandard.tva || [];
     const tipCalculOptions = serviciiStandard.tip_calcul || [];
 
-    const topbarActions = <Link className="secondary-button button-link" href="/configurare-anexa">Înapoi la anexe</Link>;
+    const topbarActions = <Link className="secondary-button button-link" href={returnUrl || '/configurare-anexa'}>Înapoi</Link>;
 
     return (
         <AppLayout title={isEditing ? `Editare ${anexa.denumire}` : 'Adaugă anexă'} subtitle="Alege imobilul și configurează serviciile anexei" showGlobalSearch={false} topbarActions={topbarActions}>
+            {context?.spatii_count > 1 ? (
+                <div className="spatiu-context-banner">
+                    Această anexă e alocată la {context.spatii_count} spații. Modificările se aplică tuturor spațiilor care o folosesc.
+                </div>
+            ) : null}
             <form className="cf-card module-table-card" onSubmit={submit}>
                 <div className="cf-card-heading">
                     <div>

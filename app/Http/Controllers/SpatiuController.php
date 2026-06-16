@@ -4,10 +4,12 @@ namespace App\Http\Controllers;
 
 use App\Models\PerioadaInchiriereFatada;
 use App\Models\ConfigurareAnexaImobil;
+use App\Models\ConfigurareAnexaLinie;
 use App\Models\Imobil;
 use App\Models\Locator;
 use App\Models\Spatiu;
 use App\Support\DecimalInput;
+use App\Support\InternalReturnUrl;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -90,6 +92,7 @@ class SpatiuController extends Controller
 
         $query = Spatiu::query()
             ->with(['imobil', 'locatorEntitate'])
+            ->withExists(['contracte as are_contract_activ' => fn ($query) => $query->where('status', 'activ')])
             ->where('imobil_id', $imobil->id)
             ->orderBy('ordine')
             ->orderBy('id');
@@ -177,6 +180,7 @@ class SpatiuController extends Controller
             'marcat_galben' => (bool) $spatiu->marcat_galben,
             'marcat_verde' => (bool) $spatiu->marcat_verde,
             'are_anexa_alocata' => $spatiu->configurare_anexa_id !== null,
+            'are_contract_activ' => (bool) ($spatiu->are_contract_activ ?? false),
         ];
     }
 
@@ -194,12 +198,30 @@ class SpatiuController extends Controller
 
     public function edit(Request $request, Spatiu $spatiu): Response
     {
+        $contract = $spatiu->contracte()
+            ->where('status', 'activ')
+            ->orderByDesc('id')
+            ->first()
+            ?? $spatiu->contracte()->orderByDesc('id')->first();
+
+        $showDocumente = $this->showDocumenteForSpatiu($spatiu);
+
         return Inertia::render('Spatii/Create', [
             'imobile' => $this->imobileForSelect(),
             'locatori' => $this->locatoriForSelect(),
             'configurariAnexe' => $this->configurariAnexeForSelect(),
             'campuriSpatiuVizibile' => $this->campuriSpatiuVizibileForSelect(),
             'canDeleteSpatii' => $this->isOwner($request),
+            'showDocumente' => $showDocumente,
+            'contractActiv' => $contract ? [
+                'id' => $contract->id,
+                'numar_contract' => $contract->numar_contract,
+                'chirias' => $contract->chirias,
+                'chirie' => $contract->chirie,
+                'moneda' => $contract->moneda,
+                'status' => $contract->status,
+                'perioada' => optional($contract->data_start)->format('d.m.Y').' - '.(optional($contract->data_end)->format('d.m.Y') ?: 'nedeterminat'),
+            ] : null,
             'spatiu' => [
                 'id' => $spatiu->id,
                 'imobil_id' => $spatiu->imobil_id,
@@ -314,6 +336,41 @@ class SpatiuController extends Controller
         return redirect($this->spatiiIndexUrl($imobilId))->with('success', 'Spațiul a fost șters.');
     }
 
+    public function cloneAnexaIndividuala(Request $request, Spatiu $spatiu): RedirectResponse
+    {
+        abort_unless($spatiu->configurare_anexa_id, 422, 'Spațiul nu are o anexă alocată.');
+
+        $sursa = ConfigurareAnexaImobil::query()
+            ->with('linii')
+            ->findOrFail($spatiu->configurare_anexa_id);
+
+        $denumire = trim($sursa->denumire.' · '.$spatiu->identificator);
+
+        $noua = ConfigurareAnexaImobil::query()->create([
+            'imobil_id' => $spatiu->imobil_id,
+            'denumire' => $denumire,
+            'implicit' => false,
+            'activ' => true,
+            'observatii' => $sursa->observatii,
+        ]);
+
+        foreach ($sursa->linii as $linie) {
+            $noua->linii()->create($this->linieConfigurareCopie($linie));
+        }
+
+        $spatiu->update(['configurare_anexa_id' => $noua->id]);
+
+        $returnUrl = InternalReturnUrl::normalize($request->input('return_url'))
+            ?: route('spatii.edit', $spatiu);
+
+        return redirect()
+            ->route('configurare-anexa.edit', [
+                'configurare' => $noua,
+                'return_url' => $returnUrl,
+            ])
+            ->with('success', 'Anexa individuală a fost creată pentru acest spațiu.');
+    }
+
     public function updateMarcaj(Request $request, Spatiu $spatiu): RedirectResponse
     {
         $validated = $request->validate([
@@ -409,7 +466,10 @@ class SpatiuController extends Controller
             $validated['persoane_declarate'] = 0;
             $validated['regim_incalzire'] = 'neincalzit';
             $validated['procent_incalzire_override'] = null;
-            $validated['configurare_anexa_id'] = null;
+
+            if (($validated['status'] ?? '') !== 'inchiriat') {
+                $validated['configurare_anexa_id'] = null;
+            }
         }
 
         return $validated;
@@ -544,6 +604,36 @@ class SpatiuController extends Controller
         return true;
     }
 
+    private function showDocumenteForSpatiu(Spatiu $spatiu): bool
+    {
+        return $spatiu->status === 'inchiriat';
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function linieConfigurareCopie(ConfigurareAnexaLinie $linie): array
+    {
+        return [
+            'ordine' => $linie->ordine,
+            'tip_linie' => $linie->tip_linie,
+            'denumire' => $linie->denumire,
+            'nr_crt' => $linie->nr_crt,
+            'index_vechi' => $linie->index_vechi,
+            'index_nou' => $linie->index_nou,
+            'facturat' => $linie->facturat,
+            'coeficient' => $linie->coeficient,
+            'um' => $linie->um,
+            'pret_unitar' => $linie->pret_unitar,
+            'valoare' => $linie->valoare,
+            'tva_21' => $linie->tva_21,
+            'tip_calcul' => $linie->tip_calcul,
+            'apare_cu_zero' => $linie->apare_cu_zero,
+            'activ' => $linie->activ,
+            'observatii' => $linie->observatii,
+        ];
+    }
+
     private function spatiiIndexUrl(int $imobilId): string
     {
         return '/spatii?'.http_build_query(['imobil_id' => $imobilId]);
@@ -595,6 +685,8 @@ class SpatiuController extends Controller
                 'id' => $configurare->id,
                 'implicit' => $configurare->implicit,
                 'denumire' => $configurare->implicit ? "{$configurare->denumire} (implicită)" : $configurare->denumire,
+                'linii_count' => $configurare->linii()->count(),
+                'spatii_count' => Spatiu::query()->where('configurare_anexa_id', $configurare->id)->count(),
             ])->values());
     }
 }

@@ -1,4 +1,4 @@
-import React, { useRef } from 'react';
+import React, { useRef, useState } from 'react';
 import { Link, router, useForm } from '@inertiajs/react';
 import { Trash2 } from 'lucide-react';
 import AppLayout from '../../Layouts/AppLayout';
@@ -177,8 +177,20 @@ function applyEtajChange(etaj, data) {
     return { ...data, etaj, moneda: 'EUR' };
 }
 
-export default function Create({ imobile, locatori, configurariAnexe = {}, campuriSpatiuVizibile = {}, spatiu = null, initialImobilId = null, perioadeFatada = [], canDeleteSpatii = false }) {
+export default function Create({
+    imobile,
+    locatori,
+    configurariAnexe = {},
+    campuriSpatiuVizibile = {},
+    spatiu = null,
+    initialImobilId = null,
+    perioadeFatada = [],
+    canDeleteSpatii = false,
+    showDocumente = false,
+    contractActiv = null,
+}) {
     const isEditing = Boolean(spatiu);
+    const [anexaEditDialogOpen, setAnexaEditDialogOpen] = useState(false);
     const initialStatus = spatiu?.status || 'inchiriat';
     const { data, setData, post, put, processing, errors, transform } = useForm({
         imobil_id: spatiu?.imobil_id || initialImobilId || '',
@@ -218,6 +230,25 @@ export default function Create({ imobile, locatori, configurariAnexe = {}, campu
     const pretMpUltimaIndexare = ultimaIndexare !== null && suprafataPentruIndexare
         ? (ultimaIndexare / suprafataPentruIndexare).toFixed(2)
         : '';
+    const arataDocumente = isEditing && data.status === 'inchiriat';
+    const spatiuEditUrl = isEditing ? `/spatii/${spatiu.id}/editare` : '';
+    const encodedReturnUrl = spatiuEditUrl ? encodeURIComponent(spatiuEditUrl) : '';
+    const showAnexaInMainForm = showField('configurare_anexa_id') && !esteAdministrativ && !esteComun && !etajFaraPersoane && !arataDocumente;
+    const contractCreateUrl = arataDocumente
+        ? `/contracte/adauga?imobil_id=${data.imobil_id}&spatiu_id=${spatiu.id}&return_url=${encodedReturnUrl}`
+        : null;
+    const contractEditUrl = contractActiv && spatiuEditUrl
+        ? `/contracte/${contractActiv.id}/editare?return_url=${encodedReturnUrl}`
+        : null;
+    const anexaCreateUrl = arataDocumente
+        ? `/configurare-anexa/adauga?imobil_id=${data.imobil_id}&spatiu_id=${spatiu.id}&return_url=${encodedReturnUrl}`
+        : null;
+    const anexaEditUrl = data.configurare_anexa_id && spatiuEditUrl
+        ? `/configurare-anexa/${data.configurare_anexa_id}/editare?return_url=${encodedReturnUrl}`
+        : null;
+    const anexaAlocataCurenta = configurariPentruImobil.find(
+        (configurare) => Number(configurare.id) === Number(data.configurare_anexa_id),
+    ) || null;
 
     const lamuritDetaliuRef = useRef(null);
 
@@ -246,6 +277,33 @@ export default function Create({ imobile, locatori, configurariAnexe = {}, campu
         }
 
         router.delete(`/spatii/${spatiu.id}`);
+    }
+
+    function openAnexaEditFlow() {
+        if (!anexaEditUrl || !anexaAlocataCurenta) {
+            return;
+        }
+
+        if ((anexaAlocataCurenta.spatii_count ?? 1) <= 1) {
+            window.location.href = anexaEditUrl;
+            return;
+        }
+
+        setAnexaEditDialogOpen(true);
+    }
+
+    function editAnexaPartajata() {
+        if (!anexaEditUrl) {
+            return;
+        }
+
+        setAnexaEditDialogOpen(false);
+        window.location.href = anexaEditUrl;
+    }
+
+    function createAnexaIndividuala() {
+        setAnexaEditDialogOpen(false);
+        router.post(`/spatii/${spatiu.id}/anexa-individuala`);
     }
 
     function toggleMarcaj(field) {
@@ -311,8 +369,8 @@ export default function Create({ imobile, locatori, configurariAnexe = {}, campu
             topbarActions={topbarActions}
         >
             <form className="form-card" onSubmit={submit}>
-                <div className="form-grid">
-                    <label className="form-field">
+                <div className="form-grid form-grid-spatii">
+                    <label className="form-field form-grid-span-2">
                         <span>Imobil *</span>
                         <select value={data.imobil_id} onChange={(event) => {
                             const imobilId = event.target.value;
@@ -331,7 +389,7 @@ export default function Create({ imobile, locatori, configurariAnexe = {}, campu
                         {errors.imobil_id ? <small>{errors.imobil_id}</small> : null}
                     </label>
 
-                    <label className="form-field">
+                    <label className="form-field form-grid-span-2">
                         <span>Identificat la locator cu numărul *</span>
                         <input type="text" value={data.identificator} onChange={(event) => setData('identificator', event.target.value)} />
                         {errors.identificator ? <small>{errors.identificator}</small> : null}
@@ -444,7 +502,7 @@ export default function Create({ imobile, locatori, configurariAnexe = {}, campu
                         </label>
                     ) : null}
 
-                    {showField('configurare_anexa_id') && !esteAdministrativ && !esteComun && !etajFaraPersoane ? (
+                    {showAnexaInMainForm ? (
                         <label className="form-field">
                             <span>Configurare anexă</span>
                             <select value={data.configurare_anexa_id} onChange={(event) => setData('configurare_anexa_id', event.target.value)} disabled={!data.imobil_id || configurariPentruImobil.length === 0}>
@@ -466,7 +524,8 @@ export default function Create({ imobile, locatori, configurariAnexe = {}, campu
                     {showField('chirias') && !esteAdministrativ && esteFatada && isEditing ? (
                         <label className="form-field">
                             <span>Chiriaș curent</span>
-                            <input type="text" value={data.chirias || '—'} readOnly tabIndex={-1} aria-readonly="true" />
+                            <input type="text" value={data.chirias} onChange={(event) => setData('chirias', event.target.value)} />
+                            {errors.chirias ? <small>{errors.chirias}</small> : null}
                         </label>
                     ) : null}
 
@@ -565,15 +624,100 @@ export default function Create({ imobile, locatori, configurariAnexe = {}, campu
                         ) : null}
                     </div>
                     ) : null}
+                </section>
 
-                    {isEditing && canDeleteSpatii ? (
-                        <button type="button" className="delete-imobil-button" onClick={deleteSpatiu}>
-                            <Trash2 size={16} strokeWidth={2.4} />
+                {isEditing && canDeleteSpatii ? (
+                    <div className="spatiu-delete-zone">
+                        <button type="button" className="delete-spatiu-button" onClick={deleteSpatiu}>
+                            <Trash2 size={17} strokeWidth={2.2} />
                             <span>Șterge spațiu</span>
                         </button>
-                    ) : null}
-                </section>
+                    </div>
+                ) : null}
+
+                {arataDocumente ? (
+                    <div className="spatiu-documente-zone">
+                        <div className="spatiu-documente-row">
+                            <span className="spatiu-documente-label">Contract</span>
+                            <div className="spatiu-documente-summary">
+                                {contractActiv ? (
+                                    <>
+                                        <strong>{contractActiv.numar_contract}</strong>
+                                        <span>{contractActiv.chirias}</span>
+                                        <span>{contractActiv.perioada}</span>
+                                    </>
+                                ) : (
+                                    <span className="spatiu-documente-empty">Niciun contract adăugat</span>
+                                )}
+                            </div>
+                            <div className="spatiu-documente-actions">
+                                {contractActiv ? (
+                                    <Link className="secondary-button button-link" href={contractEditUrl}>Editează contract</Link>
+                                ) : (
+                                    <Link className="secondary-button button-link" href={contractCreateUrl}>+ Adaugă contract</Link>
+                                )}
+                            </div>
+                        </div>
+
+                        <div className="spatiu-documente-row">
+                            <span className="spatiu-documente-label">Anexă</span>
+                            <div className="spatiu-documente-summary spatiu-documente-summary-anexa">
+                                <select
+                                    className="spatiu-documente-select"
+                                    value={data.configurare_anexa_id}
+                                    onChange={(event) => setData('configurare_anexa_id', event.target.value)}
+                                    disabled={!data.imobil_id || configurariPentruImobil.length === 0}
+                                >
+                                    <option value="">{configurariPentruImobil.length ? 'Alege anexa alocată' : 'Nu există anexă pe imobil'}</option>
+                                    {configurariPentruImobil.map((configurare) => (
+                                        <option value={configurare.id} key={configurare.id}>{configurare.denumire}</option>
+                                    ))}
+                                </select>
+                                {anexaAlocataCurenta ? (
+                                    <span className="spatiu-documente-meta">
+                                        {anexaAlocataCurenta.linii_count ?? '—'} servicii
+                                        {(anexaAlocataCurenta.spatii_count ?? 0) > 1
+                                            ? ` · folosită de ${anexaAlocataCurenta.spatii_count} spații`
+                                            : ' · doar acest spațiu'}
+                                    </span>
+                                ) : (
+                                    <span className="spatiu-documente-empty">Nicio anexă alocată</span>
+                                )}
+                                {errors.configurare_anexa_id ? <small>{errors.configurare_anexa_id}</small> : null}
+                            </div>
+                            <div className="spatiu-documente-actions">
+                                {data.configurare_anexa_id ? (
+                                    <button type="button" className="secondary-button" onClick={openAnexaEditFlow}>Editează anexa</button>
+                                ) : null}
+                                <Link className="secondary-button button-link" href={anexaCreateUrl}>+ Adaugă anexă</Link>
+                            </div>
+                        </div>
+                    </div>
+                ) : null}
             </form>
+
+            {anexaEditDialogOpen && anexaAlocataCurenta ? (
+                <div className="spatiu-dialog-backdrop" onClick={() => setAnexaEditDialogOpen(false)}>
+                    <div className="spatiu-dialog-card" onClick={(event) => event.stopPropagation()} role="dialog" aria-modal="true" aria-labelledby="anexa-edit-dialog-title">
+                        <h3 id="anexa-edit-dialog-title">Anexa e folosită de {anexaAlocataCurenta.spatii_count} spații</h3>
+                        <p>
+                            Anexa «{anexaAlocataCurenta.denumire}» e alocată la mai multe spații.
+                            Modificările se pot aplica tuturor sau doar acestui spațiu.
+                        </p>
+                        <div className="spatiu-dialog-actions">
+                            <button type="button" className="primary-button" onClick={editAnexaPartajata}>
+                                Schimb anexa celor {anexaAlocataCurenta.spatii_count} spații
+                            </button>
+                            <button type="button" className="secondary-button" onClick={createAnexaIndividuala}>
+                                Creez anexă individuală doar pentru acest spațiu
+                            </button>
+                            <button type="button" className="secondary-button" onClick={() => setAnexaEditDialogOpen(false)}>
+                                Anulează
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            ) : null}
 
             {esteFatada && isEditing ? (
                 <FacadeRentalCalendar spatiuId={spatiu.id} />

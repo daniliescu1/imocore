@@ -23,7 +23,15 @@ function statusLabel(status) {
 }
 
 function showFaraAnexaIndicator(spatiu) {
-    return spatiu.status === 'inchiriat' && !spatiu.are_anexa_alocata;
+    return !spatiu.are_anexa_alocata;
+}
+
+function showFaraContractIndicator(spatiu) {
+    return spatiu.status === 'inchiriat' && !spatiu.are_contract_activ;
+}
+
+function showDocumentIndicator(spatiu) {
+    return showFaraAnexaIndicator(spatiu) || showFaraContractIndicator(spatiu);
 }
 
 function marcajRowClass(spatiu) {
@@ -178,10 +186,18 @@ function SpatiuRow({
                     </span>
                 </td>
             ) : null}
-            <td
-                className={`spatiu-anexa-indicator-cell${showFaraAnexaIndicator(spatiu) ? ' is-fara-anexa' : ''}`}
-                aria-hidden="true"
-            />
+            <td className="spatiu-indicator-cell" aria-hidden="true">
+                {showDocumentIndicator(spatiu) ? (
+                    <div className="spatiu-indicator-stripes">
+                        {showFaraAnexaIndicator(spatiu) ? (
+                            <span className="spatiu-indicator-stripe is-fara-anexa" title="Fără anexă" />
+                        ) : null}
+                        {showFaraContractIndicator(spatiu) ? (
+                            <span className="spatiu-indicator-stripe is-fara-contract" title="Fără contract activ" />
+                        ) : null}
+                    </div>
+                ) : null}
+            </td>
             <td className="spatiu-identificator-cell" title={spatiu.identificator}>
                 <Link className="table-name-link" href={`/spatii/${spatiu.id}/editare`} onClick={(event) => event.stopPropagation()}>{spatiu.identificator}</Link>
             </td>
@@ -362,7 +378,7 @@ export default function Index({ imobile = [], imobil = null, spatii = [], locali
         <thead>
             <tr>
                 {canReorderSpatii ? <th className="drag-handle-header" aria-label="Reordonează" /> : null}
-                <th className="spatiu-anexa-indicator-header" aria-hidden="true" />
+                <th className="spatiu-indicator-header" aria-hidden="true" />
                 <th className="spatiu-identificator-header">Identificat</th>
                 <th>Etaj</th>
                 <th>Suprafață</th>

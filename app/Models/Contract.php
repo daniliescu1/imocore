@@ -13,6 +13,8 @@ class Contract extends Model
         'spatiu_id',
         'numar_contract',
         'chirias',
+        'chirias_tip',
+        'chirias_date',
         'data_start',
         'data_end',
         'chirie',
@@ -25,6 +27,7 @@ class Contract extends Model
         'data_start' => 'date',
         'data_end' => 'date',
         'chirie' => 'decimal:2',
+        'chirias_date' => 'array',
     ];
 
     public function spatiu(): BelongsTo
