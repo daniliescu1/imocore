@@ -127,42 +127,47 @@ class BackupTest extends TestCase
 
     public function test_backup_download_returns_files(): void
     {
+        Carbon::setTestNow('2026-06-17 15:24:00');
+
         $spatiu = $this->seedSpatiu();
         $this->post(route('backup.store'));
 
         $filename = $spatiu->imobil_id.'-imobil-backup.csv';
+        $dateLabel = '2026-06-17-15-24';
 
         $this->get(route('backup.download', ['date' => 'manual', 'type' => 'database']))
             ->assertOk()
-            ->assertDownload('imocore-database-manual.sqlite');
+            ->assertDownload("imocore-database-{$dateLabel}.sqlite");
 
         $this->get(route('backup.download', ['date' => 'manual', 'type' => 'imobile']))
             ->assertOk()
-            ->assertDownload('imocore-imobile-manual.csv');
+            ->assertDownload("imocore-imobile-{$dateLabel}.csv");
 
         $this->get(route('backup.download.spatii', ['date' => 'manual', 'file' => $filename]))
             ->assertOk()
-            ->assertDownload("imocore-spatii-{$spatiu->imobil_id}-imobil-backup-manual.csv");
+            ->assertDownload("imocore-spatii-{$spatiu->imobil_id}-imobil-backup-{$dateLabel}.csv");
 
         $this->get(route('backup.download', ['date' => 'manual', 'type' => 'chiriasi']))
             ->assertOk()
-            ->assertDownload('imocore-chiriasi-manual.csv');
+            ->assertDownload("imocore-chiriasi-{$dateLabel}.csv");
 
         $this->get(route('backup.download', ['date' => 'manual', 'type' => 'spatii-toate']))
             ->assertOk()
-            ->assertDownload('imocore-spatii-toate-manual.csv');
+            ->assertDownload("imocore-spatii-toate-{$dateLabel}.csv");
 
         $this->get(route('backup.download', ['date' => 'manual', 'type' => 'spatii-marcate']))
             ->assertOk()
-            ->assertDownload('imocore-spatii-marcate-manual.csv');
+            ->assertDownload("imocore-spatii-marcate-{$dateLabel}.csv");
 
         $this->get(route('backup.download', ['date' => 'manual', 'type' => 'spatii-fara-anexa']))
             ->assertOk()
-            ->assertDownload('imocore-spatii-fara-anexa-manual.csv');
+            ->assertDownload("imocore-spatii-fara-anexa-{$dateLabel}.csv");
 
         $this->get(route('backup.download', ['date' => 'manual', 'type' => 'spatii-fara-contract-activ']))
             ->assertOk()
-            ->assertDownload('imocore-spatii-fara-contract-activ-manual.csv');
+            ->assertDownload("imocore-spatii-fara-contract-activ-{$dateLabel}.csv");
+
+        Carbon::setTestNow();
     }
 
     public function test_on_demand_marcate_fara_anexa_and_fara_contract_activ_downloads_return_csv(): void

@@ -44,7 +44,7 @@ class BackupController extends Controller
         $filename = $backupService->downloadFilename($date, $type);
 
         if (str_ends_with($path, '.sql')) {
-            $filename = "imocore-database-{$date}.sql";
+            $filename = 'imocore-database-'.$backupService->downloadDateLabel($date).'.sql';
         }
 
         return response()->download($path, $filename, [

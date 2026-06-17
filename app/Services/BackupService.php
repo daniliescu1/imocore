@@ -271,14 +271,16 @@ class BackupService
 
     public function downloadFilename(string $date, string $type): string
     {
+        $dateLabel = $this->downloadDateLabel($date);
+
         return match ($type) {
-            'database' => "imocore-database-{$date}.sqlite",
-            'imobile' => "imocore-imobile-{$date}.csv",
-            'chiriasi' => "imocore-chiriasi-{$date}.csv",
-            'spatii-toate' => "imocore-spatii-toate-{$date}.csv",
-            'spatii-marcate' => "imocore-spatii-marcate-{$date}.csv",
-            'spatii-fara-anexa' => "imocore-spatii-fara-anexa-{$date}.csv",
-            'spatii-fara-contract-activ' => "imocore-spatii-fara-contract-activ-{$date}.csv",
+            'database' => "imocore-database-{$dateLabel}.sqlite",
+            'imobile' => "imocore-imobile-{$dateLabel}.csv",
+            'chiriasi' => "imocore-chiriasi-{$dateLabel}.csv",
+            'spatii-toate' => "imocore-spatii-toate-{$dateLabel}.csv",
+            'spatii-marcate' => "imocore-spatii-marcate-{$dateLabel}.csv",
+            'spatii-fara-anexa' => "imocore-spatii-fara-anexa-{$dateLabel}.csv",
+            'spatii-fara-contract-activ' => "imocore-spatii-fara-contract-activ-{$dateLabel}.csv",
             default => abort(404),
         };
     }
@@ -286,8 +288,25 @@ class BackupService
     public function spatiiDownloadFilename(string $date, string $file): string
     {
         $baseName = pathinfo($file, PATHINFO_FILENAME);
+        $dateLabel = $this->downloadDateLabel($date);
 
-        return "imocore-spatii-{$baseName}-{$date}.csv";
+        return "imocore-spatii-{$baseName}-{$dateLabel}.csv";
+    }
+
+    public function downloadDateLabel(string $date): string
+    {
+        $directory = $this->backupRoot().DIRECTORY_SEPARATOR.$date;
+        $createdAt = $this->readManifest($directory)['created_at'] ?? null;
+
+        if (is_string($createdAt) && $createdAt !== '') {
+            try {
+                return Carbon::parse($createdAt)->format('Y-m-d-H-i');
+            } catch (\Throwable) {
+                // Fallback below keeps old backups downloadable if metadata is malformed.
+            }
+        }
+
+        return $date;
     }
 
     public function pruneOldBackups(int $days = self::RETENTION_DAYS): void
