@@ -87,6 +87,7 @@ class ContractChiriasData
                 'cont_bancar' => $pj['cont_bancar'] ?: null,
                 'administrator' => [
                     'nume_complet' => $admin['nume_complet'] ?: null,
+                    'calitate' => ($admin['calitate'] ?? null) ?: 'administrator',
                     'serie_ci' => $admin['serie_ci'] ?: null,
                     'numar_ci' => $admin['numar_ci'] ?: null,
                     'cnp' => $admin['cnp'] ?: null,
@@ -211,7 +212,8 @@ class ContractChiriasData
             'chirias_pj.cont_bancar' => ['nullable', 'string', 'max:100'],
             'chirias_pj.administrator' => ['required', 'array'],
             'chirias_pj.administrator.nume_complet' => ['required', 'string', 'max:255'],
-            'chirias_pj.administrator.serie_ci' => ['nullable', 'string', 'max:10'],
+            'chirias_pj.administrator.calitate' => ['nullable', 'in:administrator,imputernicit_notarial'],
+            'chirias_pj.administrator.serie_ci' => ['nullable', 'string', 'max:500'],
             'chirias_pj.administrator.numar_ci' => ['nullable', 'string', 'max:20'],
             'chirias_pj.administrator.cnp' => ['nullable', 'string', 'max:13'],
             'chirias_pj.administrator.domiciliu' => ['nullable', 'string', 'max:500'],
@@ -237,6 +239,7 @@ class ContractChiriasData
                 'cont_bancar' => ($pj['cont_bancar'] ?? null) ?: null,
                 'administrator' => [
                     'nume_complet' => $admin['nume_complet'],
+                    'calitate' => ($admin['calitate'] ?? null) ?: 'administrator',
                     'serie_ci' => ($admin['serie_ci'] ?? null) ?: null,
                     'numar_ci' => ($admin['numar_ci'] ?? null) ?: null,
                     'cnp' => ($admin['cnp'] ?? null) ?: null,
@@ -294,6 +297,7 @@ class ContractChiriasData
     {
         return [
             'nume_complet' => '',
+            'calitate' => 'administrator',
             'serie_ci' => '',
             'numar_ci' => '',
             'cnp' => '',

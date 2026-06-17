@@ -140,6 +140,7 @@ const emptyPf = {
 
 const emptyAdministrator = {
     nume_complet: '',
+    calitate: 'administrator',
     serie_ci: '',
     numar_ci: '',
     cnp: '',
@@ -543,7 +544,15 @@ export default function Form({
                             <div className="contract-chirias-subsection">
                                 <h3>Reprezentată legal prin</h3>
                                 <div className="form-grid form-grid-chirias">
-                                    <PfField label="Nume complet" value={data.chirias_pj.administrator.nume_complet} onChange={(value) => updateAdministrator('nume_complet', value)} error={errors['chirias_pj.administrator.nume_complet']} required incomplete={fieldIncomplete('chirias_pj.administrator.nume_complet')} />
+                                    <PfField label="Nume complet" value={data.chirias_pj.administrator.nume_complet} onChange={(value) => updateAdministrator('nume_complet', value)} error={errors['chirias_pj.administrator.nume_complet']} required incomplete={fieldIncomplete('chirias_pj.administrator.nume_complet')} gridSpan={1} />
+                                    <label className="form-field form-grid-span-1">
+                                        <span>În calitate de</span>
+                                        <select value={data.chirias_pj.administrator.calitate || 'administrator'} onChange={(event) => updateAdministrator('calitate', event.target.value)}>
+                                            <option value="administrator">Administrator</option>
+                                            <option value="imputernicit_notarial">Împuternicit notarial</option>
+                                        </select>
+                                        {errors['chirias_pj.administrator.calitate'] ? <small>{errors['chirias_pj.administrator.calitate']}</small> : null}
+                                    </label>
                                     <PfField label="Serie CI Număr CI, eliberat de, la data." value={data.chirias_pj.administrator.serie_ci} onChange={(value) => updateAdministrator('serie_ci', value)} error={errors['chirias_pj.administrator.serie_ci']} />
                                     <PfField label="Domiciliu" value={data.chirias_pj.administrator.domiciliu} onChange={(value) => updateAdministrator('domiciliu', value)} error={errors['chirias_pj.administrator.domiciliu']} />
                                     <PfField label="CNP" value={data.chirias_pj.administrator.cnp} onChange={(value) => updateAdministrator('cnp', value)} error={errors['chirias_pj.administrator.cnp']} gridSpan={1} />

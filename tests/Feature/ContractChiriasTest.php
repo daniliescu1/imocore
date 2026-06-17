@@ -107,7 +107,8 @@ class ContractChiriasTest extends TestCase
                 'cui' => 'RO12345678',
                 'administrator' => [
                     'nume_complet' => 'Maria Ionescu',
-                    'serie_ci' => 'TM',
+                    'calitate' => 'imputernicit_notarial',
+                    'serie_ci' => 'seria TM nr. 654321, eliberat de SPCLEP, la data de 01.01.2020',
                     'numar_ci' => '654321',
                     'cnp' => '2980101123456',
                     'domiciliu' => 'Timișoara, str. Admin 3',
@@ -131,6 +132,8 @@ class ContractChiriasTest extends TestCase
         $this->assertSame('BCR', $contract->chirias_date['banca']);
         $this->assertSame('RO49RNCB0000000000000001', $contract->chirias_date['cont_bancar']);
         $this->assertSame('Maria Ionescu', $contract->chirias_date['administrator']['nume_complet']);
+        $this->assertSame('imputernicit_notarial', $contract->chirias_date['administrator']['calitate']);
+        $this->assertSame('seria TM nr. 654321, eliberat de SPCLEP, la data de 01.01.2020', $contract->chirias_date['administrator']['serie_ci']);
         $this->assertSame('SC Exemplu SRL', $spatiu->fresh()->chirias);
     }
 
@@ -181,6 +184,7 @@ class ContractChiriasTest extends TestCase
 
         $this->assertSame('activ', $contract->status);
         $this->assertSame('Maria Ionescu', $contract->chirias_date['administrator']['nume_complet']);
+        $this->assertSame('administrator', $contract->chirias_date['administrator']['calitate']);
         $this->assertNull($contract->chirias_date['administrator']['serie_ci']);
         $this->assertNull($contract->chirias_date['administrator']['cnp']);
         $this->assertNull($contract->chirias_date['administrator']['domiciliu']);
