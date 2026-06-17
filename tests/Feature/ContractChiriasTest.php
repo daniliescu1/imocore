@@ -134,6 +134,58 @@ class ContractChiriasTest extends TestCase
         $this->assertSame('SC Exemplu SRL', $spatiu->fresh()->chirias);
     }
 
+    public function test_contract_pj_are_obligatoriu_doar_numele_reprezentantului_legal(): void
+    {
+        $imobil = Imobil::query()->create([
+            'nume' => '700 Office',
+            'strada' => 'Strada Test',
+            'numar' => '1',
+            'localitate' => 'Timișoara',
+        ]);
+
+        $spatiu = Spatiu::query()->create([
+            'imobil_id' => $imobil->id,
+            'identificator' => 'D205B',
+            'status' => 'liber',
+            'ordine' => 1,
+        ]);
+
+        $this->post('/contracte', [
+            'spatiu_id' => $spatiu->id,
+            ...$this->contractRequiredFields(),
+            'numar_contract' => 'C-PJ-ADMIN-MIN',
+            'chirias_tip' => 'pj',
+            'chirias_pj' => [
+                'denumire' => 'SC Minimal Admin SRL',
+                'sediu_social' => 'Timișoara',
+                'telefon' => '0256000000',
+                'email' => 'office@minimal.ro',
+                'nr_reg_comert' => 'J35/123/2020',
+                'cui' => 'RO12345678',
+                'administrator' => [
+                    'nume_complet' => 'Maria Ionescu',
+                    'serie_ci' => '',
+                    'numar_ci' => '',
+                    'cnp' => '',
+                    'domiciliu' => '',
+                    'email' => '',
+                    'telefon' => '',
+                ],
+            ],
+            'data_start' => '2025-01-01',
+            'chirie' => 1200,
+            'moneda' => 'EUR',
+        ])->assertRedirect('/contracte');
+
+        $contract = Contract::query()->firstOrFail();
+
+        $this->assertSame('activ', $contract->status);
+        $this->assertSame('Maria Ionescu', $contract->chirias_date['administrator']['nume_complet']);
+        $this->assertNull($contract->chirias_date['administrator']['serie_ci']);
+        $this->assertNull($contract->chirias_date['administrator']['cnp']);
+        $this->assertNull($contract->chirias_date['administrator']['domiciliu']);
+    }
+
     public function test_edit_contract_pastreaza_tipul_salvat(): void
     {
         $imobil = Imobil::query()->create([

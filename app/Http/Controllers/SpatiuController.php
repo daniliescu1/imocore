@@ -677,6 +677,7 @@ class SpatiuController extends Controller
     {
         return ConfigurareAnexaImobil::query()
             ->where('activ', true)
+            ->withCount(['linii', 'spatii'])
             ->orderByDesc('implicit')
             ->orderBy('denumire')
             ->get(['id', 'imobil_id', 'denumire', 'implicit'])
@@ -685,8 +686,8 @@ class SpatiuController extends Controller
                 'id' => $configurare->id,
                 'implicit' => $configurare->implicit,
                 'denumire' => $configurare->implicit ? "{$configurare->denumire} (implicită)" : $configurare->denumire,
-                'linii_count' => $configurare->linii()->count(),
-                'spatii_count' => Spatiu::query()->where('configurare_anexa_id', $configurare->id)->count(),
+                'linii_count' => $configurare->linii_count,
+                'spatii_count' => $configurare->spatii_count,
             ])->values());
     }
 }

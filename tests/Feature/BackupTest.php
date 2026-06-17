@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\Imobil;
+use App\Models\Contract;
 use App\Models\Spatiu;
 use App\Services\BackupService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -44,6 +45,7 @@ class BackupTest extends TestCase
                 ->component('Backup/Index')
                 ->has('backups', 1)
                 ->has('backups.0.spatii_files', 1)
+                ->where('backups.0.database_format', 'sqlite')
                 ->where('backups.0.trigger', 'manual')
                 ->where('retentionDays', 7));
     }
@@ -68,6 +70,13 @@ class BackupTest extends TestCase
         $this->assertFileExists($directory.'/'.BackupService::ALL_SPATII_CSV_FILENAME);
         $this->assertFileExists($directory.'/'.BackupService::MARCATE_SPATII_CSV_FILENAME);
         $this->assertFileExists($directory.'/'.BackupService::FARA_ANEXA_SPATII_CSV_FILENAME);
+        $this->assertFileExists($directory.'/'.BackupService::FARA_CONTRACT_ACTIV_SPATII_CSV_FILENAME);
+
+        $manifest = json_decode(File::get($directory.'/manifest.json'), true);
+        $this->assertSame('sqlite', $manifest['database_format']);
+        $this->assertSame('database.sqlite', $manifest['database']);
+        $this->assertArrayHasKey('imobile', $manifest['database_table_counts']);
+        $this->assertArrayHasKey('spatii', $manifest['database_table_counts']);
 
         $imobileCsv = File::get($directory.'/imobile.csv');
         $spatiiCsv = File::get($imobilCsv);
@@ -150,9 +159,13 @@ class BackupTest extends TestCase
         $this->get(route('backup.download', ['date' => 'manual', 'type' => 'spatii-fara-anexa']))
             ->assertOk()
             ->assertDownload('imocore-spatii-fara-anexa-manual.csv');
+
+        $this->get(route('backup.download', ['date' => 'manual', 'type' => 'spatii-fara-contract-activ']))
+            ->assertOk()
+            ->assertDownload('imocore-spatii-fara-contract-activ-manual.csv');
     }
 
-    public function test_on_demand_marcate_and_fara_anexa_downloads_return_csv(): void
+    public function test_on_demand_marcate_fara_anexa_and_fara_contract_activ_downloads_return_csv(): void
     {
         $this->seedSpatiu();
 
@@ -163,6 +176,10 @@ class BackupTest extends TestCase
         $this->get(route('backup.download.spatii-fara-anexa'))
             ->assertOk()
             ->assertDownload('imocore-spatii-fara-anexa-'.now()->format('Y-m-d').'.csv');
+
+        $this->get(route('backup.download.spatii-fara-contract-activ'))
+            ->assertOk()
+            ->assertDownload('imocore-spatii-fara-contract-activ-'.now()->format('Y-m-d').'.csv');
     }
 
     public function test_marcate_spatii_csv_exports_only_marked_spaces(): void
@@ -219,6 +236,64 @@ class BackupTest extends TestCase
         $this->assertSame('Fara anexa', $csv['rows'][0][0]);
         $this->assertSame($spatiu->identificator, $csv['rows'][0][4]);
         $this->assertSame('', $csv['rows'][0][count($csv['headers']) - 2]);
+    }
+
+    public function test_fara_contract_activ_spatii_csv_exports_only_spaces_without_current_active_contract(): void
+    {
+        Carbon::setTestNow('2026-06-17 10:00:00');
+
+        $spatiuFaraContract = $this->seedSpatiu();
+
+        $spatiuCuContractActiv = Spatiu::query()->create([
+            'imobil_id' => $spatiuFaraContract->imobil_id,
+            'identificator' => 'B102',
+            'status' => 'inchiriat',
+            'moneda' => 'EUR',
+            'ordine' => 2,
+        ]);
+
+        Contract::query()->create([
+            'spatiu_id' => $spatiuCuContractActiv->id,
+            'numar_contract' => 'ACT-1',
+            'chirias' => 'Chirias activ',
+            'data_start' => '2026-01-01',
+            'data_end' => '2026-12-31',
+            'chirie' => 100,
+            'moneda' => 'EUR',
+            'status' => 'activ',
+        ]);
+
+        $spatiuCuContractExpirat = Spatiu::query()->create([
+            'imobil_id' => $spatiuFaraContract->imobil_id,
+            'identificator' => 'B103',
+            'status' => 'inchiriat',
+            'moneda' => 'EUR',
+            'ordine' => 3,
+        ]);
+
+        Contract::query()->create([
+            'spatiu_id' => $spatiuCuContractExpirat->id,
+            'numar_contract' => 'EXP-1',
+            'chirias' => 'Chirias expirat',
+            'data_start' => '2025-01-01',
+            'data_end' => '2025-12-31',
+            'chirie' => 100,
+            'moneda' => 'EUR',
+            'status' => 'activ',
+        ]);
+
+        $this->post(route('backup.store'));
+
+        $csv = BackupExportValidator::parseCsvFile(
+            storage_path('app/backups/manual/'.BackupService::FARA_CONTRACT_ACTIV_SPATII_CSV_FILENAME)
+        );
+
+        $this->assertCount(2, $csv['rows']);
+        $this->assertSame('Fara contract activ', $csv['rows'][0][0]);
+        $this->assertSame($spatiuFaraContract->identificator, $csv['rows'][0][4]);
+        $this->assertSame($spatiuCuContractExpirat->identificator, $csv['rows'][1][4]);
+
+        Carbon::setTestNow();
     }
 
     public function test_on_demand_all_spatii_download_returns_csv(): void

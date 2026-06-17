@@ -101,6 +101,14 @@ function prefetchTarget(target) {
     }
 }
 
+function prefetchElement(element) {
+    if (!(element instanceof Element)) {
+        return;
+    }
+
+    prefetchInternalHref(element.getAttribute('href') || element.getAttribute('data-prefetch-href'));
+}
+
 function isActive(url, href) {
     if (href === '/') {
         return url === '/';
@@ -311,6 +319,38 @@ export default function AppLayout({
             cancelIdle(idleId);
             scheduledTimeouts.forEach((timeoutId) => window.clearTimeout(timeoutId));
         };
+    }, [url]);
+
+    useEffect(() => {
+        const elements = Array.from(document.querySelectorAll('a[href], [data-prefetch-href]'))
+            .filter((element) => {
+                const href = element.getAttribute('href') || element.getAttribute('data-prefetch-href');
+
+                return Boolean(normalizedInternalHref(href));
+            });
+
+        if (!('IntersectionObserver' in window)) {
+            elements.slice(0, 80).forEach(prefetchElement);
+            return undefined;
+        }
+
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach((entry) => {
+                if (!entry.isIntersecting) {
+                    return;
+                }
+
+                prefetchElement(entry.target);
+                observer.unobserve(entry.target);
+            });
+        }, {
+            rootMargin: '700px 0px',
+            threshold: 0.01,
+        });
+
+        elements.forEach((element) => observer.observe(element));
+
+        return () => observer.disconnect();
     }, [url]);
 
     return (

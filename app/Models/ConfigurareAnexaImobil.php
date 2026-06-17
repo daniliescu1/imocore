@@ -32,4 +32,9 @@ class ConfigurareAnexaImobil extends Model
     {
         return $this->hasMany(ConfigurareAnexaLinie::class, 'configurare_anexa_id')->orderBy('ordine')->orderBy('id');
     }
+
+    public function spatii(): HasMany
+    {
+        return $this->hasMany(Spatiu::class, 'configurare_anexa_id');
+    }
 }

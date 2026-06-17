@@ -69,6 +69,7 @@ export default function BackupIndex({
     allSpatiiDownloadUrl = null,
     marcateSpatiiDownloadUrl = null,
     faraAnexaSpatiiDownloadUrl = null,
+    faraContractActivSpatiiDownloadUrl = null,
 }) {
     const topbarActions = (
         <>
@@ -85,6 +86,11 @@ export default function BackupIndex({
             {faraAnexaSpatiiDownloadUrl ? (
                 <a className="secondary-button button-link" href={faraAnexaSpatiiDownloadUrl}>
                     Descarcă spații fără anexă
+                </a>
+            ) : null}
+            {faraContractActivSpatiiDownloadUrl ? (
+                <a className="secondary-button button-link" href={faraContractActivSpatiiDownloadUrl}>
+                    Descarcă spații fără contract activ
                 </a>
             ) : null}
             <button
@@ -139,9 +145,7 @@ export default function BackupIndex({
                                 <th>Data și ora</th>
                                 <th>Tip</th>
                                 <th>Bază de date</th>
-                                <th>CSV imobile</th>
                                 <th>CSV spații</th>
-                                <th>CSV chiriași</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -153,16 +157,8 @@ export default function BackupIndex({
                                         <DownloadLink
                                             href={backup.database_url}
                                             icon={HardDriveDownload}
-                                            label="Descarcă DB"
+                                            label={backup.database_format === 'sqlite' ? 'Descarcă DB SQLite' : 'Descarcă DB'}
                                             size={backup.database_size}
-                                        />
-                                    </td>
-                                    <td>
-                                        <DownloadLink
-                                            href={backup.imobile_csv_url}
-                                            icon={Download}
-                                            label="Descarcă imobile"
-                                            size={backup.imobile_csv_size}
                                         />
                                     </td>
                                     <td>
@@ -185,31 +181,19 @@ export default function BackupIndex({
                                                 label="Descarcă spații fără anexă"
                                                 size={backup.spatii_fara_anexa_csv_size}
                                             />
-                                            {(backup.spatii_files || []).map((file) => (
-                                                <DownloadLink
-                                                    key={file.filename}
-                                                    href={file.url}
-                                                    icon={Download}
-                                                    label={file.imobil}
-                                                    size={file.size}
-                                                />
-                                            ))}
-                                            {(backup.spatii_files || []).length === 0 ? <span>—</span> : null}
+                                            <DownloadLink
+                                                href={backup.spatii_fara_contract_activ_csv_url}
+                                                icon={Download}
+                                                label="Descarcă spații fără contract activ"
+                                                size={backup.spatii_fara_contract_activ_csv_size}
+                                            />
                                         </div>
-                                    </td>
-                                    <td>
-                                        <DownloadLink
-                                            href={backup.chiriasi_csv_url}
-                                            icon={Download}
-                                            label="Descarcă chiriași"
-                                            size={backup.chiriasi_csv_size}
-                                        />
                                     </td>
                                 </tr>
                             ))}
                             {backups.length === 0 ? (
                                 <tr>
-                                    <td colSpan="6">
+                                    <td colSpan="4">
                                         Nu există backup-uri încă. Apasă <strong>Backup acum</strong> ca să creezi primul fișier,
                                         apoi îl vei putea descărca direct din tabel.
                                     </td>

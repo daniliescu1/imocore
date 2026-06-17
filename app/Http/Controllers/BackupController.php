@@ -25,6 +25,7 @@ class BackupController extends Controller
             'allSpatiiDownloadUrl' => route('backup.download.spatii-toate'),
             'marcateSpatiiDownloadUrl' => route('backup.download.spatii-marcate'),
             'faraAnexaSpatiiDownloadUrl' => route('backup.download.spatii-fara-anexa'),
+            'faraContractActivSpatiiDownloadUrl' => route('backup.download.spatii-fara-contract-activ'),
         ]);
     }
 
@@ -94,6 +95,16 @@ class BackupController extends Controller
             fn (string $path, string $exportDate) => $backupService->exportFaraAnexaSpatiiCsv($path, $exportDate),
             'spatii-fara-anexa-',
             $backupService->onDemandFaraAnexaSpatiiDownloadFilename(),
+        );
+    }
+
+    public function downloadFaraContractActivSpatii(BackupService $backupService): BinaryFileResponse
+    {
+        return $this->downloadOnDemandSpatiiCsv(
+            $backupService,
+            fn (string $path, string $exportDate) => $backupService->exportFaraContractActivSpatiiCsv($path, $exportDate),
+            'spatii-fara-contract-activ-',
+            $backupService->onDemandFaraContractActivSpatiiDownloadFilename(),
         );
     }
 
