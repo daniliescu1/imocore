@@ -201,8 +201,6 @@ function DateField({ label, value, onChange, error, incomplete = false, required
                     inputMode="numeric"
                     placeholder="zz/ll/aaaa"
                     value={formatDateForDisplay(value)}
-                    onFocus={openCalendar}
-                    onClick={openCalendar}
                     onChange={handleTextChange}
                 />
                 <input

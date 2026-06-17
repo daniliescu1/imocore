@@ -395,6 +395,90 @@ class ContractChiriasTest extends TestCase
         $this->assertSame($configurare->id, $spatiu->fresh()->configurare_anexa_id);
     }
 
+    public function test_contract_update_salveaza_cresterea_de_chirie(): void
+    {
+        $imobil = Imobil::query()->create([
+            'nume' => '700 Office',
+            'strada' => 'Strada Test',
+            'numar' => '1',
+            'localitate' => 'Timișoara',
+        ]);
+
+        $spatiu = Spatiu::query()->create([
+            'imobil_id' => $imobil->id,
+            'identificator' => 'D208B',
+            'status' => 'inchiriat',
+            'ordine' => 1,
+        ]);
+
+        $locator = Locator::query()->create(['nume' => 'Locator Update SRL']);
+        $spatiu->update([
+            'locator_id' => $locator->id,
+            'locator' => $locator->nume,
+        ]);
+
+        $contract = Contract::query()->create([
+            'spatiu_id' => $spatiu->id,
+            'numar_contract' => 'C-UPDATE-RENT',
+            'chirias' => 'SC Rent Update SRL',
+            'chirias_tip' => 'pj',
+            'chirias_date' => [
+                'sediu_social' => 'Timișoara',
+                'telefon' => '0256000000',
+                'email' => 'office@rent-update.ro',
+                'nr_reg_comert' => 'J35/123/2020',
+                'cui' => 'RO12345678',
+                'administrator' => [
+                    'nume_complet' => 'Maria Ionescu',
+                    'calitate' => 'administrator',
+                ],
+            ],
+            'data_start' => '2026-03-17',
+            'data_end' => '2028-04-30',
+            'chirie' => 1600,
+            'moneda' => 'EUR',
+            'status' => 'activ',
+        ]);
+
+        $this->put(route('contracte.update', $contract), [
+            'spatiu_id' => $spatiu->id,
+            'locator_id' => $locator->id,
+            'numar_contract' => 'C-UPDATE-RENT',
+            'chirias_tip' => 'pj',
+            'chirias_pj' => [
+                'denumire' => 'SC Rent Update SRL',
+                'sediu_social' => 'Timișoara',
+                'telefon' => '0256000000',
+                'email' => 'office@rent-update.ro',
+                'nr_reg_comert' => 'J35/123/2020',
+                'cui' => 'RO12345678',
+                'administrator' => [
+                    'nume_complet' => 'Maria Ionescu',
+                    'calitate' => 'administrator',
+                ],
+            ],
+            'data_start' => '17/03/2026',
+            'data_end' => '30/04/2028',
+            'chirie' => 1600,
+            'crestere_chirie_la' => 1800,
+            'data_crestere_chirie' => '22/01/2028',
+            'moneda' => 'EUR',
+        ])->assertRedirect('/contracte');
+
+        $contract->refresh();
+
+        $this->assertSame('activ', $contract->status);
+        $this->assertSame('1800.00', $contract->crestere_chirie_la);
+        $this->assertSame('2028-01-22', $contract->data_crestere_chirie->format('Y-m-d'));
+
+        $this->get(route('contracte.edit', $contract))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('contract.crestere_chirie_la', '1800.00')
+                ->where('contract.data_crestere_chirie', '2028-01-22')
+            );
+    }
+
     public function test_contract_incomplet_se_salveaza_fara_a_marca_spatiul_inchiriat(): void
     {
         $imobil = Imobil::query()->create([
