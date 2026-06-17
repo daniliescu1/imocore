@@ -301,7 +301,9 @@ export default function Form({
         return contract?.missing_field_keys || [];
     }, [contract?.missing_field_keys, data, isActiveContract, isEditing, isIncompleteContract]);
     const missingLabels = missingKeys.map((key) => fieldLabels[key] || key);
-    const showIncompleteHints = isIncompleteContract || (isEditing && missingKeys.length > 0);
+    const hasMissingFields = missingKeys.length > 0;
+    const showIncompleteState = isIncompleteContract && hasMissingFields;
+    const showIncompleteHints = showIncompleteState || (isEditing && hasMissingFields);
     const fieldIncomplete = (key) => showIncompleteHints && missingKeys.includes(key);
 
     function fieldClassName(key, extra = '') {
@@ -391,8 +393,10 @@ export default function Form({
     const editTitle = isEditing ? `Editare contract ${contract.numar_contract || ''}`.trim() : '';
     const contractStatusBadge = isEditing && isActiveContract ? (
         <span className="contract-status-topbar-badge contract-status-topbar-badge-activ">Activ. Date complete.</span>
-    ) : isEditing && isIncompleteContract ? (
+    ) : isEditing && showIncompleteState ? (
         <span className="contract-status-topbar-badge contract-status-topbar-badge-incomplet">Incomplet</span>
+    ) : isEditing && isIncompleteContract ? (
+        <span className="contract-status-topbar-badge contract-status-topbar-badge-activ">Date complete.</span>
     ) : null;
     const topbarTitle = isEditing ? (
         <div className="topbar-page-title">
@@ -407,12 +411,10 @@ export default function Form({
     return (
         <AppLayout title={isEditing ? editTitle : 'Adaugă contract'} subtitle="Alege imobilul, apoi spațiul; datele spațiului completează contractul." showGlobalSearch={false} topbarActions={topbarActions} topbarTitle={topbarTitle}>
             <form className="form-card" onSubmit={submit}>
-                {isEditing && isIncompleteContract ? (
+                {isEditing && showIncompleteState ? (
                     <div className="contract-status-banner contract-status-banner-incomplet">
                         <span>
-                            {missingLabels.length
-                                ? `Contract Incomplet. Mai trebuie: ${missingLabels.slice(0, 5).join(', ')}${missingLabels.length > 5 ? ` (+${missingLabels.length - 5})` : ''}`
-                                : 'Datele par complete. Apasă Salvează contract pentru activare.'}
+                            {`Contract Incomplet. Mai trebuie: ${missingLabels.slice(0, 5).join(', ')}${missingLabels.length > 5 ? ` (+${missingLabels.length - 5})` : ''}`}
                         </span>
                     </div>
                 ) : null}
