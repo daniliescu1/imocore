@@ -7,6 +7,7 @@ use App\Models\AnexaLinie;
 use App\Models\CitireContor;
 use App\Models\Contract;
 use App\Models\ConfigurareAnexaLinie;
+use App\Models\Imobil;
 use App\Models\Spatiu;
 use Carbon\Carbon;
 use Illuminate\Http\RedirectResponse;
@@ -33,11 +34,10 @@ class AnexaController extends Controller
                 'total' => $anexa->total,
                 'status' => $anexa->status,
             ]);
-        $rezumatImobile = $this->rezumatImobile();
 
         return Inertia::render('Anexe/Index', [
             'anexe' => $anexe,
-            'rezumatImobile' => $rezumatImobile,
+            'rezumatImobile' => Inertia::defer(fn () => $this->rezumatImobile(), 'summary'),
             'lunaImplicita' => now()->format('Y-m'),
             'contracteEligibile' => $contracteEligibile,
         ]);
@@ -114,24 +114,32 @@ class AnexaController extends Controller
 
     private function rezumatImobile(): array
     {
-        return \App\Models\Imobil::query()
+        $anexePeImobil = Anexa::query()
+            ->join('contracte', 'contracte.id', '=', 'anexe.contract_id')
+            ->join('spatii', 'spatii.id', '=', 'contracte.spatiu_id')
+            ->select('spatii.imobil_id')
+            ->selectRaw('count(anexe.id) as anexe_generate')
+            ->selectRaw('coalesce(sum(anexe.total), 0) as total_generat')
+            ->groupBy('spatii.imobil_id')
+            ->get()
+            ->keyBy('imobil_id');
+
+        return Imobil::query()
             ->withCount([
                 'spatii as spatii_inchiriate_count' => fn ($query) => $query->where('status', 'inchiriat'),
             ])
             ->orderBy('nume')
             ->get()
-            ->map(function (\App\Models\Imobil $imobil): array {
-                $anexe = Anexa::query()
-                    ->whereHas('contract.spatiu', fn ($query) => $query->where('imobil_id', $imobil->id))
-                    ->get(['id', 'total']);
+            ->map(function (Imobil $imobil) use ($anexePeImobil): array {
+                $anexe = $anexePeImobil->get($imobil->id);
 
                 return [
                     'id' => $imobil->id,
                     'nume' => $imobil->nume,
                     'localitate' => $imobil->localitate,
                     'spatii_inchiriate' => $imobil->spatii_inchiriate_count,
-                    'anexe_generate' => $anexe->count(),
-                    'total_generat' => $anexe->sum(fn (Anexa $anexa): float => (float) $anexa->total),
+                    'anexe_generate' => (int) ($anexe?->anexe_generate ?? 0),
+                    'total_generat' => (float) ($anexe?->total_generat ?? 0),
                 ];
             })
             ->all();

@@ -21,8 +21,11 @@ export default function Index({ locatori }) {
                             </tr>
                         </thead>
                         <tbody>
-                            {locatori.map((locator) => (
-                                <tr key={locator.id} className="clickable-row" onClick={() => router.visit(`/locatori/${locator.id}/editare`)}>
+                            {locatori.map((locator) => {
+                                const locatorHref = `/locatori/${locator.id}/editare`;
+
+                                return (
+                                <tr key={locator.id} className="clickable-row" data-prefetch-href={locatorHref} onClick={() => router.visit(locatorHref)}>
                                     <td><span className="table-name-link">{locator.nume}</span></td>
                                     <td>{locator.cui || '—'}</td>
                                     <td>{locator.chirie_cu_tva}</td>
@@ -30,7 +33,8 @@ export default function Index({ locatori }) {
                                     <td>{locator.spatii_count}</td>
                                     <td>{locator.spatii || '—'}</td>
                                 </tr>
-                            ))}
+                                );
+                            })}
                             {locatori.length === 0 ? (
                                 <tr>
                                     <td colSpan="6">Nu există locatori încă.</td>

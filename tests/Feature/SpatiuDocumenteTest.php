@@ -6,6 +6,7 @@ use App\Models\ConfigurareAnexaImobil;
 use App\Models\ConfigurareAnexaLinie;
 use App\Models\Contract;
 use App\Models\Imobil;
+use App\Models\Locator;
 use App\Models\Spatiu;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Inertia\Testing\AssertableInertia as Assert;
@@ -263,11 +264,16 @@ class SpatiuDocumenteTest extends TestCase
             'status' => 'liber',
             'ordine' => 1,
         ]);
+        $locator = Locator::query()->create([
+            'nume' => 'Locator Test',
+            'imobil_id' => $imobil->id,
+        ]);
 
         $returnUrl = route('spatii.edit', $spatiu);
 
         $this->post('/contracte', [
             'spatiu_id' => $spatiu->id,
+            'locator_id' => $locator->id,
             'numar_contract' => 'C-NEW',
             'chirias_tip' => 'pf',
             'chirias_pf' => [
@@ -277,9 +283,10 @@ class SpatiuDocumenteTest extends TestCase
                 'cnp' => '1234567890123',
                 'domiciliu' => 'Timișoara',
                 'email' => 'test@example.com',
-                'telefon' => '',
+                'telefon' => '0700000000',
             ],
             'data_start' => '2025-01-01',
+            'data_end' => '2026-01-01',
             'chirie' => 900,
             'moneda' => 'EUR',
             'status' => 'activ',

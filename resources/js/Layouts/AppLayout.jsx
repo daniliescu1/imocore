@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Link, usePage } from '@inertiajs/react';
+import { Link, router, usePage } from '@inertiajs/react';
 import {
     BarChart3,
     Bell,
@@ -41,6 +41,65 @@ const navigation = [
     { label: 'Setări', icon: Settings, href: '/setari' },
     { label: 'Backup', icon: HardDriveUpload, href: '/backup' },
 ];
+
+const prefetchCacheFor = '2m';
+const prefetchedUrls = new Set();
+const priorityPrefetchHrefs = [
+    ...navigation.map((item) => item.href),
+    '/operr-app',
+    '/setari',
+    '/backup',
+];
+
+function normalizedInternalHref(rawHref) {
+    if (!rawHref || rawHref.startsWith('#') || rawHref.startsWith('mailto:') || rawHref.startsWith('tel:')) {
+        return null;
+    }
+
+    try {
+        const url = new URL(rawHref, window.location.origin);
+
+        if (url.origin !== window.location.origin) {
+            return null;
+        }
+
+        const href = `${url.pathname}${url.search}${url.hash}`;
+
+        return href === `${window.location.pathname}${window.location.search}${window.location.hash}` ? null : href;
+    } catch {
+        return null;
+    }
+}
+
+function prefetchInternalHref(rawHref) {
+    const href = normalizedInternalHref(rawHref);
+
+    if (!href || prefetchedUrls.has(href)) {
+        return;
+    }
+
+    prefetchedUrls.add(href);
+    router.prefetch(href, { method: 'get' }, { cacheFor: prefetchCacheFor });
+}
+
+function prefetchTarget(target) {
+    if (!(target instanceof Element)) {
+        return;
+    }
+
+    const link = target.closest('a[href]');
+
+    if (link && !link.hasAttribute('download') && link.getAttribute('target') !== '_blank') {
+        prefetchInternalHref(link.getAttribute('href'));
+        return;
+    }
+
+    const prefetchable = target.closest('[data-prefetch-href]');
+
+    if (prefetchable) {
+        prefetchInternalHref(prefetchable.getAttribute('data-prefetch-href'));
+    }
+}
 
 function isActive(url, href) {
     if (href === '/') {
@@ -211,6 +270,48 @@ export default function AppLayout({
     const [sidebarOpen, setSidebarOpen] = useState(false);
     const { url, props } = usePage();
     const flash = props.flash || {};
+
+    useEffect(() => {
+        function handlePointerOver(event) {
+            prefetchTarget(event.target);
+        }
+
+        function handleFocusIn(event) {
+            prefetchTarget(event.target);
+        }
+
+        document.addEventListener('pointerover', handlePointerOver, { passive: true });
+        document.addEventListener('focusin', handleFocusIn);
+
+        return () => {
+            document.removeEventListener('pointerover', handlePointerOver);
+            document.removeEventListener('focusin', handleFocusIn);
+        };
+    }, []);
+
+    useEffect(() => {
+        const hrefs = Array.from(document.querySelectorAll('a[href], [data-prefetch-href]'))
+            .map((element) => element.getAttribute('href') || element.getAttribute('data-prefetch-href'))
+            .filter(Boolean);
+        const uniqueHrefs = [...new Set([...priorityPrefetchHrefs, ...hrefs])];
+        const scheduledTimeouts = [];
+        const scheduleIdle = window.requestIdleCallback
+            ? (callback) => window.requestIdleCallback(callback)
+            : (callback) => window.setTimeout(callback, 250);
+        const cancelIdle = window.cancelIdleCallback
+            ? (idleId) => window.cancelIdleCallback(idleId)
+            : (idleId) => window.clearTimeout(idleId);
+        const idleId = scheduleIdle(() => {
+            uniqueHrefs.slice(0, 36).forEach((href, index) => {
+                scheduledTimeouts.push(window.setTimeout(() => prefetchInternalHref(href), index * 35));
+            });
+        });
+
+        return () => {
+            cancelIdle(idleId);
+            scheduledTimeouts.forEach((timeoutId) => window.clearTimeout(timeoutId));
+        };
+    }, [url]);
 
     return (
         <div className="app-shell">

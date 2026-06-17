@@ -27,8 +27,11 @@ export default function Index({ contracte = [] }) {
                             </tr>
                         </thead>
                         <tbody>
-                            {contracte.map((contract) => (
-                                <tr key={contract.id} className="clickable-row" onClick={() => router.visit(`/contracte/${contract.id}/editare`)}>
+                            {contracte.map((contract) => {
+                                const contractHref = `/contracte/${contract.id}/editare`;
+
+                                return (
+                                <tr key={contract.id} className="clickable-row" data-prefetch-href={contractHref} onClick={() => router.visit(contractHref)}>
                                     <td>{contract.numar_contract}</td>
                                     <td>{contract.imobil}</td>
                                     <td>{contract.spatiu}</td>
@@ -37,7 +40,8 @@ export default function Index({ contracte = [] }) {
                                     <td>{contract.perioada}</td>
                                     <td>{contract.status}</td>
                                 </tr>
-                            ))}
+                                );
+                            })}
                             {contracte.length === 0 ? (
                                 <tr>
                                     <td colSpan="7">Nu există contracte introduse.</td>

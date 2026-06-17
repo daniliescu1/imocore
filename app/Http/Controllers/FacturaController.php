@@ -9,7 +9,6 @@ use App\Models\SetareAplicatie;
 use App\Models\Spatiu;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Http;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -44,7 +43,7 @@ class FacturaController extends Controller
         return Inertia::render('Facturare/Index', [
             'facturi' => $facturi,
             'anexeNefacturate' => $anexeNefacturate,
-            'rezumatImobile' => $this->rezumatImobile((float) $curs['valoare']),
+            'rezumatImobile' => Inertia::defer(fn () => $this->rezumatImobile((float) $curs['valoare']), 'summary'),
             'cursImplicit' => $curs['valoare'],
             'cursSursa' => $curs['sursa'],
         ]);
@@ -262,22 +261,6 @@ class FacturaController extends Controller
             ];
         }
 
-        try {
-            $html = Http::timeout(8)
-                ->withHeaders(['User-Agent' => 'ImoCore/1.0'])
-                ->get('https://www.bancatransilvania.ro/curs-valutar')
-                ->body();
-
-            if (preg_match('/1\s*EUR\s*=\s*([0-9]+[,.][0-9]+)\s*RON/i', $html, $matches)) {
-                return [
-                    'valoare' => str_replace(',', '.', $matches[1]),
-                    'sursa' => 'Banca Transilvania - curs vânzare EUR',
-                ];
-            }
-        } catch (\Throwable $exception) {
-            report($exception);
-        }
-
         return [
             'valoare' => Factura::query()->latest()->value('curs_eur') ?: 5,
             'sursa' => 'Ultimul curs salvat / fallback',
@@ -286,44 +269,61 @@ class FacturaController extends Controller
 
     private function rezumatImobile(float $cursEur): array
     {
+        $facturiPeImobil = Factura::query()
+            ->join('anexe', 'anexe.id', '=', 'facturi.anexa_id')
+            ->join('contracte', 'contracte.id', '=', 'anexe.contract_id')
+            ->join('spatii', 'spatii.id', '=', 'contracte.spatiu_id')
+            ->select('spatii.imobil_id')
+            ->selectRaw('count(facturi.id) as facturi_emise')
+            ->selectRaw('coalesce(sum(anexe.total), 0) as total_utilitati')
+            ->selectRaw('coalesce(sum(facturi.total), 0) as total_facturat')
+            ->groupBy('spatii.imobil_id')
+            ->get()
+            ->keyBy('imobil_id');
+
+        $anexePeImobil = Anexa::query()
+            ->join('contracte', 'contracte.id', '=', 'anexe.contract_id')
+            ->join('spatii', 'spatii.id', '=', 'contracte.spatiu_id')
+            ->select('spatii.imobil_id')
+            ->selectRaw('count(anexe.id) as anexe_emise')
+            ->groupBy('spatii.imobil_id')
+            ->get()
+            ->keyBy('imobil_id');
+
+        $chirieCurentaSql = "case when indexare_2026 is not null and indexare_2026 != 0 then indexare_2026 else coalesce(pret_lunar, 0) end";
+        $chiriiPeImobil = Spatiu::query()
+            ->where('status', 'inchiriat')
+            ->select('imobil_id')
+            ->selectRaw("sum(case when moneda = 'RON' then {$chirieCurentaSql} else 0 end) as total_chirie_lei")
+            ->selectRaw("sum(case when moneda is null or moneda != 'RON' then {$chirieCurentaSql} else 0 end) as total_chirie_eur")
+            ->groupBy('imobil_id')
+            ->get()
+            ->keyBy('imobil_id');
+
         return Imobil::query()
             ->withCount([
                 'spatii as spatii_inchiriate_count' => fn ($query) => $query->where('status', 'inchiriat'),
             ])
             ->orderBy('nume')
             ->get()
-            ->map(function (Imobil $imobil) use ($cursEur): array {
-                $facturi = Factura::query()
-                    ->with('anexa')
-                    ->whereHas('anexa.contract.spatiu', fn ($query) => $query->where('imobil_id', $imobil->id))
-                    ->get(['id', 'anexa_id', 'chirie_lei', 'total']);
-                $totalChirieEur = Spatiu::query()
-                    ->where('imobil_id', $imobil->id)
-                    ->where('status', 'inchiriat')
-                    ->where(fn ($query) => $query->whereNull('moneda')->orWhere('moneda', '!=', 'RON'))
-                    ->get(['pret_lunar', 'indexare_2026'])
-                    ->sum(fn (Spatiu $spatiu): float => (float) ($spatiu->indexare_2026 ?: $spatiu->pret_lunar ?: 0));
-                $totalChirieLei = Spatiu::query()
-                    ->where('imobil_id', $imobil->id)
-                    ->where('status', 'inchiriat')
-                    ->where('moneda', 'RON')
-                    ->get(['pret_lunar', 'indexare_2026'])
-                    ->sum(fn (Spatiu $spatiu): float => (float) ($spatiu->indexare_2026 ?: $spatiu->pret_lunar ?: 0));
-                $anexeEmise = Anexa::query()
-                    ->whereHas('contract.spatiu', fn ($query) => $query->where('imobil_id', $imobil->id))
-                    ->count();
+            ->map(function (Imobil $imobil) use ($anexePeImobil, $chiriiPeImobil, $cursEur, $facturiPeImobil): array {
+                $facturi = $facturiPeImobil->get($imobil->id);
+                $anexe = $anexePeImobil->get($imobil->id);
+                $chirii = $chiriiPeImobil->get($imobil->id);
+                $totalChirieEur = (float) ($chirii?->total_chirie_eur ?? 0);
+                $totalChirieLei = (float) ($chirii?->total_chirie_lei ?? 0);
 
                 return [
                     'id' => $imobil->id,
                     'nume' => $imobil->nume,
                     'localitate' => $imobil->localitate,
                     'spatii_inchiriate' => $imobil->spatii_inchiriate_count,
-                    'anexe_emise' => $anexeEmise,
-                    'facturi_emise' => $facturi->count(),
+                    'anexe_emise' => (int) ($anexe?->anexe_emise ?? 0),
+                    'facturi_emise' => (int) ($facturi?->facturi_emise ?? 0),
                     'total_chirie_eur' => $totalChirieEur,
                     'total_chirie_lei' => round($totalChirieEur * $cursEur, 2) + $totalChirieLei,
-                    'total_utilitati' => $facturi->sum(fn (Factura $factura): float => (float) ($factura->anexa?->total ?? 0)),
-                    'total_facturat' => $facturi->sum(fn (Factura $factura): float => (float) $factura->total),
+                    'total_utilitati' => (float) ($facturi?->total_utilitati ?? 0),
+                    'total_facturat' => (float) ($facturi?->total_facturat ?? 0),
                 ];
             })
             ->all();

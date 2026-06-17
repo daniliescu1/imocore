@@ -34,6 +34,7 @@ function ImobilRow({
     onDragEnd,
 }) {
     const skipClickRef = useRef(false);
+    const imobilHref = `/imobile/${imobil.id}/editare`;
 
     function handleClick() {
         if (skipClickRef.current) {
@@ -52,6 +53,7 @@ function ImobilRow({
     return (
         <tr
             className={`clickable-row${isDragging ? ' is-dragging' : ''}${canReorder ? ' draggable-row' : ''}`}
+            data-prefetch-href={imobilHref}
             draggable={canReorder}
             onDragStart={(event) => onDragStart(event, imobil.id)}
             onDragOver={(event) => onDragOver(event, imobil.id)}
@@ -68,7 +70,7 @@ function ImobilRow({
             ) : null}
             <td>
                 <div className="name-with-action">
-                    <Link className="table-name-link" href={`/imobile/${imobil.id}/editare`} onClick={(event) => event.stopPropagation()}>{imobil.nume}</Link>
+                    <Link className="table-name-link" href={imobilHref} onClick={(event) => event.stopPropagation()}>{imobil.nume}</Link>
                 </div>
             </td>
             <td>{imobil.adresa}</td>

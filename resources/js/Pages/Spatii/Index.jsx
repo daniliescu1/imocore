@@ -99,6 +99,7 @@ function ImobilListRow({
     onDragEnd,
 }) {
     const skipClickRef = useRef(false);
+    const imobilHref = `/spatii?imobil_id=${imobil.id}`;
 
     function handleClick() {
         if (skipClickRef.current) {
@@ -117,6 +118,7 @@ function ImobilListRow({
     return (
         <tr
             className={`clickable-row${isDragging ? ' is-dragging' : ''}${canReorder ? ' draggable-row' : ''}`}
+            data-prefetch-href={imobilHref}
             draggable={canReorder}
             onDragStart={(event) => onDragStart(event, imobil.id)}
             onDragOver={(event) => onDragOver(event, imobil.id)}
@@ -153,6 +155,7 @@ function SpatiuRow({
     onDragEnd,
 }) {
     const skipClickRef = useRef(false);
+    const spatiuHref = `/spatii/${spatiu.id}/editare`;
 
     function handleClick() {
         if (skipClickRef.current) {
@@ -171,6 +174,7 @@ function SpatiuRow({
     return (
         <tr
             className={`clickable-row${marcajRowClass(spatiu)}${isDragging ? ' is-dragging' : ''}${canReorder ? ' draggable-row' : ''}`}
+            data-prefetch-href={spatiuHref}
             title={spatiu.de_lamurit && spatiu.de_lamurit_detaliu ? spatiu.de_lamurit_detaliu : undefined}
             draggable={canReorder}
             onDragStart={(event) => onDragStart(event, spatiu.id)}
@@ -199,7 +203,7 @@ function SpatiuRow({
                 ) : null}
             </td>
             <td className="spatiu-identificator-cell" title={spatiu.identificator}>
-                <Link className="table-name-link" href={`/spatii/${spatiu.id}/editare`} onClick={(event) => event.stopPropagation()}>{spatiu.identificator}</Link>
+                <Link className="table-name-link" href={spatiuHref} onClick={(event) => event.stopPropagation()}>{spatiu.identificator}</Link>
             </td>
             <td>{spatiu.etaj || '—'}</td>
             <td>{spatiu.suprafata_contractuala_mp ? `${spatiu.suprafata_contractuala_mp} mp` : '—'}</td>

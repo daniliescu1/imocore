@@ -1,5 +1,5 @@
 import React from 'react';
-import { router, useForm } from '@inertiajs/react';
+import { Deferred, router, useForm } from '@inertiajs/react';
 import { Trash2 } from 'lucide-react';
 import AppLayout from '../../Layouts/AppLayout';
 
@@ -11,6 +11,48 @@ function formatMoney(value) {
 function formatEuro(value) {
     if (value === null || value === undefined || value === '') return '—';
     return `${String(Number(value)).replace(/(\.\d*?)0+$/, '$1').replace(/\.$/, '')} EUR`;
+}
+
+function RezumatImobileTable({ rezumatImobile = [] }) {
+    return (
+        <section className="table-card module-table-card">
+            <div className="responsive-table">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Imobil</th>
+                            <th>Spații închiriate</th>
+                            <th>Anexe emise</th>
+                            <th>Facturi emise</th>
+                            <th>Total chirie EUR</th>
+                            <th>Total chirie lei</th>
+                            <th>Total utilități</th>
+                            <th>Total facturat</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {rezumatImobile.map((imobil) => (
+                            <tr key={imobil.id}>
+                                <td>{imobil.nume} ({imobil.localitate})</td>
+                                <td>{imobil.spatii_inchiriate}</td>
+                                <td>{imobil.anexe_emise}</td>
+                                <td>{imobil.facturi_emise}</td>
+                                <td>{formatEuro(imobil.total_chirie_eur)}</td>
+                                <td>{formatMoney(imobil.total_chirie_lei)}</td>
+                                <td>{formatMoney(imobil.total_utilitati)}</td>
+                                <td>{formatMoney(imobil.total_facturat)}</td>
+                            </tr>
+                        ))}
+                        {rezumatImobile.length === 0 ? (
+                            <tr>
+                                <td colSpan="8">Nu există imobile introduse.</td>
+                            </tr>
+                        ) : null}
+                    </tbody>
+                </table>
+            </div>
+        </section>
+    );
 }
 
 export default function Index({ facturi = [], anexeNefacturate = 0, rezumatImobile = [], cursImplicit = 5, cursSursa = '' }) {
@@ -58,43 +100,9 @@ export default function Index({ facturi = [], anexeNefacturate = 0, rezumatImobi
                 <strong>Curs folosit: {data.curs_eur} RON/EUR ({cursSursa})</strong>
             </section>
 
-            <section className="table-card module-table-card">
-                <div className="responsive-table">
-                    <table>
-                        <thead>
-                            <tr>
-                                <th>Imobil</th>
-                                <th>Spații închiriate</th>
-                                <th>Anexe emise</th>
-                                <th>Facturi emise</th>
-                                <th>Total chirie EUR</th>
-                                <th>Total chirie lei</th>
-                                <th>Total utilități</th>
-                                <th>Total facturat</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {rezumatImobile.map((imobil) => (
-                                <tr key={imobil.id}>
-                                    <td>{imobil.nume} ({imobil.localitate})</td>
-                                    <td>{imobil.spatii_inchiriate}</td>
-                                    <td>{imobil.anexe_emise}</td>
-                                    <td>{imobil.facturi_emise}</td>
-                                    <td>{formatEuro(imobil.total_chirie_eur)}</td>
-                                    <td>{formatMoney(imobil.total_chirie_lei)}</td>
-                                    <td>{formatMoney(imobil.total_utilitati)}</td>
-                                    <td>{formatMoney(imobil.total_facturat)}</td>
-                                </tr>
-                            ))}
-                            {rezumatImobile.length === 0 ? (
-                                <tr>
-                                    <td colSpan="8">Nu există imobile introduse.</td>
-                                </tr>
-                            ) : null}
-                        </tbody>
-                    </table>
-                </div>
-            </section>
+            <Deferred data="rezumatImobile" fallback={<section className="readonly-info-card">Se încarcă rezumatul pe imobile...</section>}>
+                <RezumatImobileTable rezumatImobile={rezumatImobile} />
+            </Deferred>
 
             <section className="table-card module-table-card">
                 <div className="responsive-table">
@@ -114,8 +122,11 @@ export default function Index({ facturi = [], anexeNefacturate = 0, rezumatImobi
                             </tr>
                         </thead>
                         <tbody>
-                            {facturi.map((factura) => (
-                                <tr key={factura.id} className="clickable-row" onClick={() => router.visit(`/facturare/${factura.id}`)}>
+                            {facturi.map((factura) => {
+                                const facturaHref = `/facturare/${factura.id}`;
+
+                                return (
+                                <tr key={factura.id} className="clickable-row" data-prefetch-href={facturaHref} onClick={() => router.visit(facturaHref)}>
                                     <td>{factura.numar_factura}</td>
                                     <td>{factura.anexa}</td>
                                     <td>{factura.contract}</td>
@@ -131,7 +142,8 @@ export default function Index({ facturi = [], anexeNefacturate = 0, rezumatImobi
                                         </button>
                                     </td>
                                 </tr>
-                            ))}
+                                );
+                            })}
                             {facturi.length === 0 ? (
                                 <tr>
                                     <td colSpan="10">Nu există facturi generate. Apasă Generează facturi după ce ai generat anexele.</td>

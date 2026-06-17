@@ -1,5 +1,5 @@
 import React from 'react';
-import { router, useForm } from '@inertiajs/react';
+import { Deferred, router, useForm } from '@inertiajs/react';
 import { Trash2 } from 'lucide-react';
 import AppLayout from '../../Layouts/AppLayout';
 
@@ -22,6 +22,40 @@ const luni = [
     ['11', 'Noiembrie'],
     ['12', 'Decembrie'],
 ];
+
+function RezumatImobileTable({ rezumatImobile = [] }) {
+    return (
+        <section className="table-card module-table-card">
+            <div className="responsive-table">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Imobil</th>
+                            <th>Spații închiriate</th>
+                            <th>Anexe generate</th>
+                            <th>Total generat</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {rezumatImobile.map((imobil) => (
+                            <tr key={imobil.id}>
+                                <td>{imobil.nume} ({imobil.localitate})</td>
+                                <td>{imobil.spatii_inchiriate}</td>
+                                <td>{imobil.anexe_generate}</td>
+                                <td>{formatMoney(imobil.total_generat)}</td>
+                            </tr>
+                        ))}
+                        {rezumatImobile.length === 0 ? (
+                            <tr>
+                                <td colSpan="4">Nu există imobile introduse.</td>
+                            </tr>
+                        ) : null}
+                    </tbody>
+                </table>
+            </div>
+        </section>
+    );
+}
 
 export default function Index({ anexe = [], rezumatImobile = [], lunaImplicita = '', contracteEligibile = 0 }) {
     const [anImplicit, lunaImplicit] = String(lunaImplicita || '').split('-');
@@ -70,35 +104,9 @@ export default function Index({ anexe = [], rezumatImobile = [], lunaImplicita =
                 <strong>Se vor genera anexele pentru utilități {lunaUtilitati} {anUtilitati}, aferente facturării din {lunaSelectata} {data.an}.</strong>
             </section>
 
-            <section className="table-card module-table-card">
-                <div className="responsive-table">
-                    <table>
-                        <thead>
-                            <tr>
-                                <th>Imobil</th>
-                                <th>Spații închiriate</th>
-                                <th>Anexe generate</th>
-                                <th>Total generat</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {rezumatImobile.map((imobil) => (
-                                <tr key={imobil.id}>
-                                    <td>{imobil.nume} ({imobil.localitate})</td>
-                                    <td>{imobil.spatii_inchiriate}</td>
-                                    <td>{imobil.anexe_generate}</td>
-                                    <td>{formatMoney(imobil.total_generat)}</td>
-                                </tr>
-                            ))}
-                            {rezumatImobile.length === 0 ? (
-                                <tr>
-                                    <td colSpan="4">Nu există imobile introduse.</td>
-                                </tr>
-                            ) : null}
-                        </tbody>
-                    </table>
-                </div>
-            </section>
+            <Deferred data="rezumatImobile" fallback={<section className="readonly-info-card">Se încarcă rezumatul pe imobile...</section>}>
+                <RezumatImobileTable rezumatImobile={rezumatImobile} />
+            </Deferred>
 
             <section className="table-card module-table-card">
                 <div className="responsive-table">
@@ -116,8 +124,11 @@ export default function Index({ anexe = [], rezumatImobile = [], lunaImplicita =
                             </tr>
                         </thead>
                         <tbody>
-                            {anexe.map((anexa) => (
-                                <tr key={anexa.id} className="clickable-row" onClick={() => router.visit(`/anexe/${anexa.id}`)}>
+                            {anexe.map((anexa) => {
+                                const anexaHref = `/anexe/${anexa.id}`;
+
+                                return (
+                                <tr key={anexa.id} className="clickable-row" data-prefetch-href={anexaHref} onClick={() => router.visit(anexaHref)}>
                                     <td>{anexa.contract}</td>
                                     <td>{anexa.imobil}</td>
                                     <td>{anexa.spatiu}</td>
@@ -131,7 +142,8 @@ export default function Index({ anexe = [], rezumatImobile = [], lunaImplicita =
                                         </button>
                                     </td>
                                 </tr>
-                            ))}
+                                );
+                            })}
                             {anexe.length === 0 ? (
                                 <tr>
                                     <td colSpan="8">Nu există anexe generate. Alege luna și apasă Generează anexele.</td>

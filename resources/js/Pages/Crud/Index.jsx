@@ -16,11 +16,15 @@ export default function Index({ moduleKey, title, rows, columns }) {
                             </tr>
                         </thead>
                         <tbody>
-                            {rows.map((row) => (
-                                <tr key={row.id} className="clickable-row" onClick={() => router.visit(`/${moduleKey}/${row.id}/editare`)}>
+                            {rows.map((row) => {
+                                const rowHref = `/${moduleKey}/${row.id}/editare`;
+
+                                return (
+                                <tr key={row.id} className="clickable-row" data-prefetch-href={rowHref} onClick={() => router.visit(rowHref)}>
                                     {columns.map((column) => <td key={column}>{row.data[column] || '—'}</td>)}
                                 </tr>
-                            ))}
+                                );
+                            })}
                             {rows.length === 0 ? (
                                 <tr>
                                     <td colSpan={columns.length}>Nu există înregistrări introduse.</td>

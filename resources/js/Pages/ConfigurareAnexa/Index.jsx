@@ -49,15 +49,19 @@ export default function Index({ anexe = [], imobile = [], selectedImobilId = nul
                             </tr>
                         </thead>
                         <tbody>
-                            {anexe.map((anexa) => (
-                                <tr key={anexa.id} className="clickable-row" onClick={() => router.visit(`/configurare-anexa/${anexa.id}/editare`)}>
+                            {anexe.map((anexa) => {
+                                const anexaHref = `/configurare-anexa/${anexa.id}/editare`;
+
+                                return (
+                                <tr key={anexa.id} className="clickable-row" data-prefetch-href={anexaHref} onClick={() => router.visit(anexaHref)}>
                                     <td><span className="table-name-link">{anexa.denumire}</span></td>
                                     <td>{anexa.imobil}</td>
                                     <td>{anexa.implicit ? 'Da' : 'Nu'}</td>
                                     <td>{anexa.activ ? 'Da' : 'Nu'}</td>
                                     <td>{anexa.linii_count}</td>
                                 </tr>
-                            ))}
+                                );
+                            })}
                             {anexe.length === 0 ? (
                                 <tr>
                                     <td colSpan="5">Nu există anexe configurate. Adaugă prima anexă.</td>
