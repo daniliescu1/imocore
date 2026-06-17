@@ -446,12 +446,16 @@ class SpatiuIndexareTest extends TestCase
             ->assertInertia(fn (Assert $page) => $page
                 ->component('Spatii/Index')
                 ->where('spatii', fn ($spatii) => collect($spatii)->firstWhere('identificator', 'Complet')['are_contract_activ'] === true
+                    && collect($spatii)->firstWhere('identificator', 'Complet')['are_contract_inregistrat'] === true
                     && collect($spatii)->firstWhere('identificator', 'Complet')['are_anexa_alocata'] === true
                     && collect($spatii)->firstWhere('identificator', 'Fara contract')['are_contract_activ'] === false
+                    && collect($spatii)->firstWhere('identificator', 'Fara contract')['are_contract_inregistrat'] === true
                     && collect($spatii)->firstWhere('identificator', 'Fara contract')['are_anexa_alocata'] === true
                     && collect($spatii)->firstWhere('identificator', 'Fara anexa')['are_contract_activ'] === true
+                    && collect($spatii)->firstWhere('identificator', 'Fara anexa')['are_contract_inregistrat'] === true
                     && collect($spatii)->firstWhere('identificator', 'Fara anexa')['are_anexa_alocata'] === false
                     && collect($spatii)->firstWhere('identificator', 'Fara ambele')['are_contract_activ'] === false
+                    && collect($spatii)->firstWhere('identificator', 'Fara ambele')['are_contract_inregistrat'] === false
                     && collect($spatii)->firstWhere('identificator', 'Fara ambele')['are_anexa_alocata'] === false)
             );
     }

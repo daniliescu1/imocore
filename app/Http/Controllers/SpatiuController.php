@@ -92,6 +92,7 @@ class SpatiuController extends Controller
 
         $query = Spatiu::query()
             ->with(['imobil', 'locatorEntitate'])
+            ->withExists(['contracte as are_contract_inregistrat'])
             ->withExists(['contracte as are_contract_activ' => fn ($query) => $query->where('status', 'activ')])
             ->where('imobil_id', $imobil->id)
             ->orderBy('ordine')
@@ -180,6 +181,7 @@ class SpatiuController extends Controller
             'marcat_galben' => (bool) $spatiu->marcat_galben,
             'marcat_verde' => (bool) $spatiu->marcat_verde,
             'are_anexa_alocata' => $spatiu->configurare_anexa_id !== null,
+            'are_contract_inregistrat' => (bool) ($spatiu->are_contract_inregistrat ?? false),
             'are_contract_activ' => (bool) ($spatiu->are_contract_activ ?? false),
         ];
     }

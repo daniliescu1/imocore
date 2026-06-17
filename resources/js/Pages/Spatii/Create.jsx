@@ -638,7 +638,9 @@ export default function Create({
                 {arataDocumente ? (
                     <div className="spatiu-documente-zone">
                         <div className="spatiu-documente-row">
-                            <span className="spatiu-documente-label">Contract</span>
+                            <span className="spatiu-documente-label">
+                                {contractActiv?.status === 'activ' ? 'Contract Activ. Date complete.' : 'Contract'}
+                            </span>
                             <div className="spatiu-documente-summary">
                                 {contractActiv ? (
                                     <>
