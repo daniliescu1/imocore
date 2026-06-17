@@ -7,6 +7,38 @@ function formatDecimal(value) {
     return String(Number(value)).replace(/(\.\d*?)0+$/, '$1').replace(/\.$/, '');
 }
 
+function formatDateForDisplay(value) {
+    if (!value) {
+        return '';
+    }
+
+    const isoMatch = String(value).match(/^(\d{4})-(\d{2})-(\d{2})$/);
+
+    if (!isoMatch) {
+        return value;
+    }
+
+    return `${isoMatch[3]}/${isoMatch[2]}/${isoMatch[1]}`;
+}
+
+function normalizeDateForSubmit(value) {
+    if (!value) {
+        return '';
+    }
+
+    const trimmed = String(value).trim();
+    const roMatch = trimmed.match(/^(\d{1,2})[./-](\d{1,2})[./-](\d{4})$/);
+
+    if (!roMatch) {
+        return trimmed;
+    }
+
+    const day = roMatch[1].padStart(2, '0');
+    const month = roMatch[2].padStart(2, '0');
+
+    return `${roMatch[3]}-${month}-${day}`;
+}
+
 function spatiuInfo(spatii, spatiuId) {
     return spatii.find((spatiu) => Number(spatiu.id) === Number(spatiuId)) || null;
 }
@@ -121,6 +153,22 @@ function PfField({ label, value, onChange, error, type = 'text', required = fals
     );
 }
 
+function DateField({ label, value, onChange, error, incomplete = false }) {
+    return (
+        <label className={`form-field form-grid-span-1${incomplete ? ' form-field-incomplete' : ''}`}>
+            <span>{label} *</span>
+            <input
+                type="text"
+                inputMode="numeric"
+                placeholder="zz/ll/aaaa"
+                value={formatDateForDisplay(value)}
+                onChange={(event) => onChange(event.target.value)}
+            />
+            {error ? <small>{error}</small> : null}
+        </label>
+    );
+}
+
 export default function Form({
     imobile = [],
     spatii = [],
@@ -162,6 +210,8 @@ export default function Form({
 
     transform((formData) => ({
         ...formData,
+        data_start: normalizeDateForSubmit(formData.data_start),
+        data_end: normalizeDateForSubmit(formData.data_end),
         return_url: returnUrl || '',
     }));
 
@@ -364,17 +414,9 @@ export default function Form({
                         {errors.chirie ? <small>{errors.chirie}</small> : null}
                     </label>
 
-                    <label className={`${fieldClassName('data_start')} form-grid-span-1`.trim()}>
-                        <span>Data start *</span>
-                        <input type="date" value={data.data_start} onChange={(event) => setData('data_start', event.target.value)} />
-                        {errors.data_start ? <small>{errors.data_start}</small> : null}
-                    </label>
+                    <DateField label="Data start" value={data.data_start} onChange={(value) => setData('data_start', value)} error={errors.data_start} incomplete={fieldIncomplete('data_start')} />
 
-                    <label className={`${fieldClassName('data_end')} form-grid-span-1`.trim()}>
-                        <span>Data end *</span>
-                        <input type="date" value={data.data_end} onChange={(event) => setData('data_end', event.target.value)} />
-                        {errors.data_end ? <small>{errors.data_end}</small> : null}
-                    </label>
+                    <DateField label="Data end" value={data.data_end} onChange={(value) => setData('data_end', value)} error={errors.data_end} incomplete={fieldIncomplete('data_end')} />
                 </div>
 
                 <section className="contract-chirias-section">
