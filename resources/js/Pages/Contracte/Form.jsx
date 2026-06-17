@@ -173,7 +173,7 @@ function PfField({ label, value, onChange, error, type = 'text', required = fals
     );
 }
 
-function DateField({ label, value, onChange, error, incomplete = false }) {
+function DateField({ label, value, onChange, error, incomplete = false, required = true }) {
     const calendarValue = normalizeDateForSubmit(value);
 
     function openCalendar(event) {
@@ -194,7 +194,7 @@ function DateField({ label, value, onChange, error, incomplete = false }) {
 
     return (
         <label className={`form-field form-grid-span-1${incomplete ? ' form-field-incomplete' : ''}`}>
-            <span>{label} *</span>
+            <span>{label}{required ? ' *' : ''}</span>
             <div className="date-input-combo">
                 <input
                     type="text"
@@ -253,6 +253,8 @@ export default function Form({
         data_start: contract?.data_start || '',
         data_end: contract?.data_end || '',
         chirie: formatDecimal(contract?.chirie) || formatDecimal(initialSpatiu?.chirie_curenta) || '',
+        crestere_chirie_la: formatDecimal(contract?.crestere_chirie_la) || '',
+        data_crestere_chirie: contract?.data_crestere_chirie || '',
         moneda: contract?.moneda || initialSpatiu?.moneda || 'EUR',
         observatii: contract?.observatii || '',
         configurare_anexa_id: contract?.configurare_anexa_id || initialSpatiu?.configurare_anexa_id || '',
@@ -262,6 +264,7 @@ export default function Form({
         ...formData,
         data_start: normalizeDateForSubmit(formData.data_start),
         data_end: normalizeDateForSubmit(formData.data_end),
+        data_crestere_chirie: normalizeDateForSubmit(formData.data_crestere_chirie),
         return_url: returnUrl || '',
     }));
 
@@ -469,6 +472,14 @@ export default function Form({
                     <DateField label="Data start" value={data.data_start} onChange={(value) => setData('data_start', value)} error={errors.data_start} incomplete={fieldIncomplete('data_start')} />
 
                     <DateField label="Data end" value={data.data_end} onChange={(value) => setData('data_end', value)} error={errors.data_end} incomplete={fieldIncomplete('data_end')} />
+
+                    <label className="form-field form-grid-span-1">
+                        <span>Creștere chirie la</span>
+                        <input type="number" min="0" step="0.01" value={data.crestere_chirie_la} onChange={(event) => setData('crestere_chirie_la', event.target.value)} />
+                        {errors.crestere_chirie_la ? <small>{errors.crestere_chirie_la}</small> : null}
+                    </label>
+
+                    <DateField label="Data creștere chirie" value={data.data_crestere_chirie} onChange={(value) => setData('data_crestere_chirie', value)} error={errors.data_crestere_chirie} required={false} />
                 </div>
 
                 <section className="contract-chirias-section">

@@ -66,7 +66,7 @@ class FacturaController extends Controller
         }
 
         foreach ($anexe as $anexa) {
-            $chirie = (float) ($anexa->contract?->chirie ?? 0);
+            $chirie = (float) ($anexa->contract?->chirieAplicabilaPentruLunaAnexa($anexa->luna) ?? 0);
             $moneda = $anexa->contract?->moneda ?: 'EUR';
             $penalitati = 0;
 

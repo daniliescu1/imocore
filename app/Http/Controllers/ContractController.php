@@ -123,6 +123,7 @@ class ContractController extends Controller
         $request->merge([
             'data_start' => ContractIncompleteStorage::normalizeDateValue($request->input('data_start')),
             'data_end' => ContractIncompleteStorage::normalizeDateValue($request->input('data_end')),
+            'data_crestere_chirie' => ContractIncompleteStorage::normalizeDateValue($request->input('data_crestere_chirie')),
         ]);
 
         $baseValidated = $request->validate([
@@ -136,6 +137,8 @@ class ContractController extends Controller
             'data_start' => ['nullable', 'date'],
             'data_end' => ['nullable', 'date'],
             'chirie' => ['nullable', 'numeric', 'min:0'],
+            'crestere_chirie_la' => ['nullable', 'numeric', 'min:0'],
+            'data_crestere_chirie' => ['nullable', 'date'],
             'moneda' => ['nullable', 'string', 'size:3'],
             'observatii' => ['nullable', 'string', 'max:5000'],
             'configurare_anexa_id' => ['nullable', 'exists:configurari_anexe_imobil,id'],
@@ -159,6 +162,8 @@ class ContractController extends Controller
             'data_start' => $baseValidated['data_start'] ?? null,
             'data_end' => $baseValidated['data_end'] ?? null,
             'chirie' => $baseValidated['chirie'] ?? 0,
+            'crestere_chirie_la' => $baseValidated['crestere_chirie_la'] ?? null,
+            'data_crestere_chirie' => $baseValidated['data_crestere_chirie'] ?? null,
             'moneda' => Spatiu::normalizeMoneda($spatiu->etaj, $baseValidated['moneda'] ?? $spatiu->moneda),
             'observatii' => $baseValidated['observatii'] ?? null,
             ...$chirias,
@@ -227,6 +232,8 @@ class ContractController extends Controller
             'data_start' => ContractIncompleteStorage::displayDate($contract->data_start),
             'data_end' => optional($contract->data_end)?->format('Y-m-d'),
             'chirie' => $contract->chirie,
+            'crestere_chirie_la' => $contract->crestere_chirie_la,
+            'data_crestere_chirie' => optional($contract->data_crestere_chirie)?->format('Y-m-d'),
             'chirias_tip' => $contract->chirias_tip ?? 'pj',
             'chirias_pf' => $chiriasForm['chirias_pf'] ?? [],
             'chirias_pj' => $chiriasForm['chirias_pj'] ?? [],
@@ -242,6 +249,8 @@ class ContractController extends Controller
             'data_start' => ContractIncompleteStorage::displayDate($contract->data_start),
             'data_end' => optional($contract->data_end)->format('Y-m-d'),
             'chirie' => $contract->chirie,
+            'crestere_chirie_la' => $contract->crestere_chirie_la,
+            'data_crestere_chirie' => optional($contract->data_crestere_chirie)->format('Y-m-d'),
             'moneda' => $contract->moneda,
             'status' => $contract->status,
             'observatii' => $contract->observatii,

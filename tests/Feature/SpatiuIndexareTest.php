@@ -6,6 +6,7 @@ use App\Models\ConfigurareAnexaImobil;
 use App\Models\Imobil;
 use App\Models\Spatiu;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Carbon;
 use Inertia\Testing\AssertableInertia as Assert;
 use Tests\TestCase;
 
@@ -354,14 +355,35 @@ class SpatiuIndexareTest extends TestCase
             'configurare_anexa_id' => $configurare->id,
         ]);
 
+        Spatiu::query()->create([
+            'imobil_id' => $imobil->id,
+            'identificator' => 'Administrativ fara anexa',
+            'status' => 'administrativ',
+            'moneda' => 'EUR',
+        ]);
+
+        Spatiu::query()->create([
+            'imobil_id' => $imobil->id,
+            'identificator' => 'Comun fara anexa',
+            'status' => 'comun',
+            'moneda' => 'EUR',
+        ]);
+
         $this->get(route('spatii.index', ['imobil_id' => $imobil->id]))
             ->assertOk()
             ->assertInertia(fn (Assert $page) => $page
                 ->component('Spatii/Index')
                 ->where('spatii.0.identificator', 'Fara anexa')
+                ->where('spatii.0.necesita_anexa', true)
                 ->where('spatii.0.are_anexa_alocata', false)
                 ->where('spatii.1.identificator', 'Cu anexa')
                 ->where('spatii.1.are_anexa_alocata', true)
+                ->where('spatii.2.identificator', 'Administrativ fara anexa')
+                ->where('spatii.2.necesita_anexa', false)
+                ->where('spatii.2.are_anexa_alocata', false)
+                ->where('spatii.3.identificator', 'Comun fara anexa')
+                ->where('spatii.3.necesita_anexa', false)
+                ->where('spatii.3.are_anexa_alocata', false)
             );
     }
 
@@ -458,5 +480,52 @@ class SpatiuIndexareTest extends TestCase
                     && collect($spatii)->firstWhere('identificator', 'Fara ambele')['are_contract_inregistrat'] === false
                     && collect($spatii)->firstWhere('identificator', 'Fara ambele')['are_anexa_alocata'] === false)
             );
+    }
+
+    public function test_lista_afiseaza_chiria_crescuta_din_contract_dupa_data_cresterii(): void
+    {
+        Carbon::setTestNow('2028-01-23');
+
+        try {
+            $imobil = Imobil::query()->create([
+                'nume' => 'Imobil chirie crescuta',
+                'strada' => 'Strada Test',
+                'numar' => '9',
+                'localitate' => 'Timișoara',
+            ]);
+
+            $spatiu = Spatiu::query()->create([
+                'imobil_id' => $imobil->id,
+                'identificator' => 'CH-CRESTERE',
+                'status' => 'inchiriat',
+                'suprafata_contractuala_mp' => 100,
+                'pret_lunar' => 1500,
+                'moneda' => 'EUR',
+            ]);
+
+            \App\Models\Contract::query()->create([
+                'spatiu_id' => $spatiu->id,
+                'numar_contract' => 'C-CRESTERE',
+                'chirias' => 'Chiriaș creștere',
+                'data_start' => '2026-03-17',
+                'data_end' => '2028-04-30',
+                'chirie' => 1600,
+                'crestere_chirie_la' => 1800,
+                'data_crestere_chirie' => '2028-01-22',
+                'moneda' => 'EUR',
+                'status' => 'activ',
+            ]);
+
+            $this->get(route('spatii.index', ['imobil_id' => $imobil->id]))
+                ->assertOk()
+                ->assertInertia(fn (Assert $page) => $page
+                    ->component('Spatii/Index')
+                    ->where('spatii.0.chirie_lunara_curenta', 1800)
+                    ->where('spatii.0.sursa_chirie_curenta', 'Creștere chirie')
+                    ->where('spatii.0.pret_mp_curent', '18.00')
+                );
+        } finally {
+            Carbon::setTestNow();
+        }
     }
 }

@@ -117,6 +117,8 @@ class ContractChiriasTest extends TestCase
                 ],
             ],
             'data_start' => '2025-01-01',
+            'crestere_chirie_la' => 1450,
+            'data_crestere_chirie' => '01/07/2025',
             'chirie' => 1200,
             'moneda' => 'EUR',
         ])->assertRedirect('/contracte');
@@ -131,6 +133,8 @@ class ContractChiriasTest extends TestCase
         $this->assertSame('contact@exemplu.ro', $contract->chirias_date['email_2']);
         $this->assertSame('BCR', $contract->chirias_date['banca']);
         $this->assertSame('RO49RNCB0000000000000001', $contract->chirias_date['cont_bancar']);
+        $this->assertSame('1450.00', $contract->crestere_chirie_la);
+        $this->assertSame('2025-07-01', $contract->data_crestere_chirie->format('Y-m-d'));
         $this->assertSame('Maria Ionescu', $contract->chirias_date['administrator']['nume_complet']);
         $this->assertSame('imputernicit_notarial', $contract->chirias_date['administrator']['calitate']);
         $this->assertSame('seria TM nr. 654321, eliberat de SPCLEP, la data de 01.01.2020', $contract->chirias_date['administrator']['serie_ci']);

@@ -23,7 +23,7 @@ function statusLabel(status) {
 }
 
 function showFaraAnexaIndicator(spatiu) {
-    return !spatiu.are_anexa_alocata;
+    return spatiu.necesita_anexa && !spatiu.are_anexa_alocata;
 }
 
 function showFaraContractIndicator(spatiu) {

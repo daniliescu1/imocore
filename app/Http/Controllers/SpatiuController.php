@@ -91,7 +91,11 @@ class SpatiuController extends Controller
         $imobil = Imobil::query()->findOrFail($imobilId);
 
         $query = Spatiu::query()
-            ->with(['imobil', 'locatorEntitate'])
+            ->with([
+                'imobil',
+                'locatorEntitate',
+                'contracte' => fn ($query) => $query->where('status', 'activ')->latest('id'),
+            ])
             ->withExists(['contracte as are_contract_inregistrat'])
             ->withExists(['contracte as are_contract_activ' => fn ($query) => $query->where('status', 'activ')])
             ->where('imobil_id', $imobil->id)
@@ -152,8 +156,13 @@ class SpatiuController extends Controller
     private function mapSpatiuForList(Spatiu $spatiu): array
     {
         $suprafata = $spatiu->suprafata_contractuala_mp;
-        $chirieCurenta = $spatiu->indexare_2026 ?: $spatiu->pret_lunar;
-        $sursaChirieCurenta = $spatiu->indexare_2026 ? 'Indexare 2026' : null;
+        $contractActiv = $spatiu->contracte->first();
+        $chirieCurenta = $contractActiv
+            ? $contractActiv->chirieAplicabilaLa()
+            : ($spatiu->indexare_2026 ?: $spatiu->pret_lunar);
+        $sursaChirieCurenta = $contractActiv
+            ? ($contractActiv->folosesteCrestereChirieLa() ? 'Creștere chirie' : 'Contract activ')
+            : ($spatiu->indexare_2026 ? 'Indexare 2026' : null);
         $pretMpCurent = $suprafata && $chirieCurenta
             ? number_format((float) $chirieCurenta / (float) $suprafata, 2, '.', '')
             : null;
@@ -180,6 +189,7 @@ class SpatiuController extends Controller
             'de_lamurit_detaliu' => $spatiu->de_lamurit ? ($spatiu->de_lamurit_detaliu ?: null) : null,
             'marcat_galben' => (bool) $spatiu->marcat_galben,
             'marcat_verde' => (bool) $spatiu->marcat_verde,
+            'necesita_anexa' => ! in_array($spatiu->status, ['administrativ', 'comun'], true),
             'are_anexa_alocata' => $spatiu->configurare_anexa_id !== null,
             'are_contract_inregistrat' => (bool) ($spatiu->are_contract_inregistrat ?? false),
             'are_contract_activ' => (bool) ($spatiu->are_contract_activ ?? false),
