@@ -1435,11 +1435,26 @@ tr:last-child td {
     color: transparent !important;
     box-shadow: none !important;
     cursor: pointer;
+    opacity: 0;
+    z-index: 2;
 }
 
 .date-input-picker::-webkit-calendar-picker-indicator {
     cursor: pointer;
-    opacity: 0.75;
+    opacity: 0;
+    width: 36px;
+    height: 100%;
+}
+
+.date-input-calendar-icon {
+    position: absolute;
+    top: 50%;
+    right: 18px;
+    display: inline-flex;
+    color: #0f5f46;
+    pointer-events: none;
+    transform: translateY(-50%);
+    z-index: 1;
 }
 
 .form-field input[type="number"] {

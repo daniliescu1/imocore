@@ -1,5 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { Link, router, useForm } from '@inertiajs/react';
+import { Calendar } from 'lucide-react';
 import AppLayout from '../../Layouts/AppLayout';
 
 function formatDecimal(value) {
@@ -176,14 +177,6 @@ function PfField({ label, value, onChange, error, type = 'text', required = fals
 function DateField({ label, value, onChange, error, incomplete = false, required = true }) {
     const calendarValue = normalizeDateForSubmit(value);
 
-    function openCalendar(event) {
-        const picker = event.currentTarget.parentElement?.querySelector('input[type="date"]');
-
-        if (picker?.showPicker) {
-            picker.showPicker();
-        }
-    }
-
     function handleTextChange(event) {
         onChange(formatDateDigits(event.target.value));
     }
@@ -211,6 +204,9 @@ function DateField({ label, value, onChange, error, incomplete = false, required
                     onChange={handleCalendarChange}
                     tabIndex="-1"
                 />
+                <span className="date-input-calendar-icon" aria-hidden="true">
+                    <Calendar size={18} strokeWidth={2.2} />
+                </span>
             </div>
             {error ? <small>{error}</small> : null}
         </label>
