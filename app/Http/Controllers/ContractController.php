@@ -120,6 +120,11 @@ class ContractController extends Controller
      */
     private function prepareContractPayload(Request $request): array
     {
+        $request->merge([
+            'data_start' => ContractIncompleteStorage::normalizeDateValue($request->input('data_start')),
+            'data_end' => ContractIncompleteStorage::normalizeDateValue($request->input('data_end')),
+        ]);
+
         $baseValidated = $request->validate([
             'spatiu_id' => ['required', 'exists:spatii,id'],
             'locator_id' => ['nullable', 'exists:locatori,id'],

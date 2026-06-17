@@ -186,6 +186,51 @@ class ContractChiriasTest extends TestCase
         $this->assertNull($contract->chirias_date['administrator']['domiciliu']);
     }
 
+    public function test_contract_pj_accepta_date_scrise_in_format_romanesc(): void
+    {
+        $imobil = Imobil::query()->create([
+            'nume' => '700 Office',
+            'strada' => 'Strada Test',
+            'numar' => '1',
+            'localitate' => 'Timișoara',
+        ]);
+
+        $spatiu = Spatiu::query()->create([
+            'imobil_id' => $imobil->id,
+            'identificator' => 'D205C',
+            'status' => 'liber',
+            'ordine' => 1,
+        ]);
+
+        $this->post('/contracte', [
+            'spatiu_id' => $spatiu->id,
+            ...$this->contractRequiredFields(),
+            'numar_contract' => 'Nr. 347 din 17.03.2026',
+            'chirias_tip' => 'pj',
+            'chirias_pj' => [
+                'denumire' => 'CYD JOHAN SCARPE SRL',
+                'sediu_social' => 'Bivolaria',
+                'telefon' => '0755934932',
+                'email' => 'cyd.johanscarpe@icloud.com',
+                'nr_reg_comert' => 'J2017000740331',
+                'cui' => 'RO37506377',
+                'administrator' => [
+                    'nume_complet' => 'Cirdei Ioan',
+                ],
+            ],
+            'data_start' => '17/03/2026',
+            'data_end' => '30/04/2028',
+            'chirie' => 1600,
+            'moneda' => 'EUR',
+        ])->assertRedirect('/contracte');
+
+        $contract = Contract::query()->firstOrFail();
+
+        $this->assertSame('activ', $contract->status);
+        $this->assertSame('2026-03-17', $contract->data_start->format('Y-m-d'));
+        $this->assertSame('2028-04-30', $contract->data_end->format('Y-m-d'));
+    }
+
     public function test_edit_contract_pastreaza_tipul_salvat(): void
     {
         $imobil = Imobil::query()->create([

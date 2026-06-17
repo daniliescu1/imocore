@@ -1416,6 +1416,32 @@ tr:last-child td {
     box-shadow: 0 0 0 3px rgba(0, 85, 63, 0.08);
 }
 
+.date-input-combo {
+    position: relative;
+}
+
+.date-input-combo > input[type="text"] {
+    padding-right: 44px;
+}
+
+.date-input-picker {
+    position: absolute;
+    inset: 0 8px 0 auto;
+    width: 36px !important;
+    min-width: 36px;
+    padding: 0 !important;
+    border: 0 !important;
+    background: transparent !important;
+    color: transparent !important;
+    box-shadow: none !important;
+    cursor: pointer;
+}
+
+.date-input-picker::-webkit-calendar-picker-indicator {
+    cursor: pointer;
+    opacity: 0.75;
+}
+
 .form-field input[type="number"] {
     -moz-appearance: textfield;
     appearance: textfield;

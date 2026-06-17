@@ -58,6 +58,25 @@ class ContractIncompleteStorage
         return $formatted === self::DATE_PLACEHOLDER ? '' : $formatted;
     }
 
+    public static function normalizeDateValue(mixed $value): mixed
+    {
+        if (! is_string($value)) {
+            return $value;
+        }
+
+        $trimmed = trim($value);
+
+        if ($trimmed === '') {
+            return '';
+        }
+
+        if (preg_match('/^(\d{1,2})[.\/-](\d{1,2})[.\/-](\d{4})$/', $trimmed, $matches)) {
+            return $matches[3].'-'.str_pad($matches[2], 2, '0', STR_PAD_LEFT).'-'.str_pad($matches[1], 2, '0', STR_PAD_LEFT);
+        }
+
+        return $trimmed;
+    }
+
     /**
      * @param  array<string, mixed>  $input
      * @return array<string, mixed>
@@ -78,6 +97,12 @@ class ContractIncompleteStorage
 
         if (($input['data_start'] ?? null) === self::DATE_PLACEHOLDER) {
             $input['data_start'] = '';
+        }
+
+        foreach (['data_start', 'data_end'] as $field) {
+            if (array_key_exists($field, $input)) {
+                $input[$field] = self::normalizeDateValue($input[$field]);
+            }
         }
 
         return $input;

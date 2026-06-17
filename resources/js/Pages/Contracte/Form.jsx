@@ -39,6 +39,25 @@ function normalizeDateForSubmit(value) {
     return `${roMatch[3]}-${month}-${day}`;
 }
 
+function formatDateDigits(value) {
+    const digits = String(value || '').replace(/\D/g, '').slice(0, 8);
+    const parts = [];
+
+    if (digits.length > 0) {
+        parts.push(digits.slice(0, 2));
+    }
+
+    if (digits.length > 2) {
+        parts.push(digits.slice(2, 4));
+    }
+
+    if (digits.length > 4) {
+        parts.push(digits.slice(4, 8));
+    }
+
+    return parts.join('/');
+}
+
 function spatiuInfo(spatii, spatiuId) {
     return spatii.find((spatiu) => Number(spatiu.id) === Number(spatiuId)) || null;
 }
@@ -154,16 +173,46 @@ function PfField({ label, value, onChange, error, type = 'text', required = fals
 }
 
 function DateField({ label, value, onChange, error, incomplete = false }) {
+    const calendarValue = normalizeDateForSubmit(value);
+
+    function openCalendar(event) {
+        const picker = event.currentTarget.parentElement?.querySelector('input[type="date"]');
+
+        if (picker?.showPicker) {
+            picker.showPicker();
+        }
+    }
+
+    function handleTextChange(event) {
+        onChange(formatDateDigits(event.target.value));
+    }
+
+    function handleCalendarChange(event) {
+        onChange(formatDateForDisplay(event.target.value));
+    }
+
     return (
         <label className={`form-field form-grid-span-1${incomplete ? ' form-field-incomplete' : ''}`}>
             <span>{label} *</span>
-            <input
-                type="text"
-                inputMode="numeric"
-                placeholder="zz/ll/aaaa"
-                value={formatDateForDisplay(value)}
-                onChange={(event) => onChange(event.target.value)}
-            />
+            <div className="date-input-combo">
+                <input
+                    type="text"
+                    inputMode="numeric"
+                    placeholder="zz/ll/aaaa"
+                    value={formatDateForDisplay(value)}
+                    onFocus={openCalendar}
+                    onClick={openCalendar}
+                    onChange={handleTextChange}
+                />
+                <input
+                    className="date-input-picker"
+                    type="date"
+                    aria-label={`${label} calendar`}
+                    value={/^\d{4}-\d{2}-\d{2}$/.test(calendarValue) ? calendarValue : ''}
+                    onChange={handleCalendarChange}
+                    tabIndex="-1"
+                />
+            </div>
             {error ? <small>{error}</small> : null}
         </label>
     );
@@ -363,7 +412,7 @@ export default function Form({
                         <span>
                             {missingLabels.length
                                 ? `Contract Incomplet. Mai trebuie: ${missingLabels.slice(0, 5).join(', ')}${missingLabels.length > 5 ? ` (+${missingLabels.length - 5})` : ''}`
-                                : 'Contract Incomplet. Completează câmpurile obligatorii pentru activare.'}
+                                : 'Datele par complete. Apasă Salvează contract pentru activare.'}
                         </span>
                     </div>
                 ) : null}
