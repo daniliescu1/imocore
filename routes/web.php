@@ -64,6 +64,7 @@ Route::put('/locatori/{locator}', [LocatorController::class, 'update'])->name('l
 Route::get('/citiri-contoare', [CitireContorController::class, 'index'])->name('citiri-contoare.index');
 Route::get('/citiri-contoare/imobil/{imobil}', [CitireContorController::class, 'imobil'])->name('citiri-contoare.imobil');
 Route::post('/citiri-contoare', [CitireContorController::class, 'store'])->name('citiri-contoare.store');
+Route::post('/citiri-contoare/inchide', [CitireContorController::class, 'inchide'])->name('citiri-contoare.inchide');
 Route::get('/anexe', [AnexaController::class, 'index'])->name('anexe.index');
 Route::post('/anexe/generare', [AnexaController::class, 'generate'])->name('anexe.generate');
 Route::get('/anexe/imobil/{imobil}', [AnexaController::class, 'imobil'])->name('anexe.imobil');

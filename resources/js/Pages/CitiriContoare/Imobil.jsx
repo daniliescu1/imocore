@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef } from 'react';
-import { Link, router, useForm } from '@inertiajs/react';
+import { router, useForm } from '@inertiajs/react';
 import AppLayout from '../../Layouts/AppLayout';
 
 function isPausalTip(tipCalcul) {
@@ -63,11 +63,7 @@ function buildFormState({ imobilId, luna, dataCitire, spatii }) {
     };
 }
 
-function isLineEditable(linie, isNewMode) {
-    if (isNewMode) {
-        return true;
-    }
-
+function isLineEditable(linie) {
     return Boolean(linie.editabila);
 }
 
@@ -84,6 +80,8 @@ export default function Imobil({
     dataCitire = '',
     mode = 'history',
     readOnly = true,
+    lunaInchisa = false,
+    areCitiriSalvate = false,
     luniSelectabile = [],
     luniCitite = [],
     spatii = [],
@@ -103,6 +101,7 @@ export default function Imobil({
         dataCitire,
         spatii,
     }));
+    const [inchidereProcessing, setInchidereProcessing] = React.useState(false);
 
     useEffect(() => {
         if (lastServerStateKey.current === serverStateKey) {
@@ -169,13 +168,30 @@ export default function Imobil({
         post('/citiri-contoare', { preserveScroll: true });
     }
 
+    function inchideCitirile(event) {
+        event.preventDefault();
+
+        if (!window.confirm(`Închizi citirile pentru ${formatLunaLabel(data.luna)}? După închidere nu mai pot fi modificate.`)) {
+            return;
+        }
+
+        setInchidereProcessing(true);
+        router.post('/citiri-contoare/inchide', {
+            imobil_id: imobil.id,
+            luna: data.luna,
+        }, {
+            preserveScroll: true,
+            onFinish: () => setInchidereProcessing(false),
+        });
+    }
+
     const randuriCitiri = spatii.flatMap((spatiu) => (spatiu.liniiContor || []).map((linie) => ({
         spatiu,
         linie,
     })));
     const isNewMode = mode === 'new';
-    const hasEditableLines = randuriCitiri.some(({ linie }) => isLineEditable(linie, isNewMode));
-    const hasPendingHistoryLines = !isNewMode && randuriCitiri.some(({ linie }) => linie.editabila);
+    const hasEditableLines = !lunaInchisa && randuriCitiri.some(({ linie }) => isLineEditable(linie));
+    const canCloseMonth = !lunaInchisa && areCitiriSalvate;
 
     const topbarActions = (
         <>
@@ -198,22 +214,14 @@ export default function Imobil({
     return (
         <AppLayout
             title={`Citiri contoare ${imobil.nume}`}
-            subtitle={isNewMode
-                ? 'Contor: index vechi preluat automat, completezi index nou. Pausal: introduci cantitatea direct.'
-                : hasPendingHistoryLines
-                    ? 'Istoric citiri: liniile fără citire salvată pot fi completate. Cele deja salvate sunt doar vizualizare.'
-                    : 'Istoric citiri: lunile vechi sunt blocate pentru editare.'}
+            subtitle={lunaInchisa
+                ? `Citirile pentru ${formatLunaLabel(luna)} sunt închise și nu mai pot fi modificate.`
+                : isNewMode
+                    ? 'Contor: index vechi preluat automat, completezi index nou. Pausal: introduci cantitatea direct. Salvează, apoi închide luna când ai terminat.'
+                    : 'Poți modifica citirile salvate până apeși „Închide citirile”.'}
             showGlobalSearch={false}
             topbarActions={topbarActions}
         >
-            <section className="readonly-info-card compact-info-card">
-                <p>
-                    Contoare și servicii pausal de citit derivate din anexele alocate spațiilor din <strong>{imobil.nume} ({imobil.localitate})</strong>.
-                    {' '}
-                    <Link className="secondary-button button-link annex-clear-building-button" href="/citiri-contoare">Înapoi la imobile</Link>
-                </p>
-            </section>
-
             <form className="form-card" onSubmit={submit}>
                 {randuriCitiri.length === 0 ? (
                     <div className="readonly-info-card">
@@ -239,7 +247,7 @@ export default function Imobil({
                                 <tbody>
                                     {randuriCitiri.map(({ spatiu, linie }) => {
                                         const pausal = isPausalTip(linie.tip_calcul);
-                                        const editable = isLineEditable(linie, isNewMode);
+                                        const editable = isLineEditable(linie);
                                         const citire = data.citiri[citireIndexFor(spatiu.id, linie.configurare_anexa_linie_id)] || (
                                             pausal
                                                 ? { consum: formatDecimalForInput(linie.consum) }
@@ -334,16 +342,30 @@ export default function Imobil({
                 {errors.imobil_id ? <small>{errors.imobil_id}</small> : null}
                 {errors.data_citire ? <small>{errors.data_citire}</small> : null}
 
-                {hasEditableLines && randuriCitiri.length > 0 ? (
+                {(hasEditableLines || canCloseMonth) && randuriCitiri.length > 0 ? (
                     <div className="form-footer-actions">
-                        <label className="form-field">
-                            <span>Data citire</span>
-                            <input type="datetime-local" value={data.data_citire} onChange={(event) => setData('data_citire', event.target.value)} />
-                        </label>
+                        {hasEditableLines ? (
+                            <label className="form-field">
+                                <span>Data citire</span>
+                                <input type="datetime-local" value={data.data_citire} onChange={(event) => setData('data_citire', event.target.value)} />
+                            </label>
+                        ) : null}
                         <div className="form-actions">
-                            <button className="primary-button" type="submit" disabled={processing || data.citiri.length === 0}>
-                                {processing ? 'Se salvează...' : `Salvează citirea ${formatLunaLabel(data.luna)}`}
-                            </button>
+                            {hasEditableLines ? (
+                                <button className="primary-button" type="submit" disabled={processing || data.citiri.length === 0}>
+                                    {processing ? 'Se salvează...' : `Salvează citirea ${formatLunaLabel(data.luna)}`}
+                                </button>
+                            ) : null}
+                            {canCloseMonth ? (
+                                <button
+                                    className="secondary-button"
+                                    type="button"
+                                    disabled={inchidereProcessing}
+                                    onClick={inchideCitirile}
+                                >
+                                    {inchidereProcessing ? 'Se închide...' : `Închide citirile ${formatLunaLabel(data.luna)}`}
+                                </button>
+                            ) : null}
                         </div>
                     </div>
                 ) : null}

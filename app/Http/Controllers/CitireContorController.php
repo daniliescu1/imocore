@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\CitireContor;
+use App\Models\CitireContorLunaInchisa;
 use App\Models\ConfigurareAnexaLinie;
 use App\Models\Imobil;
 use App\Models\Spatiu;
@@ -47,7 +48,8 @@ class CitireContorController extends Controller
 
         $dataCitire = $request->string('data_citire')->toString()
             ?: ($mode === 'history' ? ($this->dataCitirePentruLuna($imobil, $luna) ?: "{$luna}-20T".now()->format('H:i')) : "{$luna}-20T".now()->format('H:i'));
-        $spatii = $this->spatiiCuCitiriPentruImobil($imobil, $luna, $mode === 'new');
+        $lunaInchisa = $this->lunaInchisa($imobil->id, $luna);
+        $spatii = $this->spatiiCuCitiriPentruImobil($imobil, $luna, $lunaInchisa);
 
         return Inertia::render('CitiriContoare/Imobil', [
             'imobil' => [
@@ -58,7 +60,9 @@ class CitireContorController extends Controller
             'luna' => $luna,
             'dataCitire' => $dataCitire,
             'mode' => $mode,
-            'readOnly' => $mode !== 'new',
+            'readOnly' => $lunaInchisa,
+            'lunaInchisa' => $lunaInchisa,
+            'areCitiriSalvate' => $this->areCitiriSalvatePentruLuna($imobil->id, $luna),
             'luniCitite' => $luniCitite,
             'luniSelectabile' => $this->luniSelectabile(),
             'spatii' => $spatii,
@@ -78,6 +82,16 @@ class CitireContorController extends Controller
             'citiri.*.index_vechi' => ['nullable', 'numeric', 'min:0'],
             'citiri.*.consum' => ['nullable', 'numeric', 'min:0'],
         ]);
+
+        if ($this->lunaInchisa((int) $validated['imobil_id'], $validated['luna'])) {
+            return redirect()
+                ->route('citiri-contoare.imobil', [
+                    'imobil' => $validated['imobil_id'],
+                    'luna' => $validated['luna'],
+                    'mode' => 'history',
+                ])
+                ->with('warning', 'Citirile acestei luni sunt închise și nu mai pot fi modificate.');
+        }
 
         if ($this->existaLunaUlterioara($validated['imobil_id'], $validated['luna'])) {
             $validated['citiri'] = collect($validated['citiri'] ?? [])
@@ -196,6 +210,48 @@ class CitireContorController extends Controller
             ->with('success', 'Citirile contoarelor au fost salvate.');
     }
 
+    public function inchide(Request $request): RedirectResponse
+    {
+        $validated = $request->validate([
+            'imobil_id' => ['required', 'exists:imobile,id'],
+            'luna' => ['required', 'string', 'size:7'],
+        ]);
+
+        if ($this->lunaInchisa((int) $validated['imobil_id'], $validated['luna'])) {
+            return redirect()
+                ->route('citiri-contoare.imobil', [
+                    'imobil' => $validated['imobil_id'],
+                    'luna' => $validated['luna'],
+                    'mode' => 'history',
+                ])
+                ->with('warning', 'Citirile acestei luni sunt deja închise.');
+        }
+
+        if (! $this->areCitiriSalvatePentruLuna((int) $validated['imobil_id'], $validated['luna'])) {
+            return redirect()
+                ->route('citiri-contoare.imobil', [
+                    'imobil' => $validated['imobil_id'],
+                    'luna' => $validated['luna'],
+                    'mode' => 'history',
+                ])
+                ->with('warning', 'Salvează cel puțin o citire înainte de a închide luna.');
+        }
+
+        CitireContorLunaInchisa::query()->create([
+            'imobil_id' => $validated['imobil_id'],
+            'luna' => $validated['luna'],
+            'inchis_at' => now(),
+        ]);
+
+        return redirect()
+            ->route('citiri-contoare.imobil', [
+                'imobil' => $validated['imobil_id'],
+                'luna' => $validated['luna'],
+                'mode' => 'history',
+            ])
+            ->with('success', 'Citirile lunii au fost închise și nu mai pot fi modificate.');
+    }
+
     private function contoareCountForImobil(int $imobilId): int
     {
         $count = 0;
@@ -221,7 +277,7 @@ class CitireContorController extends Controller
             ->value('luna');
     }
 
-    private function spatiiCuCitiriPentruImobil(Imobil $imobil, string $luna, bool $lunaNoua): array
+    private function spatiiCuCitiriPentruImobil(Imobil $imobil, string $luna, bool $lunaInchisa): array
     {
         return Spatiu::query()
             ->with(['configurareAnexa.linii' => fn ($query) => TipCalculAnexa::applyLiniiContorScope(
@@ -231,9 +287,9 @@ class CitireContorController extends Controller
             ->whereNotNull('configurare_anexa_id')
             ->orderBy('identificator')
             ->get()
-            ->map(function (Spatiu $spatiu) use ($luna, $lunaNoua): array {
+            ->map(function (Spatiu $spatiu) use ($luna, $lunaInchisa): array {
                 $liniiContor = $spatiu->configurareAnexa
-                    ? $spatiu->configurareAnexa->linii->map(function (ConfigurareAnexaLinie $linie) use ($spatiu, $luna, $lunaNoua): array {
+                    ? $spatiu->configurareAnexa->linii->map(function (ConfigurareAnexaLinie $linie) use ($spatiu, $luna, $lunaInchisa): array {
                         $citire = CitireContor::query()
                             ->where('spatiu_id', $spatiu->id)
                             ->where('configurare_anexa_linie_id', $linie->id)
@@ -241,7 +297,7 @@ class CitireContorController extends Controller
                             ->first();
 
                         $ultimulIndexNou = $this->ultimulIndexNou($spatiu->id, $linie->id, $luna);
-                        $editabila = $this->linieEditabila($spatiu->id, $linie->id, $luna, $lunaNoua, $citire);
+                        $editabila = $this->linieEditabila($spatiu->id, $linie->id, $luna, $lunaInchisa);
 
                         return [
                             'spatiu_id' => $spatiu->id,
@@ -289,8 +345,25 @@ class CitireContorController extends Controller
             ->map(fn (string $luna): array => [
                 'luna' => $luna,
                 'label' => substr($luna, 5, 2).'.'.substr($luna, 0, 4),
+                'inchisa' => $this->lunaInchisa($imobil->id, $luna),
             ])
             ->all();
+    }
+
+    private function lunaInchisa(int $imobilId, string $luna): bool
+    {
+        return CitireContorLunaInchisa::query()
+            ->where('imobil_id', $imobilId)
+            ->where('luna', $luna)
+            ->exists();
+    }
+
+    private function areCitiriSalvatePentruLuna(int $imobilId, string $luna): bool
+    {
+        return CitireContor::query()
+            ->whereHas('spatiu', fn ($query) => $query->where('imobil_id', $imobilId))
+            ->where('luna', $luna)
+            ->exists();
     }
 
     private function luniSelectabile(): array
@@ -341,13 +414,9 @@ class CitireContorController extends Controller
             ->exists();
     }
 
-    private function linieEditabila(int $spatiuId, int $linieId, string $luna, bool $lunaNoua, ?CitireContor $citire): bool
+    private function linieEditabila(int $spatiuId, int $linieId, string $luna, bool $lunaInchisa): bool
     {
-        if ($lunaNoua) {
-            return true;
-        }
-
-        if ($citire !== null) {
+        if ($lunaInchisa) {
             return false;
         }
 
