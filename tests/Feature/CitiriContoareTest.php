@@ -227,6 +227,85 @@ class CitiriContoareTest extends TestCase
         ]);
     }
 
+    public function test_liniile_fara_citire_din_istoric_raman_editabile_dupa_anexa_noua(): void
+    {
+        $imobil = $this->creeazaImobil();
+        $configurareVeche = $this->creeazaConfigurare($imobil, 'Anexa veche');
+        $linieVeche = $this->creeazaLinieContor($configurareVeche, 'Curent');
+        $spatiuVechi = $this->creeazaSpatiu($imobil, $configurareVeche, 'S1');
+
+        CitireContor::query()->create([
+            'spatiu_id' => $spatiuVechi->id,
+            'configurare_anexa_linie_id' => $linieVeche->id,
+            'luna' => '2026-06',
+            'data_citire' => '2026-06-20 12:00:00',
+            'index_vechi' => 0,
+            'index_nou' => 100,
+            'consum' => 100,
+        ]);
+
+        CitireContor::query()->create([
+            'spatiu_id' => $spatiuVechi->id,
+            'configurare_anexa_linie_id' => $linieVeche->id,
+            'luna' => '2026-07',
+            'data_citire' => '2026-07-20 12:00:00',
+            'index_vechi' => 100,
+            'index_nou' => 120,
+            'consum' => 20,
+        ]);
+
+        $configurareNoua = $this->creeazaConfigurare($imobil, 'Anexa Pers < 50 mp');
+        $linieNouaContor = $this->creeazaLinieContor($configurareNoua, 'Energie Electrica');
+        $linieNouaPausal = $this->creeazaLiniePausal($configurareNoua, 'Consum apa - mc / pers');
+        $spatiuNou = $this->creeazaSpatiu($imobil, $configurareNoua, 'S2');
+
+        $this->get(route('citiri-contoare.imobil', [
+            'imobil' => $imobil->id,
+            'luna' => '2026-06',
+            'mode' => 'history',
+        ]))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('mode', 'history')
+                ->where('spatii.1.id', $spatiuNou->id)
+                ->where('spatii.1.liniiContor.0.editabila', true)
+                ->where('spatii.1.liniiContor.1.editabila', true)
+                ->where('spatii.0.liniiContor.0.editabila', false)
+            );
+
+        $this->post(route('citiri-contoare.store'), [
+            'imobil_id' => $imobil->id,
+            'luna' => '2026-06',
+            'data_citire' => '2026-06-20T15:00',
+            'citiri' => [
+                [
+                    'spatiu_id' => $spatiuNou->id,
+                    'configurare_anexa_linie_id' => $linieNouaContor->id,
+                    'index_nou' => 55.5,
+                ],
+                [
+                    'spatiu_id' => $spatiuNou->id,
+                    'configurare_anexa_linie_id' => $linieNouaPausal->id,
+                    'consum' => 2,
+                ],
+            ],
+        ])->assertRedirect();
+
+        $this->assertDatabaseHas('citiri_contoare', [
+            'spatiu_id' => $spatiuNou->id,
+            'configurare_anexa_linie_id' => $linieNouaContor->id,
+            'luna' => '2026-06',
+            'index_nou' => 55.5,
+        ]);
+
+        $this->assertDatabaseHas('citiri_contoare', [
+            'spatiu_id' => $spatiuNou->id,
+            'configurare_anexa_linie_id' => $linieNouaPausal->id,
+            'luna' => '2026-06',
+            'consum' => 2,
+        ]);
+    }
+
     private function creeazaImobil(): Imobil
     {
         return Imobil::query()->create([
@@ -237,11 +316,11 @@ class CitiriContoareTest extends TestCase
         ]);
     }
 
-    private function creeazaConfigurare(Imobil $imobil): ConfigurareAnexaImobil
+    private function creeazaConfigurare(Imobil $imobil, string $denumire = 'Anexa servicii'): ConfigurareAnexaImobil
     {
         return ConfigurareAnexaImobil::query()->create([
             'imobil_id' => $imobil->id,
-            'denumire' => 'Anexa servicii',
+            'denumire' => $denumire,
             'implicit' => true,
             'activ' => true,
         ]);
@@ -267,11 +346,11 @@ class CitiriContoareTest extends TestCase
         ]);
     }
 
-    private function creeazaSpatiu(Imobil $imobil, ConfigurareAnexaImobil $configurare): Spatiu
+    private function creeazaSpatiu(Imobil $imobil, ConfigurareAnexaImobil $configurare, string $identificator = 'S1'): Spatiu
     {
         return Spatiu::query()->create([
             'imobil_id' => $imobil->id,
-            'identificator' => 'S1',
+            'identificator' => $identificator,
             'status' => 'liber',
             'configurare_anexa_id' => $configurare->id,
             'moneda' => 'EUR',

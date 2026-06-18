@@ -63,6 +63,14 @@ function buildFormState({ imobilId, luna, dataCitire, spatii }) {
     };
 }
 
+function isLineEditable(linie, isNewMode) {
+    if (isNewMode) {
+        return true;
+    }
+
+    return Boolean(linie.editabila);
+}
+
 function formatLunaLabel(luna) {
     if (!luna) return '—';
     const [an, lunaNumar] = String(luna).split('-');
@@ -166,6 +174,8 @@ export default function Imobil({
         linie,
     })));
     const isNewMode = mode === 'new';
+    const hasEditableLines = randuriCitiri.some(({ linie }) => isLineEditable(linie, isNewMode));
+    const hasPendingHistoryLines = !isNewMode && randuriCitiri.some(({ linie }) => linie.editabila);
 
     const topbarActions = (
         <>
@@ -188,7 +198,11 @@ export default function Imobil({
     return (
         <AppLayout
             title={`Citiri contoare ${imobil.nume}`}
-            subtitle={isNewMode ? 'Contor: index vechi preluat automat, completezi index nou. Pausal: introduci cantitatea direct.' : 'Istoric citiri: lunile vechi sunt blocate pentru editare.'}
+            subtitle={isNewMode
+                ? 'Contor: index vechi preluat automat, completezi index nou. Pausal: introduci cantitatea direct.'
+                : hasPendingHistoryLines
+                    ? 'Istoric citiri: liniile fără citire salvată pot fi completate. Cele deja salvate sunt doar vizualizare.'
+                    : 'Istoric citiri: lunile vechi sunt blocate pentru editare.'}
             showGlobalSearch={false}
             topbarActions={topbarActions}
         >
@@ -214,7 +228,6 @@ export default function Imobil({
                                     <tr>
                                         <th>Spațiu</th>
                                         <th>Nume chiriaș</th>
-                                        <th>Anexă</th>
                                         <th>Serviciu</th>
                                         <th>Tip</th>
                                         <th>UM</th>
@@ -226,6 +239,7 @@ export default function Imobil({
                                 <tbody>
                                     {randuriCitiri.map(({ spatiu, linie }) => {
                                         const pausal = isPausalTip(linie.tip_calcul);
+                                        const editable = isLineEditable(linie, isNewMode);
                                         const citire = data.citiri[citireIndexFor(spatiu.id, linie.configurare_anexa_linie_id)] || (
                                             pausal
                                                 ? { consum: formatDecimalForInput(linie.consum) }
@@ -240,7 +254,6 @@ export default function Imobil({
                                             <tr key={`${spatiu.id}-${linie.configurare_anexa_linie_id}`}>
                                                 <td><strong>{spatiu.identificator}</strong></td>
                                                 <td>{spatiu.chirias || '—'}</td>
-                                                <td>{spatiu.anexa || '—'}</td>
                                                 <td>{linie.denumire}</td>
                                                 <td>{tipCitireLabel(linie.tip_calcul)}</td>
                                                 <td>{linie.um || '—'}</td>
@@ -254,9 +267,9 @@ export default function Imobil({
                                                                 type="text"
                                                                 inputMode="decimal"
                                                                 value={citire.consum ?? ''}
-                                                                readOnly={!isNewMode}
-                                                                tabIndex={!isNewMode ? -1 : undefined}
-                                                                aria-readonly={!isNewMode ? 'true' : undefined}
+                                                                readOnly={!editable}
+                                                                tabIndex={!editable ? -1 : undefined}
+                                                                aria-readonly={!editable ? 'true' : undefined}
                                                                 aria-label="Cantitate pausal"
                                                                 onChange={(event) => updateCitire(
                                                                     spatiu.id,
@@ -276,9 +289,9 @@ export default function Imobil({
                                                                 type="text"
                                                                 inputMode="decimal"
                                                                 value={indexVechiAfisat}
-                                                                readOnly={!isNewMode}
-                                                                tabIndex={!isNewMode ? -1 : undefined}
-                                                                aria-readonly={!isNewMode ? 'true' : undefined}
+                                                                readOnly={!editable}
+                                                                tabIndex={!editable ? -1 : undefined}
+                                                                aria-readonly={!editable ? 'true' : undefined}
                                                                 onChange={(event) => updateCitire(
                                                                     spatiu.id,
                                                                     linie.configurare_anexa_linie_id,
@@ -294,9 +307,9 @@ export default function Imobil({
                                                                 type="text"
                                                                 inputMode="decimal"
                                                                 value={citire.index_nou ?? ''}
-                                                                readOnly={!isNewMode}
-                                                                tabIndex={!isNewMode ? -1 : undefined}
-                                                                aria-readonly={!isNewMode ? 'true' : undefined}
+                                                                readOnly={!editable}
+                                                                tabIndex={!editable ? -1 : undefined}
+                                                                aria-readonly={!editable ? 'true' : undefined}
                                                                 onChange={(event) => updateCitire(
                                                                     spatiu.id,
                                                                     linie.configurare_anexa_linie_id,
@@ -321,7 +334,7 @@ export default function Imobil({
                 {errors.imobil_id ? <small>{errors.imobil_id}</small> : null}
                 {errors.data_citire ? <small>{errors.data_citire}</small> : null}
 
-                {isNewMode && randuriCitiri.length > 0 ? (
+                {hasEditableLines && randuriCitiri.length > 0 ? (
                     <div className="form-footer-actions">
                         <label className="form-field">
                             <span>Data citire</span>
