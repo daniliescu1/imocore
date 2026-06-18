@@ -359,6 +359,13 @@ class CitiriContoareTest extends TestCase
         $this->post(route('citiri-contoare.inchide'), [
             'imobil_id' => $imobil->id,
             'luna' => '2026-06',
+            'data_citire' => '2026-06-21T10:00',
+            'citiri' => [[
+                'spatiu_id' => $spatiu->id,
+                'configurare_anexa_linie_id' => $linie->id,
+                'index_vechi' => 0,
+                'index_nou' => 140,
+            ]],
         ])->assertRedirect();
 
         $this->assertDatabaseHas('citiri_contoare_luni_inchise', [
@@ -394,6 +401,40 @@ class CitiriContoareTest extends TestCase
             'configurare_anexa_linie_id' => $linie->id,
             'luna' => '2026-06',
             'index_nou' => 140,
+        ]);
+    }
+
+    public function test_inchiderea_salveaza_si_inchide_fara_salvare_anterioara(): void
+    {
+        $imobil = $this->creeazaImobil();
+        $configurare = $this->creeazaConfigurare($imobil);
+        $linie = $this->creeazaLinieContor($configurare, 'Curent');
+        $spatiu = $this->creeazaSpatiu($imobil, $configurare);
+
+        $this->post(route('citiri-contoare.inchide'), [
+            'imobil_id' => $imobil->id,
+            'luna' => '2026-07',
+            'data_citire' => '2026-07-20T16:46',
+            'citiri' => [[
+                'spatiu_id' => $spatiu->id,
+                'configurare_anexa_linie_id' => $linie->id,
+                'index_vechi' => 0,
+                'index_nou' => 88,
+            ]],
+        ])->assertRedirect()
+            ->assertSessionHas('success');
+
+        $this->assertDatabaseHas('citiri_contoare', [
+            'spatiu_id' => $spatiu->id,
+            'configurare_anexa_linie_id' => $linie->id,
+            'luna' => '2026-07',
+            'index_nou' => 88,
+            'consum' => 88,
+        ]);
+
+        $this->assertDatabaseHas('citiri_contoare_luni_inchise', [
+            'imobil_id' => $imobil->id,
+            'luna' => '2026-07',
         ]);
     }
 

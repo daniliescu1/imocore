@@ -6,6 +6,7 @@ use App\Models\Anexa;
 use App\Models\Contract;
 use App\Models\Factura;
 use App\Models\Imobil;
+use App\Models\Locator;
 use App\Models\Spatiu;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Inertia\Testing\AssertableInertia as Assert;
@@ -100,17 +101,37 @@ class FacturaRentIncreaseTest extends TestCase
             'localitate' => 'Timișoara',
         ]);
 
+        $locator = Locator::query()->create([
+            'nume' => 'GREEN COURT SRL',
+            'cui_are_ro' => true,
+            'cui' => '12345678',
+            'registrul_comertului' => 'J40/123/2020',
+            'adresa' => 'Str. Exemplu 1, Timișoara',
+            'banca' => 'Banca Transilvania',
+            'cont_bancar' => 'RO49BTRL00000000000000',
+            'email' => 'facturare@greencourt.ro',
+        ]);
+
         $spatiu = Spatiu::query()->create([
             'imobil_id' => $imobil->id,
             'identificator' => 'F-TVA',
             'status' => 'inchiriat',
             'moneda' => 'EUR',
+            'locator_id' => $locator->id,
         ]);
 
         $contract = Contract::query()->create([
             'spatiu_id' => $spatiu->id,
             'numar_contract' => 'C-TVA',
-            'chirias' => 'Chiriaș TVA',
+            'chirias' => 'ZBO ELECTRONICS SRL',
+            'chirias_tip' => 'pj',
+            'chirias_date' => [
+                'cui' => '98765432',
+                'sediu_social' => 'Str. Chiriaș 2, Timișoara',
+                'telefon' => '0721000000',
+                'email' => 'office@chirias.ro',
+                'nr_reg_comert' => 'J35/1/2019',
+            ],
             'data_start' => '2026-01-01',
             'chirie' => 1000,
             'moneda' => 'EUR',
@@ -148,6 +169,8 @@ class FacturaRentIncreaseTest extends TestCase
         $factura = Factura::query()->create([
             'anexa_id' => $anexa->id,
             'numar_factura' => 'FACT-TVA',
+            'data_emitere' => '2026-05-31',
+            'data_scadenta' => '2026-06-05',
             'curs_eur' => 5,
             'chirie_eur' => 1000,
             'chirie_lei' => 5000,
@@ -159,6 +182,17 @@ class FacturaRentIncreaseTest extends TestCase
         $this->get(route('facturare.show', $factura))
             ->assertOk()
             ->assertInertia(fn (Assert $page) => $page
+                ->where('factura.numar_factura', 'FACT-TVA')
+                ->where('factura.data_emitere', '31.05.2026')
+                ->where('factura.data_scadenta', '05.06.2026')
+                ->where('factura.locator.nume', 'GREEN COURT SRL')
+                ->where('factura.locator.cui', 'RO12345678')
+                ->where('factura.locator.email', 'facturare@greencourt.ro')
+                ->where('factura.locatar.nume', 'ZBO ELECTRONICS SRL')
+                ->where('factura.locatar.identificator_label', 'CUI')
+                ->where('factura.locatar.identificator', '98765432')
+                ->where('factura.locatar.telefon', '0721000000')
+                ->where('factura.locatar.email', 'office@chirias.ro')
                 ->where('factura.linii.1.nr_crt', 2)
                 ->where('factura.linii.1.denumire', 'Utilități 21% TVA mai')
                 ->where('factura.linii.1.valoare', 100)

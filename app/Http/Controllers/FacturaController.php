@@ -3,8 +3,10 @@
 namespace App\Http\Controllers;
 
 use App\Models\Anexa;
+use App\Models\Contract;
 use App\Models\Factura;
 use App\Models\Imobil;
+use App\Models\Locator;
 use App\Models\SetareAplicatie;
 use App\Models\Spatiu;
 use Illuminate\Http\RedirectResponse;
@@ -97,9 +99,13 @@ class FacturaController extends Controller
                 $chirieLei = round($chirieEur * $cursEur, 2);
             }
 
+            $dataEmitere = now()->toDateString();
+
             Factura::query()->create([
                 'anexa_id' => $anexa->id,
                 'numar_factura' => $this->nextInvoiceNumber(),
+                'data_emitere' => $dataEmitere,
+                'data_scadenta' => now()->addDays(5)->toDateString(),
                 'curs_eur' => $cursEur,
                 'chirie_eur' => $chirieEur,
                 'chirie_lei' => $chirieLei,
@@ -172,10 +178,17 @@ class FacturaController extends Controller
             'tva' => null,
         ];
 
+        $sumarFactura = $this->sumarFactura($factura, $anexaLiniiServiciu);
+        $dateFactura = $this->dateFactura($factura);
+        $locatorParty = $this->mapLocatorParty($spatiu?->locatorEntitate);
+        $locatarParty = $this->mapLocatarParty($contract);
+
         return Inertia::render('Facturare/Show', [
             'factura' => [
                 'id' => $factura->id,
                 'numar_factura' => $factura->numar_factura,
+                'data_emitere' => $dateFactura['data_emitere'],
+                'data_scadenta' => $dateFactura['data_scadenta'],
                 'curs_eur' => $factura->curs_eur,
                 'chirie_eur' => $factura->chirie_eur,
                 'chirie_lei' => $factura->chirie_lei,
@@ -190,10 +203,10 @@ class FacturaController extends Controller
                     'numar' => $contract?->numar_contract,
                     'chirias' => $contract?->chirias,
                 ],
+                'locator' => $locatorParty,
+                'locatar' => $locatarParty,
                 'spatiu' => [
                     'identificator' => $spatiu?->identificator,
-                    'locator' => $spatiu?->locatorEntitate?->nume ?: $spatiu?->getAttribute('locator'),
-                    'chirias' => $spatiu?->chirias ?: $contract?->chirias,
                 ],
                 'imobil' => [
                     'nume' => $imobil?->nume,
@@ -201,6 +214,7 @@ class FacturaController extends Controller
                     'localitate' => $imobil?->localitate,
                 ],
                 'linii' => $liniiFactura,
+                'sumar' => $sumarFactura,
                 'anexa_detaliu' => [
                     'numar' => '01',
                     'luna' => $anexa?->luna,
@@ -333,6 +347,123 @@ class FacturaController extends Controller
                 'tva' => round($grup['tva'], 2),
             ])
             ->all();
+    }
+
+    /**
+     * @param  \Illuminate\Support\Collection<int, \App\Models\AnexaLinie>  $anexaLiniiServiciu
+     * @return array{total_fara_tva: float, tva_21: float, tva_11: float, total: float}
+     */
+    private function sumarFactura(Factura $factura, $anexaLiniiServiciu): array
+    {
+        $grupuriTva = $this->grupeazaUtilitatiPeTva($anexaLiniiServiciu);
+        $tvaByProcent = collect($grupuriTva)->keyBy('procent');
+        $utilitatiFaraTva = round(collect($grupuriTva)->sum('valoare'), 2);
+        $tva21 = round((float) ($tvaByProcent->get(21)['tva'] ?? 0), 2);
+        $tva11 = round((float) ($tvaByProcent->get(11)['tva'] ?? 0), 2);
+        $totalFaraTva = round((float) $factura->chirie_lei + $utilitatiFaraTva + (float) $factura->penalitati, 2);
+
+        return [
+            'total_fara_tva' => $totalFaraTva,
+            'tva_21' => $tva21,
+            'tva_11' => $tva11,
+            'total' => round((float) $factura->total, 2),
+        ];
+    }
+
+    /**
+     * @return array{data_emitere: string, data_scadenta: string}
+     */
+    private function dateFactura(Factura $factura): array
+    {
+        $dataEmitere = $factura->data_emitere?->toDateString()
+            ?? ($factura->created_at?->toDateString() ?? now()->toDateString());
+        $dataScadenta = $factura->data_scadenta?->toDateString()
+            ?? \Carbon\Carbon::parse($dataEmitere)->addDays(5)->toDateString();
+
+        return [
+            'data_emitere' => \Carbon\Carbon::parse($dataEmitere)->format('d.m.Y'),
+            'data_scadenta' => \Carbon\Carbon::parse($dataScadenta)->format('d.m.Y'),
+        ];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function mapLocatorParty(?Locator $locator): array
+    {
+        if ($locator === null) {
+            return [
+                'nume' => '—',
+                'cui' => null,
+                'reg_com' => null,
+                'adresa' => null,
+                'banca' => null,
+                'cont_bancar' => null,
+                'email' => null,
+            ];
+        }
+
+        $cui = trim(($locator->cui_are_ro ? 'RO' : '').($locator->cui ?: ''));
+
+        return [
+            'nume' => $locator->nume ?: '—',
+            'cui' => $cui !== '' ? $cui : null,
+            'reg_com' => $locator->registrul_comertului ?: null,
+            'adresa' => $locator->adresa ?: null,
+            'banca' => $locator->banca ?: null,
+            'cont_bancar' => $locator->cont_bancar ?: null,
+            'email' => $locator->email ?: null,
+        ];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function mapLocatarParty(?Contract $contract): array
+    {
+        if ($contract === null) {
+            return [
+                'tip' => 'pj',
+                'nume' => '—',
+                'identificator_label' => 'CUI',
+                'identificator' => null,
+                'ci' => null,
+                'adresa' => null,
+                'telefon' => null,
+                'email' => null,
+            ];
+        }
+
+        $date = is_array($contract->chirias_date) ? $contract->chirias_date : [];
+        $tip = $contract->chirias_tip === 'pf' ? 'pf' : 'pj';
+
+        if ($tip === 'pf') {
+            $serieCi = trim((string) ($date['serie_ci'] ?? ''));
+            $numarCi = trim((string) ($date['numar_ci'] ?? ''));
+            $ci = trim($serieCi.' '.$numarCi);
+
+            return [
+                'tip' => 'pf',
+                'nume' => $contract->chirias ?: '—',
+                'identificator_label' => 'CNP',
+                'identificator' => ($date['cnp'] ?? null) ?: null,
+                'ci' => $ci !== '' ? $ci : null,
+                'adresa' => ($date['domiciliu'] ?? null) ?: null,
+                'telefon' => ($date['telefon'] ?? null) ?: null,
+                'email' => ($date['email'] ?? null) ?: null,
+            ];
+        }
+
+        return [
+            'tip' => 'pj',
+            'nume' => $contract->chirias ?: '—',
+            'identificator_label' => 'CUI',
+            'identificator' => ($date['cui'] ?? null) ?: null,
+            'ci' => null,
+            'adresa' => ($date['sediu_social'] ?? null) ?: null,
+            'telefon' => ($date['telefon'] ?? null) ?: null,
+            'email' => ($date['email'] ?? null) ?: null,
+        ];
     }
 
     private function numeLunaUrmatoare(?string $luna): string

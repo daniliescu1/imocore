@@ -18,47 +18,87 @@ function formatMoneyValue(value) {
     return Number(value).toFixed(2);
 }
 
+function formatAmount(value) {
+    if (value === null || value === undefined || value === '') return '—';
+    return Number(value).toLocaleString('ro-RO', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
+function displayValue(value) {
+    if (value === null || value === undefined || String(value).trim() === '') return '—';
+    return value;
+}
+
+function InvoicePartyDetail({ label, value }) {
+    return (
+        <p className="invoice-party-detail">
+            <span>{label}</span>
+            {displayValue(value)}
+        </p>
+    );
+}
+
+function InvoiceLocatorCard({ locator }) {
+    return (
+        <div className="invoice-party-card">
+            <span className="invoice-party-heading">Locator</span>
+            <strong className="invoice-party-name">{displayValue(locator?.nume)}</strong>
+            <InvoicePartyDetail label="CUI" value={locator?.cui} />
+            <InvoicePartyDetail label="Reg. Com." value={locator?.reg_com} />
+            <InvoicePartyDetail label="Adresă" value={locator?.adresa} />
+            <InvoicePartyDetail label="Bancă" value={locator?.banca} />
+            <InvoicePartyDetail label="Cont" value={locator?.cont_bancar} />
+            <InvoicePartyDetail label="Email" value={locator?.email} />
+        </div>
+    );
+}
+
+function InvoiceLocatarCard({ locatar }) {
+    return (
+        <div className="invoice-party-card">
+            <span className="invoice-party-heading">Locatar</span>
+            <strong className="invoice-party-name">{displayValue(locatar?.nume)}</strong>
+            <InvoicePartyDetail label={locatar?.identificator_label || 'CUI'} value={locatar?.identificator} />
+            {locatar?.tip === 'pf' ? <InvoicePartyDetail label="CI" value={locatar?.ci} /> : null}
+            <InvoicePartyDetail label="Adresă" value={locatar?.adresa} />
+            <InvoicePartyDetail label="Telefon" value={locatar?.telefon} />
+            <InvoicePartyDetail label="Email" value={locatar?.email} />
+        </div>
+    );
+}
+
 export default function Show({ factura }) {
     const topbarActions = <Link className="secondary-button button-link" href="/facturare">Înapoi la facturi</Link>;
-    const totalValoare = factura.linii.reduce((sum, linie) => sum + Number(linie.valoare || 0), 0);
-    const totalTva = factura.linii.reduce((sum, linie) => sum + Number(linie.tva || 0), 0);
+    const sumar = factura.sumar || {
+        total_fara_tva: factura.linii.reduce((sum, linie) => sum + Number(linie.valoare || 0), 0),
+        tva_21: 0,
+        tva_11: 0,
+        total: factura.total,
+    };
 
     return (
         <AppLayout title={`Factura ${factura.numar_factura}`} subtitle="Previzualizare factură generată" showGlobalSearch={false} topbarActions={topbarActions}>
             <section className="generated-annex">
-                <div className="generated-annex-header">
+                <div className="generated-annex-header invoice-document-header">
                     <div>
-                        <h2>FACTURA {factura.numar_factura}</h2>
-                        <p>pentru anexa din luna {factura.luna}</p>
+                        <h2>FACTURA</h2>
+                        <p className="invoice-number">{factura.numar_factura || '—'}</p>
+                        <p className="invoice-period-note">pentru anexa din luna {factura.luna}</p>
                     </div>
-                    <div className="generated-annex-meta">
-                        <span>Status</span>
-                        <strong>{factura.status}</strong>
+                    <div className="generated-annex-meta invoice-dates-meta">
+                        <div className="invoice-date-row">
+                            <span>Data emitere:</span>
+                            <strong>{factura.data_emitere || '—'}</strong>
+                        </div>
+                        <div className="invoice-date-row">
+                            <span>Data scadenta:</span>
+                            <strong>{factura.data_scadenta || '—'}</strong>
+                        </div>
                     </div>
                 </div>
 
-                <div className="generated-annex-parties">
-                    <div>
-                        <span>Imobil</span>
-                        <strong>{factura.imobil.nume || '—'}</strong>
-                        <small>{[factura.imobil.adresa, factura.imobil.localitate].filter(Boolean).join(', ') || '—'}</small>
-                    </div>
-                    <div>
-                        <span>Locator</span>
-                        <strong>{factura.spatiu.locator || '—'}</strong>
-                    </div>
-                    <div>
-                        <span>Client / chiriaș</span>
-                        <strong>{factura.spatiu.chirias || factura.contract.chirias || '—'}</strong>
-                    </div>
-                    <div>
-                        <span>ID spațiu</span>
-                        <strong>{factura.spatiu.identificator || '—'}</strong>
-                    </div>
-                    <div>
-                        <span>Contract</span>
-                        <strong>{factura.contract.numar || '—'}</strong>
-                    </div>
+                <div className="invoice-parties-grid">
+                    <InvoiceLocatorCard locator={factura.locator} />
+                    <InvoiceLocatarCard locatar={factura.locatar} />
                 </div>
 
                 <div className="responsive-table generated-annex-table-wrap">
@@ -87,14 +127,26 @@ export default function Show({ factura }) {
                                 </tr>
                             ))}
                         </tbody>
-                        <tfoot>
-                            <tr>
-                                <td colSpan="5">Total factură</td>
-                                <td>{formatMoney(totalValoare)}</td>
-                                <td>{formatMoney(totalTva)}</td>
-                            </tr>
-                        </tfoot>
                     </table>
+                </div>
+
+                <div className="invoice-totals-summary">
+                    <div className="invoice-totals-row">
+                        <span>Total fără TVA:</span>
+                        <strong>{formatAmount(sumar.total_fara_tva)}</strong>
+                    </div>
+                    <div className="invoice-totals-row">
+                        <span>TVA 21%:</span>
+                        <strong>{formatAmount(sumar.tva_21)}</strong>
+                    </div>
+                    <div className="invoice-totals-row">
+                        <span>TVA 11%:</span>
+                        <strong>{formatAmount(sumar.tva_11)}</strong>
+                    </div>
+                    <div className="invoice-totals-row invoice-totals-grand-total">
+                        <span>Total</span>
+                        <strong>{formatAmount(sumar.total)} Lei</strong>
+                    </div>
                 </div>
 
                 <p className="invoice-exchange-rate-note">

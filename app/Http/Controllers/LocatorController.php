@@ -63,6 +63,7 @@ class LocatorController extends Controller
                 'adresa' => $locator->adresa,
                 'banca' => $locator->banca,
                 'cont_bancar' => $locator->cont_bancar,
+                'email' => $locator->email,
                 'chirie_cu_tva' => $locator->chirie_cu_tva,
             ],
             'imobile' => $this->imobileForSelect(),
@@ -92,6 +93,7 @@ class LocatorController extends Controller
             'adresa' => ['nullable', 'string', 'max:500'],
             'banca' => ['nullable', 'string', 'max:255'],
             'cont_bancar' => ['nullable', 'string', 'max:255'],
+            'email' => ['nullable', 'email', 'max:255'],
             'chirie_cu_tva' => ['boolean'],
         ]);
     }

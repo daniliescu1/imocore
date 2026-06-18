@@ -12,6 +12,8 @@ class Factura extends Model
     protected $fillable = [
         'anexa_id',
         'numar_factura',
+        'data_emitere',
+        'data_scadenta',
         'curs_eur',
         'chirie_eur',
         'chirie_lei',
@@ -24,6 +26,8 @@ class Factura extends Model
 
     protected $casts = [
         'total' => 'decimal:2',
+        'data_emitere' => 'date',
+        'data_scadenta' => 'date',
         'curs_eur' => 'decimal:4',
         'chirie_eur' => 'decimal:2',
         'chirie_lei' => 'decimal:2',

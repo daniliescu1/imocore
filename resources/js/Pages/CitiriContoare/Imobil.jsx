@@ -81,7 +81,6 @@ export default function Imobil({
     mode = 'history',
     readOnly = true,
     lunaInchisa = false,
-    areCitiriSalvate = false,
     luniSelectabile = [],
     luniCitite = [],
     spatii = [],
@@ -171,7 +170,7 @@ export default function Imobil({
     function inchideCitirile(event) {
         event.preventDefault();
 
-        if (!window.confirm(`Închizi citirile pentru ${formatLunaLabel(data.luna)}? După închidere nu mai pot fi modificate.`)) {
+        if (!window.confirm(`Salvezi și închizi citirile pentru ${formatLunaLabel(data.luna)}? După închidere nu mai pot fi modificate.`)) {
             return;
         }
 
@@ -179,6 +178,8 @@ export default function Imobil({
         router.post('/citiri-contoare/inchide', {
             imobil_id: imobil.id,
             luna: data.luna,
+            data_citire: data.data_citire,
+            citiri: data.citiri,
         }, {
             preserveScroll: true,
             onFinish: () => setInchidereProcessing(false),
@@ -191,7 +192,7 @@ export default function Imobil({
     })));
     const isNewMode = mode === 'new';
     const hasEditableLines = !lunaInchisa && randuriCitiri.some(({ linie }) => isLineEditable(linie));
-    const canCloseMonth = !lunaInchisa && areCitiriSalvate;
+    const canCloseMonth = !lunaInchisa;
 
     const topbarActions = (
         <>
@@ -217,8 +218,8 @@ export default function Imobil({
             subtitle={lunaInchisa
                 ? `Citirile pentru ${formatLunaLabel(luna)} sunt închise și nu mai pot fi modificate.`
                 : isNewMode
-                    ? 'Contor: index vechi preluat automat, completezi index nou. Pausal: introduci cantitatea direct. Salvează, apoi închide luna când ai terminat.'
-                    : 'Poți modifica citirile salvate până apeși „Închide citirile”.'}
+                    ? 'Completezi citirile, salvezi sau salvezi și închizi luna când ai terminat.'
+                    : 'Poți modifica citirile salvate până apeși „Salvează și închide”.'}
             showGlobalSearch={false}
             topbarActions={topbarActions}
         >
@@ -342,14 +343,12 @@ export default function Imobil({
                 {errors.imobil_id ? <small>{errors.imobil_id}</small> : null}
                 {errors.data_citire ? <small>{errors.data_citire}</small> : null}
 
-                {(hasEditableLines || canCloseMonth) && randuriCitiri.length > 0 ? (
+                {!lunaInchisa && randuriCitiri.length > 0 ? (
                     <div className="form-footer-actions">
-                        {hasEditableLines ? (
-                            <label className="form-field">
-                                <span>Data citire</span>
-                                <input type="datetime-local" value={data.data_citire} onChange={(event) => setData('data_citire', event.target.value)} />
-                            </label>
-                        ) : null}
+                        <label className="form-field">
+                            <span>Data citire</span>
+                            <input type="datetime-local" value={data.data_citire} onChange={(event) => setData('data_citire', event.target.value)} />
+                        </label>
                         <div className="form-actions">
                             {hasEditableLines ? (
                                 <button className="primary-button" type="submit" disabled={processing || data.citiri.length === 0}>
@@ -360,10 +359,10 @@ export default function Imobil({
                                 <button
                                     className="secondary-button"
                                     type="button"
-                                    disabled={inchidereProcessing}
+                                    disabled={inchidereProcessing || processing}
                                     onClick={inchideCitirile}
                                 >
-                                    {inchidereProcessing ? 'Se închide...' : `Închide citirile ${formatLunaLabel(data.luna)}`}
+                                    {inchidereProcessing ? 'Se salvează și închide...' : `Salvează și închide ${formatLunaLabel(data.luna)}`}
                                 </button>
                             ) : null}
                         </div>

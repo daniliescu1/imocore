@@ -19,6 +19,7 @@ class Locator extends Model
         'adresa',
         'banca',
         'cont_bancar',
+        'email',
         'chirie_cu_tva',
     ];
 

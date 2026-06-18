@@ -13,6 +13,7 @@ export default function Form({ locator = null, imobile = [] }) {
         adresa: locator?.adresa || '',
         banca: locator?.banca || '',
         cont_bancar: locator?.cont_bancar || '',
+        email: locator?.email || '',
         chirie_cu_tva: Boolean(locator?.chirie_cu_tva),
     });
 
@@ -85,6 +86,12 @@ export default function Form({ locator = null, imobile = [] }) {
                         <span>Cont bancar</span>
                         <input type="text" value={data.cont_bancar} onChange={(event) => setData('cont_bancar', event.target.value)} />
                         {errors.cont_bancar ? <small>{errors.cont_bancar}</small> : null}
+                    </label>
+
+                    <label className="form-field">
+                        <span>Email</span>
+                        <input type="email" value={data.email} onChange={(event) => setData('email', event.target.value)} />
+                        {errors.email ? <small>{errors.email}</small> : null}
                     </label>
 
                     <label className="form-field">
