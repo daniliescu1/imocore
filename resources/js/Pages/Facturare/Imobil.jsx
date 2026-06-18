@@ -8,7 +8,15 @@ function formatMoney(value) {
     return `${String(Number(value)).replace(/(\.\d*?)0+$/, '$1').replace(/\.$/, '')} lei`;
 }
 
-export default function Imobil({ imobil, facturi = [], anexeNefacturate = 0, cursImplicit = 5, cursSursa = '' }) {
+function facturareStatusLine(anexeFacturate, anexeNefacturate, cursImplicit) {
+    const facturateLabel = anexeFacturate === 1 ? 'facturată' : 'facturate';
+
+    const nefacturateLabel = anexeNefacturate === 1 ? 'anexă nefacturată' : 'anexe nefacturate';
+
+    return `${anexeFacturate} ${facturateLabel} · ${anexeNefacturate} ${nefacturateLabel} — Curs ${cursImplicit} RON/EUR`;
+}
+
+export default function Imobil({ imobil, facturi = [], anexeFacturate = 0, anexeNefacturate = 0, cursImplicit = 5 }) {
     const { processing } = useForm({});
 
     function generate(event) {
@@ -24,28 +32,25 @@ export default function Imobil({ imobil, facturi = [], anexeNefacturate = 0, cur
     }
 
     const topbarActions = (
-        <button className="primary-button topbar-primary-button" type="button" onClick={generate} disabled={processing}>
-            {processing ? 'Se generează...' : 'Generează pentru imobil'}
-        </button>
+        <>
+            <Link className="secondary-button button-link facturare-imobil-back" href="/facturare">Înapoi</Link>
+            <button className="primary-button topbar-primary-button" type="button" onClick={generate} disabled={processing}>
+                {processing ? 'Se generează...' : 'Generează pentru imobil'}
+            </button>
+        </>
+    );
+
+    const statusLine = facturareStatusLine(anexeFacturate, anexeNefacturate, cursImplicit);
+    const topbarTitle = (
+        <div className="topbar-page-title">
+            <h1>Facturare {imobil.nume}</h1>
+            <p>{statusLine}</p>
+        </div>
     );
 
     return (
-        <AppLayout title={`Facturare ${imobil.nume}`} subtitle={`${imobil.localitate || '—'} - facturile acestui imobil`} showGlobalSearch={false} topbarActions={topbarActions}>
-            <section className="facturare-imobil-toolbar">
-                <div className="facturare-imobil-toolbar-main">
-                    <strong className="facturare-imobil-count">{anexeNefacturate} anexe nefacturate</strong>
-                    <p className="facturare-imobil-hint">
-                        Facturi pentru anexele din <strong>{imobil.nume} ({imobil.localitate})</strong> fără factură.
-                        {anexeNefacturate === 0 ? ' Generează mai întâi anexele pentru acest imobil.' : ''}
-                    </p>
-                </div>
-                <div className="facturare-imobil-toolbar-meta">
-                    <span className="facturare-imobil-curs">Curs {cursImplicit} RON/EUR · {cursSursa}</span>
-                    <Link className="secondary-button button-link facturare-imobil-back" href="/facturare">Înapoi la imobile</Link>
-                </div>
-            </section>
-
-            <section className="table-card module-table-card">
+        <AppLayout title={`Facturare ${imobil.nume}`} showGlobalSearch={false} topbarActions={topbarActions} topbarTitle={topbarTitle}>
+            <section className="table-card module-table-card page-compact-list">
                 <div className="responsive-table">
                     <table>
                         <thead>

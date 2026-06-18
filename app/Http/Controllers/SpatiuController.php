@@ -31,6 +31,10 @@ class SpatiuController extends Controller
             return $this->indexSpatiiForImobil($imobilId, $search, $status, $regimIncalzire);
         }
 
+        if ($status !== '') {
+            return $this->indexSpatiiGlobalFilter($localitate, $search, $status, $regimIncalzire);
+        }
+
         return $this->indexImobileList($localitate, $search);
     }
 
@@ -137,6 +141,60 @@ class SpatiuController extends Controller
                 'status' => $status,
                 'regim_incalzire' => $regimIncalzire,
                 'imobil_id' => $imobil->id,
+            ],
+        ]);
+    }
+
+    private function indexSpatiiGlobalFilter(string $localitate, string $search, string $status, string $regimIncalzire): Response
+    {
+        $query = Spatiu::query()
+            ->with([
+                'imobil',
+                'locatorEntitate',
+                'contracte' => fn ($query) => $query->where('status', 'activ')->latest('id'),
+            ])
+            ->withExists(['contracte as are_contract_inregistrat'])
+            ->withExists(['contracte as are_contract_activ' => fn ($query) => $query->where('status', 'activ')])
+            ->where('status', $status);
+
+        if ($localitate !== '') {
+            $query->whereHas('imobil', fn ($imobilQuery) => $imobilQuery->where('localitate', $localitate));
+        }
+
+        if ($regimIncalzire !== '') {
+            $query->where('regim_incalzire', $regimIncalzire);
+        }
+
+        if ($search !== '') {
+            $query->where(function ($query) use ($search) {
+                $query->where('identificator', 'like', "%{$search}%")
+                    ->orWhere('locator', 'like', "%{$search}%")
+                    ->orWhere('chirias', 'like', "%{$search}%")
+                    ->orWhereHas('imobil', fn ($imobilQuery) => $imobilQuery->where('nume', 'like', "%{$search}%"));
+            });
+        }
+
+        $spatii = $query
+            ->join('imobile', 'spatii.imobil_id', '=', 'imobile.id')
+            ->orderBy('imobile.ordine')
+            ->orderBy('imobile.id')
+            ->orderBy('spatii.ordine')
+            ->orderBy('spatii.id')
+            ->select('spatii.*')
+            ->get()
+            ->map(fn (Spatiu $spatiu): array => $this->mapSpatiuForList($spatiu));
+
+        return Inertia::render('Spatii/Index', [
+            'imobile' => [],
+            'imobil' => null,
+            'spatii' => $spatii,
+            'localitati' => Imobil::query()->select('localitate')->distinct()->orderBy('localitate')->pluck('localitate'),
+            'filters' => [
+                'localitate' => $localitate,
+                'search' => $search,
+                'status' => $status,
+                'regim_incalzire' => $regimIncalzire,
+                'imobil_id' => null,
             ],
         ]);
     }

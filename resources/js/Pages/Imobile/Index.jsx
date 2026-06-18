@@ -179,14 +179,10 @@ export default function Index({ imobile, localitati, filters }) {
     return (
         <AppLayout
             title={`Imobile (${imobile.length})`}
-            subtitle="Administrare nume imobil și adresă"
             showGlobalSearch={false}
             topbarActions={topbarActions}
         >
-            <section className="table-card module-table-card">
-                {canReorder ? (
-                    <p className="spaces-reorder-hint">Trage rândurile pentru a reordona imobilele.</p>
-                ) : null}
+            <section className="table-card module-table-card page-compact-list">
                 <div className="responsive-table">
                     <table>
                         <thead>

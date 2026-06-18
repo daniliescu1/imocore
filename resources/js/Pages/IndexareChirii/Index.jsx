@@ -46,9 +46,6 @@ function IndexareRow({ spatiu, savingId, onSave }) {
                 <Link className="table-name-link" href={`/spatii/${spatiu.id}/editare`} title={spatiu.identificator}>{spatiu.identificator}</Link>
             </td>
             <td>{spatiu.etaj}</td>
-            <td>{spatiu.suprafata_contractuala_mp ? `${spatiu.suprafata_contractuala_mp} mp` : '—'}</td>
-            <td>{statusLabel(spatiu.status)}</td>
-            <td>{spatiu.pret_lunar ? `${spatiu.pret_lunar} ${spatiu.moneda_label || spatiu.moneda}` : '—'}</td>
             <td>
                 {spatiu.chirie_lunara_curenta ? (
                     <div className="stacked-cell">
@@ -73,17 +70,23 @@ function IndexareRow({ spatiu, savingId, onSave }) {
                 {isSaving ? <small className="indexare-chirii-saving">Se salvează...</small> : null}
             </td>
             <td>{spatiu.chirias}</td>
+            <td>{spatiu.suprafata_contractuala_mp ? `${spatiu.suprafata_contractuala_mp} mp` : '—'}</td>
+            <td>{statusLabel(spatiu.status)}</td>
         </tr>
     );
 }
 
-export default function Index({ spatii = [], localitati = [], filters = {} }) {
+export default function Index({ spatii = [], localitati = [], filters = {}, rezumat = {} }) {
     const [savingId, setSavingId] = useState(null);
+    const anCurent = rezumat.an_curent || new Date().getFullYear();
+    const spatiiInchiriate = rezumat.spatii_inchiriate ?? 0;
+    const spatiiIndexate = rezumat.spatii_indexate_an_curent ?? 0;
 
     function updateFilters(overrides = {}) {
         router.get('/indexare-chirii', {
             localitate: filters.localitate || '',
             search: filters.search || '',
+            indexare: filters.indexare || '',
             ...overrides,
         }, { preserveState: true, preserveScroll: true });
     }
@@ -116,6 +119,18 @@ export default function Index({ spatii = [], localitati = [], filters = {} }) {
                         ))}
                     </select>
                 </label>
+                <label className="inline-topbar-field spaces-topbar-field">
+                    <span>Indexare {anCurent}</span>
+                    <select
+                        className="filter-input topbar-filter"
+                        value={filters.indexare || ''}
+                        onChange={(event) => updateFilters({ indexare: event.target.value })}
+                    >
+                        <option value="">Toate</option>
+                        <option value="indexate">Indexate</option>
+                        <option value="neindexate">Neindexate</option>
+                    </select>
+                </label>
                 <input
                     className="filter-input topbar-search"
                     type="search"
@@ -127,12 +142,23 @@ export default function Index({ spatii = [], localitati = [], filters = {} }) {
         </div>
     );
 
+    const indexateLabel = `${spatiiIndexate} ${spatiiIndexate === 1 ? 'spațiu indexat' : 'spații indexate'} în ${anCurent}`;
+    const subtitle = `Introdu indexarea ${anCurent} pentru spațiile închiriate — ${indexateLabel}`;
+
+    const topbarTitle = (
+        <div className="topbar-page-title">
+            <h1>Indexare chirii ({spatiiInchiriate} închiriate)</h1>
+            <p>{subtitle}</p>
+        </div>
+    );
+
     return (
         <AppLayout
-            title={`Indexare chirii (${spatii.length})`}
-            subtitle="Introdu indexarea 2026 pentru toate spațiile"
+            title={`Indexare chirii (${spatiiInchiriate} închiriate)`}
+            subtitle={subtitle}
             showGlobalSearch={false}
             topbarActions={topbarActions}
+            topbarTitle={topbarTitle}
         >
             <section className="table-card module-table-card indexare-chirii-table-card">
                 <div className="responsive-table">
@@ -146,23 +172,21 @@ export default function Index({ spatii = [], localitati = [], filters = {} }) {
                             <col />
                             <col />
                             <col />
-                            <col />
                         </colgroup>
                         <thead>
                             <tr>
                                 <th>Imobil</th>
                                 <th className="spatiu-identificator-header">Identificat</th>
                                 <th>Etaj</th>
-                                <th>Suprafață</th>
-                                <th>Status</th>
-                                <th>Chirie</th>
                                 <th>
                                     <span className="stacked-heading">
                                         <span>Chirie curentă</span>
                                     </span>
                                 </th>
-                                <th>Indexare 2026</th>
+                                <th>Indexare {anCurent}</th>
                                 <th>Locatar</th>
+                                <th>Suprafață</th>
+                                <th>Status</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -176,7 +200,7 @@ export default function Index({ spatii = [], localitati = [], filters = {} }) {
                             ))}
                             {spatii.length === 0 ? (
                                 <tr>
-                                    <td colSpan="9">Nu există spații pentru filtrul selectat.</td>
+                                    <td colSpan="8">Nu există spații închiriate pentru filtrul selectat.</td>
                                 </tr>
                             ) : null}
                         </tbody>

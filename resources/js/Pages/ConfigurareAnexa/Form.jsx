@@ -493,23 +493,13 @@ export default function Form({
     const topbarActions = <Link className="secondary-button button-link" href={returnUrl || '/configurare-anexa'}>Înapoi</Link>;
 
     return (
-        <AppLayout title={isEditing ? `Editare ${anexa.denumire}` : 'Adaugă anexă'} subtitle="Alege imobilul și configurează serviciile anexei" showGlobalSearch={false} topbarActions={topbarActions}>
+        <AppLayout title={isEditing ? `Editare ${anexa.denumire}` : 'Adaugă anexă'} showGlobalSearch={false} topbarActions={topbarActions}>
             {context?.spatii_count > 1 ? (
-                <div className="spatiu-context-banner">
+                <div className="spatiu-context-banner spatiu-context-banner-compact">
                     Această anexă e alocată la {context.spatii_count} spații. Modificările se aplică tuturor spațiilor care o folosesc.
                 </div>
             ) : null}
-            <div className="readonly-info-card annex-template-info">
-                <p>Anexa definește doar serviciile, tipul de calcul, prețul și TVA. Citirile contoare se introduc în <strong>Citiri contoare</strong>, iar mp și numărul de persoane se iau automat din fiecare spațiu la generare.</p>
-            </div>
-            <form className="cf-card module-table-card" onSubmit={submit}>
-                <div className="cf-card-heading">
-                    <div>
-                        <h2>{isEditing ? 'Editare anexă configurată' : 'Anexă nouă'}</h2>
-                        <p>Configurează denumirea, imobilul și serviciile care vor apărea în anexă.</p>
-                    </div>
-                </div>
-
+            <form className="cf-card module-table-card page-compact-annex-form" onSubmit={submit}>
                 <div className="annex-config-grid">
                     <label className="form-field">
                         <span>Imobil *</span>

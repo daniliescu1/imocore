@@ -63,15 +63,21 @@ export default function Imobil({ imobil, anexe = [], lunaImplicita = '', contrac
     );
 
     return (
-        <AppLayout title={`Anexe ${imobil.nume}`} subtitle={`${imobil.localitate || '—'} - generează și vezi anexele acestui imobil`} showGlobalSearch={false} topbarActions={topbarActions}>
-            <section className="readonly-info-card annex-generation-status">
-                <h2>{contracteEligibile} spații eligibile pentru generare</h2>
-                <p>
-                    Se generează anexele doar pentru spațiile din <strong>{imobil.nume} ({imobil.localitate})</strong> care au contract activ și configurare de anexă selectată.
-                    {contracteEligibile === 0 ? ' Adaugă un contract activ și selectează anexa pe spațiu ca să poți genera.' : ''}
-                </p>
-                <strong>Se vor genera anexele pentru utilități {lunaUtilitati} {anUtilitati}, aferente facturării din {lunaSelectata} {data.an}.</strong>
-                <Link className="secondary-button button-link annex-clear-building-button" href="/anexe">Înapoi la toate imobilele</Link>
+        <AppLayout title={`Anexe ${imobil.nume}`} showGlobalSearch={false} topbarActions={topbarActions}>
+            <section className="facturare-imobil-toolbar">
+                <div className="facturare-imobil-toolbar-main">
+                    <strong className="facturare-imobil-count">{contracteEligibile} spații eligibile</strong>
+                    <p className="facturare-imobil-hint">
+                        Anexe pentru spațiile din <strong>{imobil.nume} ({imobil.localitate})</strong> cu contract activ.
+                        {contracteEligibile === 0 ? ' Adaugă contract activ și anexă pe spațiu.' : ''}
+                    </p>
+                </div>
+                <div className="facturare-imobil-toolbar-meta">
+                    <span className="facturare-imobil-curs">
+                        Utilități {lunaUtilitati} {anUtilitati} · facturare {lunaSelectata} {data.an}
+                    </span>
+                    <Link className="secondary-button button-link facturare-imobil-back" href="/anexe">Înapoi la imobile</Link>
+                </div>
             </section>
 
             <section className="table-card module-table-card">

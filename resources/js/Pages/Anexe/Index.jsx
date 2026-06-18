@@ -24,7 +24,7 @@ const luni = [
 
 function RezumatImobileTable({ rezumatImobile = [] }) {
     return (
-        <section className="table-card module-table-card">
+        <section className="table-card module-table-card facturare-table-card">
             <div className="responsive-table">
                 <table>
                     <thead>
@@ -93,17 +93,23 @@ export default function Index({ rezumatImobile = [], lunaImplicita = '', contrac
     );
 
     return (
-        <AppLayout title="Generare anexe" subtitle="Generează și previzualizează anexele pentru spațiile cu contract activ" showGlobalSearch={false} topbarActions={topbarActions}>
-            <section className="readonly-info-card annex-generation-status">
-                <h2>{contracteEligibile} spații eligibile pentru generare</h2>
-                <p>
-                    Se generează anexele pentru contractele active ale spațiilor care au selectată o configurare de anexă.
-                    {contracteEligibile === 0 ? ' Adaugă un contract activ și selectează anexa pe spațiu ca să poți genera.' : ''}
-                </p>
-                <strong>Se vor genera anexele pentru utilități {lunaUtilitati} {anUtilitati}, aferente facturării din {lunaSelectata} {data.an}.</strong>
+        <AppLayout title="Generare anexe" showGlobalSearch={false} topbarActions={topbarActions}>
+            <section className="facturare-imobil-toolbar">
+                <div className="facturare-imobil-toolbar-main">
+                    <strong className="facturare-imobil-count">{contracteEligibile} spații eligibile</strong>
+                    <p className="facturare-imobil-hint">
+                        Anexe pentru contracte active cu configurare selectată.
+                        {contracteEligibile === 0 ? ' Adaugă contract activ și anexă pe spațiu.' : ''}
+                    </p>
+                </div>
+                <div className="facturare-imobil-toolbar-meta">
+                    <span className="facturare-imobil-curs">
+                        Utilități {lunaUtilitati} {anUtilitati} · facturare {lunaSelectata} {data.an}
+                    </span>
+                </div>
             </section>
 
-            <Deferred data="rezumatImobile" fallback={<section className="readonly-info-card">Se încarcă rezumatul pe imobile...</section>}>
+            <Deferred data="rezumatImobile" fallback={<p className="facturare-loading-note">Se încarcă rezumatul pe imobile...</p>}>
                 <RezumatImobileTable rezumatImobile={rezumatImobile} />
             </Deferred>
         </AppLayout>

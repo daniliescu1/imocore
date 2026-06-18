@@ -18,6 +18,9 @@ class FacturaController extends Controller
 {
     public function index(): Response
     {
+        $anexeFacturate = Anexa::query()
+            ->whereHas('factura')
+            ->count();
         $anexeNefacturate = Anexa::query()
             ->whereDoesntHave('factura')
             ->count();
@@ -25,6 +28,7 @@ class FacturaController extends Controller
         $curs = $this->cursEurBt();
 
         return Inertia::render('Facturare/Index', [
+            'anexeFacturate' => $anexeFacturate,
             'anexeNefacturate' => $anexeNefacturate,
             'rezumatImobile' => Inertia::defer(fn () => $this->rezumatImobile((float) $curs['valoare']), 'summary'),
             'cursImplicit' => $curs['valoare'],
@@ -40,6 +44,10 @@ class FacturaController extends Controller
             ->get()
             ->map(fn (Factura $factura): array => $this->mapFacturaForList($factura));
 
+        $anexeFacturate = Anexa::query()
+            ->whereHas('factura')
+            ->whereHas('contract.spatiu', fn ($query) => $query->where('imobil_id', $imobil->id))
+            ->count();
         $anexeNefacturate = Anexa::query()
             ->whereDoesntHave('factura')
             ->whereHas('contract.spatiu', fn ($query) => $query->where('imobil_id', $imobil->id))
@@ -52,6 +60,7 @@ class FacturaController extends Controller
                 'localitate' => $imobil->localitate,
             ],
             'facturi' => $facturi,
+            'anexeFacturate' => $anexeFacturate,
             'anexeNefacturate' => $anexeNefacturate,
             'cursImplicit' => $curs['valoare'],
             'cursSursa' => $curs['sursa'],

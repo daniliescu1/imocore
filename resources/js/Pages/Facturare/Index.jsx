@@ -12,11 +12,19 @@ function formatEuro(value) {
     return `${String(Number(value)).replace(/(\.\d*?)0+$/, '$1').replace(/\.$/, '')} EUR`;
 }
 
+function facturareStatusLine(anexeFacturate, anexeNefacturate, cursImplicit) {
+    const facturateLabel = anexeFacturate === 1 ? 'facturată' : 'facturate';
+
+    const nefacturateLabel = anexeNefacturate === 1 ? 'anexă nefacturată' : 'anexe nefacturate';
+
+    return `${anexeFacturate} ${facturateLabel} · ${anexeNefacturate} ${nefacturateLabel} — Curs ${cursImplicit} RON/EUR`;
+}
+
 function RezumatImobileTable({ rezumatImobile = [] }) {
     return (
-        <section className="table-card module-table-card">
+        <section className="table-card module-table-card facturare-table-card">
             <div className="responsive-table">
-                <table>
+                <table className="facturare-rezumat-table">
                     <thead>
                         <tr>
                             <th>Imobil</th>
@@ -59,7 +67,7 @@ function RezumatImobileTable({ rezumatImobile = [] }) {
     );
 }
 
-export default function Index({ anexeNefacturate = 0, rezumatImobile = [], cursImplicit = 5, cursSursa = '' }) {
+export default function Index({ anexeFacturate = 0, anexeNefacturate = 0, rezumatImobile = [], cursImplicit = 5 }) {
     const { processing } = useForm({});
 
     function generate(event) {
@@ -73,17 +81,21 @@ export default function Index({ anexeNefacturate = 0, rezumatImobile = [], cursI
         </button>
     );
 
-    return (
-        <AppLayout title="Facturare" subtitle="Generează facturi din anexele existente" showGlobalSearch={false} topbarActions={topbarActions}>
-            <section className="readonly-info-card annex-generation-status">
-                <h2>{anexeNefacturate} anexe nefacturate</h2>
-                <p>Se vor genera facturi pentru anexele care nu au încă factură. Chiria spațiului se calculează în lei cu cursul vânzare EUR setat în Configurare anexă.</p>
-                <strong>Curs folosit: {cursImplicit} RON/EUR ({cursSursa})</strong>
-            </section>
+    const statusLine = facturareStatusLine(anexeFacturate, anexeNefacturate, cursImplicit);
+    const topbarTitle = (
+        <div className="topbar-page-title">
+            <h1>Facturare</h1>
+            <p>{statusLine}</p>
+        </div>
+    );
 
-            <Deferred data="rezumatImobile" fallback={<section className="readonly-info-card">Se încarcă rezumatul pe imobile...</section>}>
-                <RezumatImobileTable rezumatImobile={rezumatImobile} />
-            </Deferred>
+    return (
+        <AppLayout title="Facturare" showGlobalSearch={false} topbarActions={topbarActions} topbarTitle={topbarTitle}>
+            <div className="page-compact-list">
+                <Deferred data="rezumatImobile" fallback={<p className="facturare-loading-note">Se încarcă rezumatul pe imobile...</p>}>
+                    <RezumatImobileTable rezumatImobile={rezumatImobile} />
+                </Deferred>
+            </div>
         </AppLayout>
     );
 }

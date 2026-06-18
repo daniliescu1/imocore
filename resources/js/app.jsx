@@ -2,7 +2,14 @@ import '../css/app.css';
 
 import React from 'react';
 import { createRoot } from 'react-dom/client';
-import { createInertiaApp } from '@inertiajs/react';
+import { createInertiaApp, router } from '@inertiajs/react';
+import { cancelPendingRequests } from './navigation';
+
+router.on('before', (event) => {
+    if (!event.detail.visit.prefetch) {
+        cancelPendingRequests();
+    }
+});
 
 createInertiaApp({
     resolve: (name) => {

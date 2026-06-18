@@ -339,11 +339,23 @@ a {
     padding: 0 14px;
 }
 
-.spaces-reorder-hint {
-    margin: 0 0 12px;
-    color: var(--text-secondary);
-    font-size: 13px;
-    font-weight: 600;
+.content-shell:has(.page-compact-list) {
+    padding-top: 8px;
+}
+
+.main-shell:has(.page-compact-list) .topbar-no-search {
+    min-height: 56px;
+    padding: 10px 24px;
+    align-items: center;
+}
+
+.main-shell:has(.page-compact-list) .topbar-no-search .topbar-page-title h1 {
+    font-size: clamp(22px, 2.2vw, 28px);
+}
+
+.main-shell:has(.page-compact-list) .topbar-no-search .topbar-actions,
+.main-shell:has(.page-compact-list) .topbar-no-search .topbar-right {
+    padding-top: 0;
 }
 
 .topbar-page-title h1 {
@@ -373,6 +385,14 @@ a {
 
 .topbar-page-title-row h1 {
     min-width: 0;
+}
+
+.indexare-chirii-indexate-meta {
+    flex-shrink: 0;
+    color: var(--text-secondary);
+    font-size: 13px;
+    font-weight: 700;
+    white-space: nowrap;
 }
 
 .contract-status-topbar-badge {
@@ -529,6 +549,92 @@ a {
     padding-top: 18px;
 }
 
+.content-shell:has(.facturare-imobil-toolbar) {
+    padding-top: 8px;
+}
+
+.main-shell:has(.indexare-chirii-table-card) {
+    display: flex;
+    flex-direction: column;
+    min-height: 100dvh;
+}
+
+.main-shell:has(.indexare-chirii-table-card) .content-shell {
+    display: flex;
+    flex: 1 1 auto;
+    flex-direction: column;
+    min-height: 0;
+    padding-top: 12px;
+    padding-bottom: 12px;
+}
+
+.main-shell:has(.facturare-imobil-toolbar) .topbar-no-search {
+    min-height: 56px;
+    padding: 10px 24px;
+    align-items: center;
+}
+
+.main-shell:has(.facturare-imobil-toolbar) .topbar-no-search .topbar-page-title h1 {
+    font-size: clamp(22px, 2.2vw, 28px);
+}
+
+.main-shell:has(.facturare-imobil-toolbar) .topbar-no-search .topbar-actions,
+.main-shell:has(.facturare-imobil-toolbar) .topbar-no-search .topbar-right {
+    padding-top: 0;
+}
+
+.content-shell:has(.page-compact-annex-form) {
+    padding-top: 8px;
+}
+
+.main-shell:has(.page-compact-annex-form) .topbar-no-search {
+    min-height: 56px;
+    padding: 10px 24px;
+    align-items: center;
+}
+
+.main-shell:has(.page-compact-annex-form) .topbar-no-search .topbar-page-title h1 {
+    font-size: clamp(22px, 2.2vw, 28px);
+}
+
+.main-shell:has(.page-compact-annex-form) .topbar-no-search .topbar-actions,
+.main-shell:has(.page-compact-annex-form) .topbar-no-search .topbar-right {
+    padding-top: 0;
+}
+
+.page-compact-annex-form.cf-card {
+    margin-top: 0;
+    padding: 12px 14px 14px;
+}
+
+.page-compact-annex-form .annex-config-grid {
+    margin-bottom: 4px;
+}
+
+.page-compact-annex-form .annex-lines {
+    margin-top: 8px;
+    padding-top: 8px;
+    gap: 8px;
+}
+
+.page-compact-annex-form .annex-save-actions {
+    margin-top: 10px;
+}
+
+.spatiu-context-banner-compact {
+    margin-bottom: 8px;
+    padding: 8px 12px;
+    font-size: 13px;
+    line-height: 1.35;
+}
+
+.facturare-loading-note {
+    margin: 0 0 6px;
+    color: var(--text-secondary);
+    font-size: 12px;
+    font-weight: 600;
+}
+
 .flash-message {
     margin: 0 0 18px;
     border: 1px solid var(--border);
@@ -635,6 +741,23 @@ a {
 .stat-card-total .stat-value { color: #5a3a14; }
 .stat-card-free .stat-value { color: var(--success); }
 .stat-card-rented .stat-value { color: var(--primary-blue); }
+
+.stat-card-link {
+    display: block;
+    color: inherit;
+    text-decoration: none;
+}
+
+.stat-card-link .stat-card {
+    cursor: pointer;
+    transition: transform 120ms ease, box-shadow 120ms ease;
+}
+
+.stat-card-link:hover .stat-card,
+.stat-card-link:focus-visible .stat-card {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.08);
+}
 
 .stat-meta {
     margin-top: 10px;
@@ -996,9 +1119,9 @@ td {
     flex-wrap: wrap;
     align-items: center;
     justify-content: space-between;
-    gap: 10px 18px;
-    margin-bottom: 18px;
-    padding: 12px 16px;
+    gap: 8px 14px;
+    margin-bottom: 10px;
+    padding: 8px 14px;
     border: 1px solid var(--border);
     border-radius: 12px;
     background: var(--card-soft);
@@ -3435,15 +3558,45 @@ tr:last-child td {
     white-space: nowrap;
 }
 
+.facturare-rezumat-table {
+    width: max-content;
+    min-width: 100%;
+}
+
+.table-card.module-table-card.facturare-table-card {
+    display: flex;
+    flex: 1 1 auto;
+    flex-direction: column;
+    overflow: hidden;
+    min-height: 0;
+    max-height: calc(100dvh - 8.25rem);
+}
+
+.facturare-table-card .responsive-table {
+    overflow: auto;
+    flex: 1 1 auto;
+    min-height: 0;
+    max-width: 100%;
+    -webkit-overflow-scrolling: touch;
+    padding: 0 0 10px;
+}
+
+.facturare-table-card .facturare-rezumat-table thead th {
+    position: sticky;
+    top: 0;
+    z-index: 2;
+}
+
 .table-card.module-table-card {
     overflow: visible;
 }
 
 .table-card.module-table-card.indexare-chirii-table-card {
     display: flex;
+    flex: 1 1 auto;
     flex-direction: column;
     overflow: hidden;
-    max-height: calc(100dvh - 11.75rem);
+    min-height: 0;
 }
 
 .indexare-chirii-table-card .responsive-table {
@@ -3452,7 +3605,7 @@ tr:last-child td {
     min-height: 0;
     max-width: 100%;
     -webkit-overflow-scrolling: touch;
-    padding: 0 0 10px;
+    padding: 0;
 }
 
 .indexare-chirii-table-card .indexare-chirii-table thead th {

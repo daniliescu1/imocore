@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Link, router, usePage } from '@inertiajs/react';
+import { usePage } from '@inertiajs/react';
 import {
     BarChart3,
     Bell,
@@ -17,6 +17,7 @@ import {
     X,
     Zap,
 } from 'lucide-react';
+import { navigateTo } from '../navigation';
 
 const navigation = [
     { label: 'Imobile', icon: Building2, href: '/imobile' },
@@ -34,78 +35,6 @@ const navigation = [
     { label: 'Reguli imobile', icon: Settings, href: '/reguli-imobile' },
 ];
 
-const prefetchCacheFor = '2m';
-const prefetchedUrls = new Set();
-const priorityPrefetchHrefs = [
-    '/',
-    ...navigation.map((item) => item.href),
-    '/operr-app',
-    '/setari',
-    '/backup',
-];
-
-function normalizedInternalHref(rawHref) {
-    if (!rawHref || rawHref.startsWith('#') || rawHref.startsWith('mailto:') || rawHref.startsWith('tel:')) {
-        return null;
-    }
-
-    try {
-        const url = new URL(rawHref, window.location.origin);
-
-        if (url.origin !== window.location.origin) {
-            return null;
-        }
-
-        const href = `${url.pathname}${url.search}${url.hash}`;
-
-        return href === `${window.location.pathname}${window.location.search}${window.location.hash}` ? null : href;
-    } catch {
-        return null;
-    }
-}
-
-function prefetchInternalHref(rawHref) {
-    const href = normalizedInternalHref(rawHref);
-
-    if (!href || prefetchedUrls.has(href)) {
-        return;
-    }
-
-    prefetchedUrls.add(href);
-    router.prefetch(href, { method: 'get' }, { cacheFor: prefetchCacheFor });
-}
-
-function prefetchTarget(target) {
-    if (!(target instanceof Element)) {
-        return;
-    }
-
-    const link = target.closest('a[href]');
-
-    if (link && !link.hasAttribute('download') && link.getAttribute('target') !== '_blank') {
-        prefetchInternalHref(link.getAttribute('href'));
-        return;
-    }
-
-    const prefetchable = target.closest('[data-prefetch-href]');
-
-    if (prefetchable) {
-        prefetchInternalHref(prefetchable.getAttribute('data-prefetch-href'));
-    }
-}
-
-function prefetchElement(element) {
-    if (!(element instanceof Element)) {
-        return;
-    }
-
-    if (element.matches('[data-prefetch-on-intent="true"]')) {
-        return;
-    }
-
-    prefetchInternalHref(element.getAttribute('href') || element.getAttribute('data-prefetch-href'));
-}
-
 function isActive(url, href) {
     if (href === '/') {
         return url === '/';
@@ -116,12 +45,19 @@ function isActive(url, href) {
 
 function Logo() {
     return (
-        <Link href="/" className="brand">
+        <a
+            href="/"
+            className="brand"
+            onClick={(event) => {
+                event.preventDefault();
+                navigateTo('/');
+            }}
+        >
             <div className="brand-mark">
                 <Building2 size={34} strokeWidth={1.8} />
             </div>
             <div className="brand-text">Imo Core</div>
-        </Link>
+        </a>
     );
 }
 
@@ -185,17 +121,21 @@ function UserMenu() {
                         const Icon = item.icon;
 
                         return (
-                            <Link
+                            <a
                                 key={item.href}
                                 className="user-menu-item"
                                 href={item.href}
                                 role="menuitem"
-                                onClick={closeMenu}
+                                onClick={(event) => {
+                                    event.preventDefault();
+                                    closeMenu();
+                                    navigateTo(item.href);
+                                }}
                             >
                                 <Icon size={16} />
                                 <span>{item.label}</span>
                                 {item.showExternal ? <ExternalLink size={14} className="user-menu-external" /> : null}
-                            </Link>
+                            </a>
                         );
                     })}
                 </div>
@@ -205,6 +145,12 @@ function UserMenu() {
 }
 
 function Sidebar({ open, onClose, currentUrl }) {
+    function handleNavClick(event, href) {
+        event.preventDefault();
+        onClose();
+        navigateTo(href);
+    }
+
     return (
         <>
             <div className={`sidebar-overlay ${open ? 'is-open' : ''}`} onClick={onClose} />
@@ -220,15 +166,15 @@ function Sidebar({ open, onClose, currentUrl }) {
                         const active = isActive(currentUrl, item.href);
 
                         return (
-                            <Link
+                            <a
                                 className={`nav-item ${active ? 'is-active' : ''}`}
                                 href={item.href}
                                 key={item.label}
-                                onClick={onClose}
+                                onClick={(event) => handleNavClick(event, item.href)}
                             >
                                 <Icon size={18} />
                                 <span>{item.label}</span>
-                            </Link>
+                            </a>
                         );
                     })}
                 </nav>
@@ -257,85 +203,6 @@ export default function AppLayout({
     const [sidebarOpen, setSidebarOpen] = useState(false);
     const { url, props } = usePage();
     const flash = props.flash || {};
-
-    useEffect(() => {
-        function handlePointerOver(event) {
-            prefetchTarget(event.target);
-        }
-
-        function handleFocusIn(event) {
-            prefetchTarget(event.target);
-        }
-
-        document.addEventListener('pointerover', handlePointerOver, { passive: true });
-        document.addEventListener('focusin', handleFocusIn);
-
-        return () => {
-            document.removeEventListener('pointerover', handlePointerOver);
-            document.removeEventListener('focusin', handleFocusIn);
-        };
-    }, []);
-
-    useEffect(() => {
-        const hrefs = Array.from(document.querySelectorAll('a[href], [data-prefetch-href]'))
-            .filter((element) => !element.matches('[data-prefetch-on-intent="true"]'))
-            .map((element) => element.getAttribute('href') || element.getAttribute('data-prefetch-href'))
-            .filter(Boolean);
-        const uniqueHrefs = [...new Set([...priorityPrefetchHrefs, ...hrefs])];
-        const scheduledTimeouts = [];
-        const scheduleIdle = window.requestIdleCallback
-            ? (callback) => window.requestIdleCallback(callback)
-            : (callback) => window.setTimeout(callback, 250);
-        const cancelIdle = window.cancelIdleCallback
-            ? (idleId) => window.cancelIdleCallback(idleId)
-            : (idleId) => window.clearTimeout(idleId);
-        const idleId = scheduleIdle(() => {
-            uniqueHrefs.slice(0, 36).forEach((href, index) => {
-                scheduledTimeouts.push(window.setTimeout(() => prefetchInternalHref(href), index * 35));
-            });
-        });
-
-        return () => {
-            cancelIdle(idleId);
-            scheduledTimeouts.forEach((timeoutId) => window.clearTimeout(timeoutId));
-        };
-    }, [url]);
-
-    useEffect(() => {
-        const elements = Array.from(document.querySelectorAll('a[href], [data-prefetch-href]'))
-            .filter((element) => {
-                if (element.matches('[data-prefetch-on-intent="true"]')) {
-                    return false;
-                }
-
-                const href = element.getAttribute('href') || element.getAttribute('data-prefetch-href');
-
-                return Boolean(normalizedInternalHref(href));
-            });
-
-        if (!('IntersectionObserver' in window)) {
-            elements.slice(0, 80).forEach(prefetchElement);
-            return undefined;
-        }
-
-        const observer = new IntersectionObserver((entries) => {
-            entries.forEach((entry) => {
-                if (!entry.isIntersecting) {
-                    return;
-                }
-
-                prefetchElement(entry.target);
-                observer.unobserve(entry.target);
-            });
-        }, {
-            rootMargin: '700px 0px',
-            threshold: 0.01,
-        });
-
-        elements.forEach((element) => observer.observe(element));
-
-        return () => observer.disconnect();
-    }, [url]);
 
     return (
         <div className="app-shell">

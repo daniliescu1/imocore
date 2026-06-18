@@ -7,6 +7,7 @@ use App\Models\Spatiu;
 use App\Support\DecimalInput;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Schema;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -16,11 +17,19 @@ class IndexareChiriiController extends Controller
     {
         $localitate = $request->string('localitate')->toString();
         $search = $request->string('search')->toString();
+        $indexare = $request->string('indexare')->toString();
+        $anCurent = (int) now()->format('Y');
+        $indexareColumn = "indexare_{$anCurent}";
+
+        if (! in_array($indexare, ['', 'indexate', 'neindexate'], true)) {
+            $indexare = '';
+        }
 
         $query = Spatiu::query()
             ->with('imobil')
             ->join('imobile', 'imobile.id', '=', 'spatii.imobil_id')
             ->select('spatii.*')
+            ->where('spatii.status', 'inchiriat')
             ->orderBy('imobile.ordine')
             ->orderBy('imobile.id')
             ->orderBy('spatii.ordine')
@@ -38,7 +47,24 @@ class IndexareChiriiController extends Controller
             });
         }
 
-        $spatii = $query->get()->map(fn (Spatiu $spatiu): array => $this->mapSpatiuForIndexare($spatiu));
+        if ($indexare !== '' && $this->indexareColumnExists($indexareColumn)) {
+            $qualifiedColumn = "spatii.{$indexareColumn}";
+
+            if ($indexare === 'indexate') {
+                $query->whereNotNull($qualifiedColumn)
+                    ->where($qualifiedColumn, '!=', '')
+                    ->where($qualifiedColumn, '!=', 0);
+            } else {
+                $query->where(function ($query) use ($qualifiedColumn) {
+                    $query->whereNull($qualifiedColumn)
+                        ->orWhere($qualifiedColumn, '')
+                        ->orWhere($qualifiedColumn, 0);
+                });
+            }
+        }
+
+        $spatiiCollection = $query->get();
+        $spatii = $spatiiCollection->map(fn (Spatiu $spatiu): array => $this->mapSpatiuForIndexare($spatiu));
 
         return Inertia::render('IndexareChirii/Index', [
             'spatii' => $spatii,
@@ -46,6 +72,14 @@ class IndexareChiriiController extends Controller
             'filters' => [
                 'localitate' => $localitate,
                 'search' => $search,
+                'indexare' => $indexare,
+            ],
+            'rezumat' => [
+                'an_curent' => $anCurent,
+                'spatii_inchiriate' => $spatiiCollection->count(),
+                'spatii_indexate_an_curent' => $spatiiCollection
+                    ->filter(fn (Spatiu $spatiu): bool => $this->hasIndexareAnCurent($spatiu, $indexareColumn))
+                    ->count(),
             ],
         ]);
     }
@@ -85,5 +119,22 @@ class IndexareChiriiController extends Controller
             'chirias' => $spatiu->chirias ?: '—',
             'status' => $spatiu->status,
         ];
+    }
+
+    private function indexareColumnExists(string $indexareColumn): bool
+    {
+        return preg_match('/^indexare_\d{4}$/', $indexareColumn) === 1
+            && Schema::hasColumn('spatii', $indexareColumn);
+    }
+
+    private function hasIndexareAnCurent(Spatiu $spatiu, string $indexareColumn): bool
+    {
+        if (! array_key_exists($indexareColumn, $spatiu->getAttributes())) {
+            return false;
+        }
+
+        $value = $spatiu->{$indexareColumn};
+
+        return $value !== null && $value !== '' && (float) $value != 0;
     }
 }

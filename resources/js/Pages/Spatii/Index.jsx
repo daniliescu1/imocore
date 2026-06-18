@@ -145,6 +145,7 @@ function SpatiuRow({
     onDragOver,
     onDrop,
     onDragEnd,
+    showImobil = false,
 }) {
     const spatiuHref = `/spatii/${spatiu.id}/editare`;
 
@@ -190,6 +191,8 @@ function SpatiuRow({
             <td className="spatiu-identificator-cell" title={spatiu.identificator}>
                 <Link className="table-name-link" href={spatiuHref} onClick={(event) => event.stopPropagation()}>{spatiu.identificator}</Link>
             </td>
+            {showImobil ? <td>{spatiu.imobil}</td> : null}
+            {showImobil ? <td>{spatiu.localitate}</td> : null}
             <td>{spatiu.etaj || '—'}</td>
             <td>{spatiu.suprafata_contractuala_mp ? `${spatiu.suprafata_contractuala_mp} mp` : '—'}</td>
             <td>{statusLabel(spatiu.status)}</td>
@@ -210,14 +213,24 @@ function SpatiuRow({
 
 export default function Index({ imobile = [], imobil = null, spatii = [], localitati, filters }) {
     const isInsideImobil = Boolean(imobil);
+    const isGlobalStatusView = Boolean(!imobil && filters.status);
+    const isSpatiiListView = isInsideImobil || isGlobalStatusView;
     const canReorderSpatii = isInsideImobil && !filters.search && !filters.status && !filters.regim_incalzire && spatii.length > 1;
-    const canReorderImobile = !isInsideImobil && !filters.search && !filters.localitate && imobile.length > 1;
+    const canReorderImobile = !isSpatiiListView && !filters.search && !filters.localitate && imobile.length > 1;
     const [orderedSpatii, setOrderedSpatii] = useState(spatii);
     const [orderedImobile, setOrderedImobile] = useState(imobile);
     const [draggingId, setDraggingId] = useState(null);
-    const totalSpatii = isInsideImobil
+    const totalSpatii = isSpatiiListView
         ? spatii.length
         : imobile.reduce((sum, row) => sum + row.spatii_total, 0);
+
+    const pageTitle = isInsideImobil
+        ? `${imobil.nume} (${spatii.length})`
+        : isGlobalStatusView
+            ? (filters.status === 'liber'
+                ? `Spații libere (${spatii.length})`
+                : `${STATUS_LABELS[filters.status] || filters.status} (${spatii.length})`)
+            : `Spații (${totalSpatii})`;
 
     useEffect(() => {
         setOrderedSpatii(spatii);
@@ -303,17 +316,43 @@ export default function Index({ imobile = [], imobil = null, spatii = [], locali
 
     const topbarActions = (
         <div className="spaces-topbar-toolbar">
-            {isInsideImobil ? (
-                <button type="button" className="secondary-button topbar-back-button" onClick={() => updateFilters({ imobil_id: '', search: '', status: '', regim_incalzire: '' })}>
+            {isInsideImobil || isGlobalStatusView ? (
+                <button
+                    type="button"
+                    className="secondary-button topbar-back-button"
+                    onClick={() => updateFilters({
+                        imobil_id: '',
+                        search: '',
+                        status: '',
+                        regim_incalzire: '',
+                        localitate: '',
+                    })}
+                >
                     ← Înapoi
                 </button>
             ) : null}
             <div className="spaces-topbar-filters">
-                {isInsideImobil ? (
+                {isSpatiiListView ? (
                     <>
+                        {isGlobalStatusView ? (
+                            <label className="inline-topbar-field spaces-topbar-field">
+                                <span>Localitate</span>
+                                <select className="filter-input topbar-filter" value={filters.localitate || ''} onChange={(event) => updateFilters({ localitate: event.target.value, status: filters.status })}>
+                                    <option value="">Toate</option>
+                                    {localitati.map((localitate) => <option value={localitate} key={localitate}>{localitate}</option>)}
+                                </select>
+                            </label>
+                        ) : null}
                         <label className="inline-topbar-field spaces-topbar-field">
                             <span>Status</span>
-                            <select className="filter-input topbar-filter" value={filters.status || ''} onChange={(event) => updateFilters({ status: event.target.value, imobil_id: imobil.id })}>
+                            <select
+                                className="filter-input topbar-filter"
+                                value={filters.status || ''}
+                                onChange={(event) => updateFilters({
+                                    status: event.target.value,
+                                    imobil_id: isInsideImobil ? imobil.id : '',
+                                })}
+                            >
                                 <option value="">Toate</option>
                                 {Object.entries(STATUS_LABELS).map(([value, label]) => (
                                     <option value={value} key={value}>{label}</option>
@@ -322,7 +361,15 @@ export default function Index({ imobile = [], imobil = null, spatii = [], locali
                         </label>
                         <label className="inline-topbar-field spaces-topbar-field">
                             <span>Încălzire</span>
-                            <select className="filter-input topbar-filter" value={filters.regim_incalzire || ''} onChange={(event) => updateFilters({ regim_incalzire: event.target.value, imobil_id: imobil.id })}>
+                            <select
+                                className="filter-input topbar-filter"
+                                value={filters.regim_incalzire || ''}
+                                onChange={(event) => updateFilters({
+                                    regim_incalzire: event.target.value,
+                                    imobil_id: isInsideImobil ? imobil.id : '',
+                                    status: filters.status || '',
+                                })}
+                            >
                                 <option value="">Toate</option>
                                 {Object.entries(REGIM_INCALZIRE_LABELS)
                                     .filter(([value]) => value !== 'manual')
@@ -345,12 +392,13 @@ export default function Index({ imobile = [], imobil = null, spatii = [], locali
                     className="filter-input topbar-search"
                     type="search"
                     value={filters.search || ''}
-                    placeholder={isInsideImobil ? 'Caută spațiu...' : 'Caută imobil...'}
+                    placeholder={isSpatiiListView ? 'Caută spațiu...' : 'Caută imobil...'}
                     onChange={(event) => updateFilters({
                         search: event.target.value,
                         imobil_id: isInsideImobil ? imobil.id : '',
-                        status: isInsideImobil ? (filters.status || '') : '',
-                        regim_incalzire: isInsideImobil ? (filters.regim_incalzire || '') : '',
+                        status: isSpatiiListView ? (filters.status || '') : '',
+                        regim_incalzire: isSpatiiListView ? (filters.regim_incalzire || '') : '',
+                        localitate: isGlobalStatusView ? (filters.localitate || '') : (filters.localitate || ''),
                     })}
                 />
             </div>
@@ -369,6 +417,8 @@ export default function Index({ imobile = [], imobil = null, spatii = [], locali
                 {canReorderSpatii ? <th className="drag-handle-header" aria-label="Reordonează" /> : null}
                 <th className="spatiu-indicator-header" aria-hidden="true" />
                 <th className="spatiu-identificator-header">Identificat</th>
+                {isGlobalStatusView ? <th>Imobil</th> : null}
+                {isGlobalStatusView ? <th>Localitate</th> : null}
                 <th>Etaj</th>
                 <th>Suprafață</th>
                 <th>Status</th>
@@ -387,23 +437,21 @@ export default function Index({ imobile = [], imobil = null, spatii = [], locali
 
     return (
         <AppLayout
-            title={isInsideImobil ? `${imobil.nume} (${spatii.length})` : `Spații (${totalSpatii})`}
-            subtitle={isInsideImobil ? null : 'Alege un imobil pentru a vedea spațiile'}
+            title={pageTitle}
             showGlobalSearch={false}
             topbarActions={topbarActions}
         >
-            {isInsideImobil ? (
+            {isSpatiiListView ? (
                 spatii.length === 0 ? (
-                    <section className="table-card module-table-card">
+                    <section className="table-card module-table-card page-compact-list">
                         <div className="empty-state-card">
-                            Nu există spații în acest imobil. Adaugă primul spațiu.
+                            {isGlobalStatusView
+                                ? `Nu există spații cu status „${STATUS_LABELS[filters.status] || filters.status}”.`
+                                : 'Nu există spații în acest imobil. Adaugă primul spațiu.'}
                         </div>
                     </section>
                 ) : (
-                    <section className="table-card module-table-card">
-                        {canReorderSpatii ? (
-                            <p className="spaces-reorder-hint">Trage rândurile pentru a reordona spațiile.</p>
-                        ) : null}
+                    <section className="table-card module-table-card page-compact-list">
                         <div className="responsive-table">
                             <table className="spaces-table">
                                 {tableHead}
@@ -419,6 +467,7 @@ export default function Index({ imobile = [], imobil = null, spatii = [], locali
                                             onDragOver={handleDragOver}
                                             onDrop={handleDrop}
                                             onDragEnd={handleDragEnd}
+                                            showImobil={isGlobalStatusView}
                                         />
                                     ))}
                                 </tbody>
@@ -427,10 +476,7 @@ export default function Index({ imobile = [], imobil = null, spatii = [], locali
                     </section>
                 )
             ) : (
-                <section className="table-card module-table-card">
-                    {canReorderImobile ? (
-                        <p className="spaces-reorder-hint">Trage rândurile pentru a reordona imobilele.</p>
-                    ) : null}
+                <section className="table-card module-table-card page-compact-list">
                     <div className="responsive-table">
                         <table className="spaces-table">
                             <thead>

@@ -1,10 +1,10 @@
 import React from 'react';
-import { usePage } from '@inertiajs/react';
+import { Link, usePage } from '@inertiajs/react';
 import { Building2, DoorOpen, UsersRound } from 'lucide-react';
 import AppLayout from '../Layouts/AppLayout';
 
-function StatCard({ tone, icon: Icon, label, value, children }) {
-    return (
+function StatCard({ tone, icon: Icon, label, value, href, children }) {
+    const card = (
         <section className={`stat-card stat-card-${tone}`}>
             <div className="stat-icon"><Icon size={36} /></div>
             <div className="stat-copy">
@@ -14,14 +14,28 @@ function StatCard({ tone, icon: Icon, label, value, children }) {
             </div>
         </section>
     );
+
+    if (!href) {
+        return card;
+    }
+
+    return (
+        <Link href={href} className="stat-card-link" prefetch="hover">
+            {card}
+        </Link>
+    );
 }
 
-function TableCard({ title, action = 'Vezi toate', children }) {
+function TableCard({ title, action = 'Vezi toate', actionHref = null, children }) {
     return (
         <section className="table-card">
             <div className="section-heading">
                 <h2>{title}</h2>
-                <a href="#">{action} <span>→</span></a>
+                {actionHref ? (
+                    <Link href={actionHref} prefetch="hover">{action} <span>→</span></Link>
+                ) : (
+                    <span>{action}</span>
+                )}
             </div>
             {children}
         </section>
@@ -54,7 +68,7 @@ export default function Dashboard({ today, stats, freeSpaces, overdue, endings }
         <AppLayout title="Panou principal" subtitle={today}>
             <div className="stats-grid">
                 <StatCard tone="total" icon={Building2} label="Spații totale" value={stats.total} />
-                <StatCard tone="free" icon={DoorOpen} label="Spații libere" value={stats.libere}>
+                <StatCard tone="free" icon={DoorOpen} label="Spații libere" value={stats.libere} href="/spatii?status=liber">
                     <CurrencyTotals
                         sumaEur={stats.libere_suma_eur}
                         mpEur={stats.libere_mp_eur}
@@ -74,7 +88,7 @@ export default function Dashboard({ today, stats, freeSpaces, overdue, endings }
                 </StatCard>
             </div>
 
-            <TableCard title="Spații libere">
+            <TableCard title="Spații libere" actionHref="/spatii?status=liber">
                 <div className="responsive-table">
                     <table>
                         <thead>
