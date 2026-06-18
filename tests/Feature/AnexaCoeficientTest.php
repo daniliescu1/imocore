@@ -276,6 +276,30 @@ class AnexaCoeficientTest extends TestCase
         $this->assertCount(1, Anexa::query()->get());
     }
 
+    public function test_stergerea_anexei_din_pagina_imobilului_ramane_pe_imobil(): void
+    {
+        $imobil = $this->creeazaImobilEligibil('Imobil stergere anexa', 'A1');
+
+        $this->post('/anexe/generare', [
+            'luna' => '2026-06',
+            'imobil_id' => $imobil->id,
+        ])->assertRedirect(route('anexe.imobil', $imobil));
+
+        $anexa = Anexa::query()->firstOrFail();
+
+        $this->delete(route('anexe.destroy', $anexa))
+            ->assertRedirect(route('anexe.imobil', $imobil));
+
+        $this->assertDatabaseMissing('anexe', ['id' => $anexa->id]);
+
+        $this->get(route('anexe.imobil', $imobil))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('Anexe/Imobil')
+                ->has('anexe', 0)
+            );
+    }
+
     private function genereazaAnexa(array $spatiuAttributes, array $liniiConfigurare): Anexa
     {
         $imobil = Imobil::query()->create([

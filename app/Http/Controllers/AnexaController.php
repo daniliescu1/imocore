@@ -236,9 +236,20 @@ class AnexaController extends Controller
 
     public function destroy(Anexa $anexa): RedirectResponse
     {
+        $anexa->loadMissing('contract.spatiu');
+        $imobilId = $anexa->contract?->spatiu?->imobil_id;
+
         $anexa->delete();
 
-        return redirect('/anexe')->with('success', 'Anexa generată a fost ștearsă.');
+        if ($imobilId) {
+            return redirect()
+                ->route('anexe.imobil', ['imobil' => $imobilId])
+                ->with('success', 'Anexa generată a fost ștearsă.');
+        }
+
+        return redirect()
+            ->route('anexe.index')
+            ->with('success', 'Anexa generată a fost ștearsă.');
     }
 
     private function linieGenerata(Anexa $anexa, int $spatiuId, ConfigurareAnexaLinie $linieConfigurata, string $lunaUtilitati, string $lunaFacturare): AnexaLinie
