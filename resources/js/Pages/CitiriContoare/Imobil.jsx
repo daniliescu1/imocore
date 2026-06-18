@@ -223,7 +223,7 @@ export default function Imobil({
                 ) : (
                     <div className="meter-reading-groups">
                         <div className="responsive-table">
-                            <table>
+                            <table className="citiri-contoare-table">
                                 <thead>
                                     <tr>
                                         <th>Spațiu</th>
@@ -233,7 +233,7 @@ export default function Imobil({
                                         <th>UM</th>
                                         <th>Index vechi</th>
                                         <th>Index nou</th>
-                                        <th>Cantitate / Consum</th>
+                                        <th>Cantitate</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -253,8 +253,8 @@ export default function Imobil({
                                         return (
                                             <tr key={`${spatiu.id}-${linie.configurare_anexa_linie_id}`}>
                                                 <td><strong>{spatiu.identificator}</strong></td>
-                                                <td>{spatiu.chirias || '—'}</td>
-                                                <td>{linie.denumire}</td>
+                                                <td title={spatiu.chirias || undefined}>{spatiu.chirias || '—'}</td>
+                                                <td title={linie.denumire}>{linie.denumire}</td>
                                                 <td>{tipCitireLabel(linie.tip_calcul)}</td>
                                                 <td>{linie.um || '—'}</td>
                                                 {pausal ? (

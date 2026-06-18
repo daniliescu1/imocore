@@ -844,6 +844,80 @@ td {
     gap: 18px;
 }
 
+.meter-reading-groups .responsive-table {
+    overflow-x: hidden;
+}
+
+.meter-reading-groups .citiri-contoare-table {
+    min-width: 0;
+    table-layout: fixed;
+}
+
+.meter-reading-groups .citiri-contoare-table th,
+.meter-reading-groups .citiri-contoare-table td {
+    padding: 0 8px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    vertical-align: middle;
+}
+
+.meter-reading-groups .citiri-contoare-table th:nth-child(1),
+.meter-reading-groups .citiri-contoare-table td:nth-child(1) {
+    width: 10%;
+}
+
+.meter-reading-groups .citiri-contoare-table th:nth-child(2),
+.meter-reading-groups .citiri-contoare-table td:nth-child(2) {
+    width: 16%;
+}
+
+.meter-reading-groups .citiri-contoare-table th:nth-child(3),
+.meter-reading-groups .citiri-contoare-table td:nth-child(3) {
+    width: 14%;
+}
+
+.meter-reading-groups .citiri-contoare-table th:nth-child(4),
+.meter-reading-groups .citiri-contoare-table td:nth-child(4) {
+    width: 7%;
+}
+
+.meter-reading-groups .citiri-contoare-table th:nth-child(5),
+.meter-reading-groups .citiri-contoare-table td:nth-child(5) {
+    width: 5%;
+}
+
+.meter-reading-groups .citiri-contoare-table th:nth-child(6),
+.meter-reading-groups .citiri-contoare-table td:nth-child(6),
+.meter-reading-groups .citiri-contoare-table th:nth-child(7),
+.meter-reading-groups .citiri-contoare-table td:nth-child(7) {
+    width: 14%;
+}
+
+.meter-reading-groups .citiri-contoare-table th:nth-child(8),
+.meter-reading-groups .citiri-contoare-table td:nth-child(8) {
+    width: 20%;
+}
+
+.meter-reading-groups .citiri-contoare-table th:nth-child(n + 6),
+.meter-reading-groups .citiri-contoare-table td:nth-child(n + 6) {
+    text-align: right;
+}
+
+.meter-reading-groups .citiri-contoare-table .table-input {
+    min-width: 0;
+    width: 100%;
+    padding: 6px 8px;
+    font-size: 13px;
+    box-sizing: border-box;
+    text-align: right;
+}
+
+.meter-reading-groups .citiri-contoare-table td:has(.table-input) {
+    overflow: visible;
+    text-overflow: clip;
+}
+
 .spaces-groups {
     display: grid;
     gap: 18px;
