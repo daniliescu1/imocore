@@ -212,7 +212,7 @@ class ContractChiriasData
             'chirias_pj.cont_bancar' => ['nullable', 'string', 'max:100'],
             'chirias_pj.administrator' => ['required', 'array'],
             'chirias_pj.administrator.nume_complet' => ['required', 'string', 'max:255'],
-            'chirias_pj.administrator.calitate' => ['nullable', 'in:administrator,imputernicit_notarial'],
+            'chirias_pj.administrator.calitate' => ['nullable', 'in:administrator,asociat,imputernicit_notarial'],
             'chirias_pj.administrator.serie_ci' => ['nullable', 'string', 'max:500'],
             'chirias_pj.administrator.numar_ci' => ['nullable', 'string', 'max:20'],
             'chirias_pj.administrator.cnp' => ['nullable', 'string', 'max:13'],
