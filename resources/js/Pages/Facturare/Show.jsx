@@ -149,9 +149,33 @@ export default function Show({ factura }) {
                     </div>
                 </div>
 
-                <p className="invoice-exchange-rate-note">
-                    Curs valutar folosit: 1 EUR = {formatDecimal(factura.curs_eur)} lei, curs vânzare EUR Banca Transilvania.
-                </p>
+                <section className="invoice-payment-footer">
+                    <div className="invoice-payment-instructions">
+                        <strong>Instructiuni de plata</strong>
+                        <p>Banca: {displayValue(factura.locator?.banca)}</p>
+                        <p>Cont: {displayValue(factura.locator?.cont_bancar)}</p>
+                    </div>
+
+                    <div className="invoice-legal-notes">
+                        <p>
+                            SCUTIT DE TVA IN BAZA LG 227/2015, ART 292, AL.2, LIT E. CURS BCR: 1 EURO={formatDecimal(factura.curs_eur)} RON.
+                            Factura circula fara semnatura si stampila cf Legii 227/2015, ART.39, ALIN.29
+                        </p>
+                        <p>Factura si conditiile de plata au fost acceptate de catre beneficiar.</p>
+                        <p>
+                            In cazul depasirii termenelor de plata convenite, penalizarile sunt de 1% pentru fiecare zi de intarziere,
+                            aplicate la valoarea facturilor emise, preluate si neachitate.
+                        </p>
+                        <p>
+                            Factura circula fara semnatura si stampila cf. art.V, alin (2) din Ordonanta nr.17/2015 si art. 319 alin (29)
+                            din Legea nr. 227/2015 privind Codul fiscal.
+                        </p>
+                    </div>
+
+                    <p className="invoice-payment-summary">
+                        {factura.numar_factura || '—'} {formatAmount(sumar.total)} Lei scadenta la {factura.data_scadenta || '—'}
+                    </p>
+                </section>
 
                 {factura.anexa_detaliu ? (
                     <section className="invoice-attached-annex">

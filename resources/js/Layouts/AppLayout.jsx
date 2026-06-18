@@ -4,13 +4,10 @@ import {
     BarChart3,
     Bell,
     Building2,
-    CalendarDays,
     ChevronDown,
     ExternalLink,
-    FileCheck2,
     FileText,
     HardDriveUpload,
-    Home,
     Menu,
     Users,
     ReceiptText,
@@ -22,29 +19,25 @@ import {
 } from 'lucide-react';
 
 const navigation = [
-    { label: 'Dashboard', icon: Home, href: '/' },
     { label: 'Imobile', icon: Building2, href: '/imobile' },
-    { label: 'Configurare anexă', icon: ReceiptText, href: '/configurare-anexa' },
     { label: 'Spații', icon: BarChart3, href: '/spatii' },
-    { label: 'Rezervări', icon: CalendarDays, href: '/rezervari' },
     { label: 'Locatori', icon: Users, href: '/locatori' },
     { label: 'Contracte', icon: FileText, href: '/contracte' },
-    { label: 'PV Predare', icon: FileCheck2, href: '/pv-predare' },
+    { label: 'Indexare chirii', icon: BarChart3, href: '/indexare-chirii' },
     { label: 'Utilități', icon: Zap, href: '/utilitati' },
     { label: 'Citiri contoare', icon: BarChart3, href: '/citiri-contoare' },
+    { label: 'Configurare anexă', icon: ReceiptText, href: '/configurare-anexa' },
     { label: 'Generare anexe', icon: ReceiptText, href: '/anexe' },
     { label: 'Facturare', icon: WalletCards, href: '/facturare' },
     { label: 'Contabilitate primară', icon: FileText, href: '/contabilitate-primara' },
     { label: 'Cheltuieli', icon: WalletCards, href: '/cheltuieli' },
-    { label: 'Indexare chirii', icon: BarChart3, href: '/indexare-chirii' },
     { label: 'Reguli imobile', icon: Settings, href: '/reguli-imobile' },
-    { label: 'Setări', icon: Settings, href: '/setari' },
-    { label: 'Backup', icon: HardDriveUpload, href: '/backup' },
 ];
 
 const prefetchCacheFor = '2m';
 const prefetchedUrls = new Set();
 const priorityPrefetchHrefs = [
+    '/',
     ...navigation.map((item) => item.href),
     '/operr-app',
     '/setari',
@@ -132,11 +125,12 @@ function Logo() {
     );
 }
 
-function UserMenu({ variant = 'top', onNavigate = null }) {
+function UserMenu() {
     const [open, setOpen] = useState(false);
     const menuRef = useRef(null);
 
     const menuItems = [
+        { label: 'Operr App', icon: FileText, href: '/operr-app', showExternal: true },
         { label: 'Setări', icon: Settings, href: '/setari' },
         { label: 'Backup', icon: HardDriveUpload, href: '/backup' },
     ];
@@ -169,11 +163,10 @@ function UserMenu({ variant = 'top', onNavigate = null }) {
 
     function closeMenu() {
         setOpen(false);
-        onNavigate?.();
     }
 
     return (
-        <div className={`user-menu user-menu-${variant}`} ref={menuRef}>
+        <div className="user-menu user-menu-top" ref={menuRef}>
             <button
                 type="button"
                 className="user-menu-trigger"
@@ -181,17 +174,8 @@ function UserMenu({ variant = 'top', onNavigate = null }) {
                 aria-expanded={open}
                 aria-haspopup="menu"
             >
-                <div className={`avatar ${variant === 'sidebar' ? 'sidebar-avatar' : ''}`}>O</div>
-                <div className={variant === 'sidebar' ? 'user-menu-copy' : undefined}>
-                    {variant === 'sidebar' ? (
-                        <>
-                            <div className="sidebar-user-name">Owner</div>
-                            <div className="sidebar-user-role">Administrator</div>
-                        </>
-                    ) : (
-                        <span>Owner</span>
-                    )}
-                </div>
+                <div className="avatar">O</div>
+                <span>Owner</span>
                 <ChevronDown size={16} className={open ? 'user-menu-chevron-open' : undefined} />
             </button>
 
@@ -210,6 +194,7 @@ function UserMenu({ variant = 'top', onNavigate = null }) {
                             >
                                 <Icon size={16} />
                                 <span>{item.label}</span>
+                                {item.showExternal ? <ExternalLink size={14} className="user-menu-external" /> : null}
                             </Link>
                         );
                     })}
@@ -247,16 +232,6 @@ function Sidebar({ open, onClose, currentUrl }) {
                         );
                     })}
                 </nav>
-
-                <div className="sidebar-bottom">
-                    <Link className="nav-item oper-link" href="/operr-app" onClick={onClose}>
-                        <FileText size={18} />
-                        <span>Operr App</span>
-                        <ExternalLink size={16} className="nav-external" />
-                    </Link>
-
-                    <UserMenu variant="sidebar" onNavigate={onClose} />
-                </div>
             </aside>
         </>
     );

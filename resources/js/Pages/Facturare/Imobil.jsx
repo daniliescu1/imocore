@@ -31,14 +31,18 @@ export default function Imobil({ imobil, facturi = [], anexeNefacturate = 0, cur
 
     return (
         <AppLayout title={`Facturare ${imobil.nume}`} subtitle={`${imobil.localitate || '—'} - facturile acestui imobil`} showGlobalSearch={false} topbarActions={topbarActions}>
-            <section className="readonly-info-card annex-generation-status">
-                <h2>{anexeNefacturate} anexe nefacturate</h2>
-                <p>
-                    Se generează facturi doar pentru anexele din <strong>{imobil.nume} ({imobil.localitate})</strong> care nu au încă factură.
-                    {anexeNefacturate === 0 ? ' Generează mai întâi anexele pentru acest imobil.' : ''}
-                </p>
-                <strong>Curs folosit: {cursImplicit} RON/EUR ({cursSursa})</strong>
-                <Link className="secondary-button button-link annex-clear-building-button" href="/facturare">Înapoi la toate imobilele</Link>
+            <section className="facturare-imobil-toolbar">
+                <div className="facturare-imobil-toolbar-main">
+                    <strong className="facturare-imobil-count">{anexeNefacturate} anexe nefacturate</strong>
+                    <p className="facturare-imobil-hint">
+                        Facturi pentru anexele din <strong>{imobil.nume} ({imobil.localitate})</strong> fără factură.
+                        {anexeNefacturate === 0 ? ' Generează mai întâi anexele pentru acest imobil.' : ''}
+                    </p>
+                </div>
+                <div className="facturare-imobil-toolbar-meta">
+                    <span className="facturare-imobil-curs">Curs {cursImplicit} RON/EUR · {cursSursa}</span>
+                    <Link className="secondary-button button-link facturare-imobil-back" href="/facturare">Înapoi la imobile</Link>
+                </div>
             </section>
 
             <section className="table-card module-table-card">
