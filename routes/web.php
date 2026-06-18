@@ -5,6 +5,7 @@ use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\AnexaController;
 use App\Http\Controllers\CitireContorController;
 use App\Http\Controllers\ConfigurareAnexaController;
+use App\Http\Controllers\ContractController;
 use App\Http\Controllers\ServiciuStandardAnexaController;
 use App\Http\Controllers\ContabilitatePrimaraController;
 use App\Http\Controllers\FacturaController;
