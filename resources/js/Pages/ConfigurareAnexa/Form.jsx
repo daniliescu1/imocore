@@ -355,7 +355,15 @@ export default function Form({
             if (['index_vechi', 'index_nou'].includes(field)) {
                 nextLine.facturat = calculatedFacturat(nextLine.index_vechi, nextLine.index_nou);
             }
-            if (['index_vechi', 'index_nou', 'facturat', 'pret_unitar'].includes(field)) {
+
+            if (field === 'denumire') {
+                const pretStandard = (serviciiStandard.pret || []).find((item) => item.valoare === value);
+                if (pretStandard?.coeficient) {
+                    nextLine.pret_unitar = formatDecimalForInput(pretStandard.coeficient);
+                }
+            }
+
+            if (['index_vechi', 'index_nou', 'facturat', 'pret_unitar', 'denumire'].includes(field)) {
                 nextLine.valoare = calculatedValoare(nextLine.facturat, nextLine.pret_unitar);
             }
 

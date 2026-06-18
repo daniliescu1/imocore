@@ -128,14 +128,6 @@ export default function Show({ factura }) {
                                 <tbody>
                                     <AnnexTableBodyRows linii={factura.anexa_detaliu.linii} formatDecimal={formatDecimal} formatMoney={formatMoneyValue} />
                                 </tbody>
-                                <tfoot>
-                                    <tr>
-                                        <td colSpan="6" />
-                                        <td>Total</td>
-                                        <td>{formatMoney(factura.anexa_detaliu.subtotal)}</td>
-                                        <td>{formatMoney(factura.anexa_detaliu.total_tva)}</td>
-                                    </tr>
-                                </tfoot>
                             </table>
                         </div>
                     </section>

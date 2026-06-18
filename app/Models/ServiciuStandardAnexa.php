@@ -14,11 +14,14 @@ class ServiciuStandardAnexa extends Model
 
     public const TIP_TIP_CALCUL = 'tip_calcul';
 
+    public const TIP_PRET = 'pret';
+
     public const TIPURI = [
         self::TIP_DENUMIRE,
         self::TIP_UM,
         self::TIP_TVA,
         self::TIP_TIP_CALCUL,
+        self::TIP_PRET,
     ];
 
     protected $table = 'servicii_standard_anexa';
@@ -58,9 +61,11 @@ class ServiciuStandardAnexa extends Model
                     'valoare' => $item->tip === self::TIP_TVA
                         ? self::normalizeValoare(self::TIP_TVA, $item->valoare)
                         : $item->valoare,
-                    'label' => $item->tip === self::TIP_TVA
-                        ? self::tvaLabel($item->valoare)
-                        : ($item->label ?: $item->valoare),
+                    'label' => match ($item->tip) {
+                        self::TIP_TVA => self::tvaLabel($item->valoare),
+                        self::TIP_PRET => $item->label ?: $item->valoare,
+                        default => $item->label ?: $item->valoare,
+                    },
                     'coeficient' => $item->coeficient,
                 ])
                 ->values()
@@ -77,6 +82,7 @@ class ServiciuStandardAnexa extends Model
             self::TIP_UM => 'UM',
             self::TIP_TVA => 'TVA',
             self::TIP_TIP_CALCUL => 'Tip calcul',
+            self::TIP_PRET => 'Prețuri',
             default => $tip,
         };
     }
@@ -144,6 +150,58 @@ class ServiciuStandardAnexa extends Model
                     ['label' => static::tipCalculDefaults()[$valoare] ?? ucfirst($valoare), 'activ' => true]
                 );
             });
+
+        ConfigurareAnexaLinie::query()
+            ->whereNotNull('denumire')
+            ->where('denumire', '!=', '')
+            ->whereNotNull('pret_unitar')
+            ->select('denumire', 'pret_unitar')
+            ->distinct()
+            ->orderBy('denumire')
+            ->get()
+            ->groupBy('denumire')
+            ->each(function ($linii, string $denumire): void {
+                $pret = (string) $linii->first()->pret_unitar;
+                static::query()->updateOrCreate(
+                    ['tip' => self::TIP_PRET, 'valoare' => trim($denumire)],
+                    ['label' => trim($denumire), 'coeficient' => $pret, 'activ' => true]
+                );
+            });
+
+        static::syncPreturiFromDenumire();
+    }
+
+    public static function syncPreturiFromDenumire(): void
+    {
+        $denumiri = static::query()
+            ->where('tip', self::TIP_DENUMIRE)
+            ->where('activ', true)
+            ->orderBy('ordine')
+            ->orderBy('label')
+            ->get();
+
+        foreach ($denumiri as $denumire) {
+            static::query()->firstOrCreate(
+                ['tip' => self::TIP_PRET, 'valoare' => $denumire->valoare],
+                ['label' => $denumire->label ?: $denumire->valoare, 'activ' => true]
+            );
+        }
+
+        static::query()
+            ->where('tip', self::TIP_PRET)
+            ->whereNotIn('valoare', $denumiri->pluck('valoare'))
+            ->update(['activ' => false]);
+    }
+
+    public static function pretPentruDenumire(string $denumire): ?string
+    {
+        $pret = static::query()
+            ->where('tip', self::TIP_PRET)
+            ->where('valoare', $denumire)
+            ->where('activ', true)
+            ->value('coeficient');
+
+        return $pret !== null && $pret !== '' ? (string) $pret : null;
     }
 
     public static function tipCalculDefaults(): array

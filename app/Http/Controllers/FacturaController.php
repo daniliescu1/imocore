@@ -16,24 +16,6 @@ class FacturaController extends Controller
 {
     public function index(): Response
     {
-        $facturi = Factura::query()
-            ->with('anexa.contract.spatiu.imobil')
-            ->latest()
-            ->get()
-            ->map(fn (Factura $factura): array => [
-                'id' => $factura->id,
-                'numar_factura' => $factura->numar_factura ?: '—',
-                'anexa' => $factura->anexa?->luna ?: '—',
-                'contract' => $factura->anexa?->contract?->numar_contract ?: '—',
-                'imobil' => $factura->anexa?->contract?->spatiu?->imobil?->nume ?: '—',
-                'spatiu' => $factura->anexa?->contract?->spatiu?->identificator ?: '—',
-                'chirias' => $factura->anexa?->contract?->chirias ?: '—',
-                'curs_eur' => $factura->curs_eur,
-                'total' => $factura->total,
-                'status' => $factura->status,
-                'email_chirias' => $factura->email_chirias ?: '—',
-            ]);
-
         $anexeNefacturate = Anexa::query()
             ->whereDoesntHave('factura')
             ->count();
@@ -41,9 +23,34 @@ class FacturaController extends Controller
         $curs = $this->cursEurBt();
 
         return Inertia::render('Facturare/Index', [
-            'facturi' => $facturi,
             'anexeNefacturate' => $anexeNefacturate,
             'rezumatImobile' => Inertia::defer(fn () => $this->rezumatImobile((float) $curs['valoare']), 'summary'),
+            'cursImplicit' => $curs['valoare'],
+            'cursSursa' => $curs['sursa'],
+        ]);
+    }
+
+    public function imobil(Imobil $imobil): Response
+    {
+        $curs = $this->cursEurBt();
+        $facturi = $this->facturiQuery($imobil->id)
+            ->latest()
+            ->get()
+            ->map(fn (Factura $factura): array => $this->mapFacturaForList($factura));
+
+        $anexeNefacturate = Anexa::query()
+            ->whereDoesntHave('factura')
+            ->whereHas('contract.spatiu', fn ($query) => $query->where('imobil_id', $imobil->id))
+            ->count();
+
+        return Inertia::render('Facturare/Imobil', [
+            'imobil' => [
+                'id' => $imobil->id,
+                'nume' => $imobil->nume,
+                'localitate' => $imobil->localitate,
+            ],
+            'facturi' => $facturi,
+            'anexeNefacturate' => $anexeNefacturate,
             'cursImplicit' => $curs['valoare'],
             'cursSursa' => $curs['sursa'],
         ]);
@@ -52,17 +59,29 @@ class FacturaController extends Controller
     public function generate(Request $request): RedirectResponse
     {
         $validated = $request->validate([
-            'curs_eur' => ['required', 'numeric', 'min:0'],
+            'curs_eur' => ['nullable', 'numeric', 'min:0'],
+            'imobil_id' => ['nullable', 'integer', 'exists:imobile,id'],
         ]);
-        $cursEur = (float) $validated['curs_eur'];
+        $cursEur = isset($validated['curs_eur']) && $validated['curs_eur'] !== null && $validated['curs_eur'] !== ''
+            ? (float) $validated['curs_eur']
+            : (float) $this->cursEurBt()['valoare'];
+        $imobilId = $validated['imobil_id'] ?? null;
+        $redirectRoute = $imobilId
+            ? ['facturare.imobil', ['imobil' => $imobilId]]
+            : ['facturare.index', []];
         $anexe = Anexa::query()
             ->with('contract')
             ->whereDoesntHave('factura')
+            ->when($imobilId, fn ($query) => $query->whereHas(
+                'contract.spatiu',
+                fn ($spatiuQuery) => $spatiuQuery->where('imobil_id', $imobilId)
+            ))
             ->orderBy('id')
             ->get();
 
         if ($anexe->isEmpty()) {
-            return redirect('/facturare')->with('warning', 'Nu există anexe nefacturate pentru generare.');
+            return redirect()->route($redirectRoute[0], $redirectRoute[1])
+                ->with('warning', 'Nu există anexe nefacturate pentru generare.');
         }
 
         foreach ($anexe as $anexa) {
@@ -91,7 +110,8 @@ class FacturaController extends Controller
             ]);
         }
 
-        return redirect('/facturare')->with('success', "{$anexe->count()} facturi au fost generate.");
+        return redirect()->route($redirectRoute[0], $redirectRoute[1])
+            ->with('success', "{$anexe->count()} facturi au fost generate.");
     }
 
     public function updateCurs(Request $request): RedirectResponse
@@ -133,7 +153,7 @@ class FacturaController extends Controller
         foreach ($this->grupeazaUtilitatiPeTva($anexaLiniiServiciu) as $grupTva) {
             $liniiFactura[] = [
                 'nr_crt' => count($liniiFactura) + 1,
-                'denumire' => trim("Utilități {$grupTva['procent']}% {$lunaUtilitati}"),
+                'denumire' => trim("Utilități {$grupTva['procent']}% TVA {$lunaUtilitati}"),
                 'cantitate' => 1,
                 'um' => 'LUNĂ',
                 'pret_unitar' => $grupTva['valoare'],
@@ -209,9 +229,47 @@ class FacturaController extends Controller
 
     public function destroy(Factura $factura): RedirectResponse
     {
+        $factura->loadMissing('anexa.contract.spatiu');
+        $imobilId = $factura->anexa?->contract?->spatiu?->imobil_id;
+
         $factura->delete();
 
-        return redirect('/facturare')->with('success', 'Factura a fost ștearsă.');
+        if ($imobilId) {
+            return redirect()
+                ->route('facturare.imobil', ['imobil' => $imobilId])
+                ->with('success', 'Factura a fost ștearsă.');
+        }
+
+        return redirect()
+            ->route('facturare.index')
+            ->with('success', 'Factura a fost ștearsă.');
+    }
+
+    private function facturiQuery(?int $imobilId = null)
+    {
+        return Factura::query()
+            ->with('anexa.contract.spatiu.imobil')
+            ->when($imobilId, fn ($query) => $query->whereHas(
+                'anexa.contract.spatiu',
+                fn ($spatiuQuery) => $spatiuQuery->where('imobil_id', $imobilId)
+            ));
+    }
+
+    private function mapFacturaForList(Factura $factura): array
+    {
+        return [
+            'id' => $factura->id,
+            'numar_factura' => $factura->numar_factura ?: '—',
+            'anexa' => $factura->anexa?->luna ?: '—',
+            'contract' => $factura->anexa?->contract?->numar_contract ?: '—',
+            'imobil' => $factura->anexa?->contract?->spatiu?->imobil?->nume ?: '—',
+            'spatiu' => $factura->anexa?->contract?->spatiu?->identificator ?: '—',
+            'chirias' => $factura->anexa?->contract?->chirias ?: '—',
+            'curs_eur' => $factura->curs_eur,
+            'total' => $factura->total,
+            'status' => $factura->status,
+            'email_chirias' => $factura->email_chirias ?: '—',
+        ];
     }
 
     private function nextInvoiceNumber(): string

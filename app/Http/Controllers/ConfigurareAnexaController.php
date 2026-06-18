@@ -3,8 +3,10 @@
 namespace App\Http\Controllers;
 
 use App\Models\ConfigurareAnexaImobil;
+use App\Models\Factura;
 use App\Models\Imobil;
 use App\Models\ServiciuStandardAnexa;
+use App\Models\SetareAplicatie;
 use App\Models\Spatiu;
 use App\Support\InternalReturnUrl;
 use App\Support\SincronizareContoareDinAnexa;
@@ -41,7 +43,19 @@ class ConfigurareAnexaController extends Controller
             ]),
             'imobile' => $this->imobileForSelect(),
             'selectedImobilId' => $selectedImobilId,
+            ...$this->cursEurForm(),
         ]);
+    }
+
+    public function updateCurs(Request $request): RedirectResponse
+    {
+        $validated = $request->validate([
+            'curs_eur' => ['required', 'numeric', 'min:0'],
+        ]);
+
+        SetareAplicatie::seteaza('curs_eur_facturare', $validated['curs_eur']);
+
+        return redirect()->back()->with('success', 'Cursul valutar a fost salvat.');
     }
 
     public function create(Request $request): Response
@@ -480,5 +494,22 @@ class ConfigurareAnexaController extends Controller
             || in_array($tip, ['mp', 'pe_mp'], true)
             || $tip === 'persoane'
             || $tip === 'mp_coeficient';
+    }
+
+    private function cursEurForm(): array
+    {
+        $cursSalvat = SetareAplicatie::valoare('curs_eur_facturare');
+
+        if ($cursSalvat) {
+            return [
+                'cursImplicit' => $cursSalvat,
+                'cursSursa' => 'Curs introdus manual',
+            ];
+        }
+
+        return [
+            'cursImplicit' => Factura::query()->latest()->value('curs_eur') ?: 5,
+            'cursSursa' => 'Ultimul curs salvat / fallback',
+        ];
     }
 }

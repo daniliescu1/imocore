@@ -1,15 +1,9 @@
 import React from 'react';
 import { Link, router } from '@inertiajs/react';
 import AppLayout from '../../Layouts/AppLayout';
+import ConfigurareAnexaTabs from '../../Components/ConfigurareAnexaTabs';
 
-const serviciiStandardTabs = [
-    { key: 'denumire', label: 'Denumire serviciu', href: '/configurare-anexa/servicii-standard/denumire' },
-    { key: 'um', label: 'UM', href: '/configurare-anexa/servicii-standard/um' },
-    { key: 'tva', label: 'TVA', href: '/configurare-anexa/servicii-standard/tva' },
-    { key: 'tip_calcul', label: 'Tip calcul', href: '/configurare-anexa/servicii-standard/tip_calcul' },
-];
-
-export default function Index({ anexe = [], imobile = [], selectedImobilId = null }) {
+export default function Index({ anexe = [], imobile = [], selectedImobilId = null, cursImplicit = 5, cursSursa = '' }) {
     function selectImobil(imobilId) {
         router.get('/configurare-anexa', imobilId ? { imobil_id: imobilId } : {}, { preserveScroll: true });
     }
@@ -27,13 +21,7 @@ export default function Index({ anexe = [], imobile = [], selectedImobilId = nul
     return (
         <AppLayout title={`Configurare anexă (${anexe.length})`} subtitle="Administrează anexele configurate și alocarea lor pe imobile" showGlobalSearch={false} topbarActions={topbarActions}>
             <section className="readonly-info-card annex-generation-status">
-                <nav className="standard-tabs">
-                    {serviciiStandardTabs.map((tab) => (
-                        <Link key={tab.key} href={tab.href} className="standard-tab">
-                            {tab.label}
-                        </Link>
-                    ))}
-                </nav>
+                <ConfigurareAnexaTabs cursImplicit={cursImplicit} cursSursa={cursSursa} />
             </section>
 
             <section className="table-card module-table-card">

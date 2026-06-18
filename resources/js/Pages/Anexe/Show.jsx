@@ -8,11 +8,6 @@ function formatDecimal(value) {
     return String(Number(value)).replace(/(\.\d*?)0+$/, '$1').replace(/\.$/, '');
 }
 
-function formatMoney(value) {
-    if (value === null || value === undefined || value === '') return '—';
-    return Number(value).toFixed(2);
-}
-
 function lunaText(luna) {
     const [year, month] = String(luna || '').split('-');
     if (!year || !month) return '—';
@@ -96,14 +91,6 @@ export default function Show({ anexa }) {
                         <tbody>
                             <AnnexTableBodyRows linii={anexa.linii} formatDecimal={formatDecimal} />
                         </tbody>
-                        <tfoot>
-                            <tr>
-                                <td colSpan="6" />
-                                <td>Total</td>
-                                <td>{formatMoney(anexa.subtotal)}</td>
-                                <td>{formatMoney(anexa.total_tva)}</td>
-                            </tr>
-                        </tfoot>
                     </table>
                 </div>
             </section>

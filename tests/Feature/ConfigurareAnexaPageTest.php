@@ -455,4 +455,72 @@ class ConfigurareAnexaPageTest extends TestCase
                 ->where('serviciiStandard.tva.0.label', '11%')
             );
     }
+
+    public function test_preturile_standard_sunt_definite_pe_denumire_serviciu(): void
+    {
+        ServiciuStandardAnexa::query()->create([
+            'tip' => ServiciuStandardAnexa::TIP_DENUMIRE,
+            'valoare' => 'Energie electrica',
+            'label' => 'Energie electrica',
+            'activ' => true,
+        ]);
+
+        ServiciuStandardAnexa::query()->create([
+            'tip' => ServiciuStandardAnexa::TIP_DENUMIRE,
+            'valoare' => 'Consum Apa',
+            'label' => 'Consum Apa',
+            'activ' => true,
+        ]);
+
+        $this->get(route('configurare-anexa.servicii-standard.index', ['tip' => ServiciuStandardAnexa::TIP_PRET]))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('ConfigurareAnexa/ServiciiStandard')
+                ->where('tipActiv', ServiciuStandardAnexa::TIP_PRET)
+                ->has('valori', 2)
+                ->where('valori.0.valoare', 'Consum Apa')
+                ->where('valori.1.valoare', 'Energie electrica')
+            );
+
+        $pretEnergie = ServiciuStandardAnexa::query()
+            ->where('tip', ServiciuStandardAnexa::TIP_PRET)
+            ->where('valoare', 'Energie electrica')
+            ->firstOrFail();
+
+        $this->put(route('configurare-anexa.servicii-standard.update', [
+            'tip' => ServiciuStandardAnexa::TIP_PRET,
+            'serviciuStandard' => $pretEnergie,
+        ]), [
+            'valoare' => 'Energie electrica',
+            'coeficient' => '1.5280',
+        ])->assertRedirect(route('configurare-anexa.servicii-standard.index', ['tip' => ServiciuStandardAnexa::TIP_PRET]));
+
+        $this->assertSame('1.5280', ServiciuStandardAnexa::pretPentruDenumire('Energie electrica'));
+    }
+
+    public function test_preturile_standard_se_salveaza_bulk(): void
+    {
+        ServiciuStandardAnexa::query()->create([
+            'tip' => ServiciuStandardAnexa::TIP_DENUMIRE,
+            'valoare' => 'Energie electrica',
+            'label' => 'Energie electrica',
+            'activ' => true,
+        ]);
+
+        ServiciuStandardAnexa::syncPreturiFromDenumire();
+
+        $pret = ServiciuStandardAnexa::query()
+            ->where('tip', ServiciuStandardAnexa::TIP_PRET)
+            ->where('valoare', 'Energie electrica')
+            ->firstOrFail();
+
+        $this->put(route('configurare-anexa.servicii-standard.pret.bulk'), [
+            'preturi' => [
+                ['id' => $pret->id, 'coeficient' => '1.528'],
+            ],
+        ])->assertRedirect(route('configurare-anexa.servicii-standard.index', ['tip' => ServiciuStandardAnexa::TIP_PRET]));
+
+        $this->assertSame('1.5280', (string) $pret->fresh()->coeficient);
+        $this->assertSame('1.5280', ServiciuStandardAnexa::pretPentruDenumire('Energie electrica'));
+    }
 }

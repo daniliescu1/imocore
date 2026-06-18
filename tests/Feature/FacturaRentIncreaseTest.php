@@ -78,7 +78,7 @@ class FacturaRentIncreaseTest extends TestCase
 
         $this->post(route('facturare.generate'), [
             'curs_eur' => 5,
-        ])->assertRedirect('/facturare');
+        ])->assertRedirect(route('facturare.index'));
 
         $facturi = Factura::query()
             ->with('anexa.contract')
@@ -160,15 +160,116 @@ class FacturaRentIncreaseTest extends TestCase
             ->assertOk()
             ->assertInertia(fn (Assert $page) => $page
                 ->where('factura.linii.1.nr_crt', 2)
-                ->where('factura.linii.1.denumire', 'Utilități 21% mai')
+                ->where('factura.linii.1.denumire', 'Utilități 21% TVA mai')
                 ->where('factura.linii.1.valoare', 100)
                 ->where('factura.linii.1.tva', 21)
                 ->where('factura.linii.2.nr_crt', 3)
-                ->where('factura.linii.2.denumire', 'Utilități 11% mai')
+                ->where('factura.linii.2.denumire', 'Utilități 11% TVA mai')
                 ->where('factura.linii.2.valoare', 233.76)
                 ->where('factura.linii.2.tva', 25.71)
                 ->where('factura.linii.3.nr_crt', 4)
                 ->where('factura.linii.3.denumire', 'Penalități')
             );
+    }
+
+    public function test_pagina_facturare_imobil_afiseaza_doar_facturile_imobilului(): void
+    {
+        $imobilSelectat = Imobil::query()->create([
+            'nume' => 'Imobil facturi dedicat',
+            'strada' => 'Strada A',
+            'numar' => '1',
+            'localitate' => 'Timișoara',
+        ]);
+
+        $imobilAscuns = Imobil::query()->create([
+            'nume' => 'Imobil facturi ascuns',
+            'strada' => 'Strada B',
+            'numar' => '2',
+            'localitate' => 'Timișoara',
+        ]);
+
+        foreach ([$imobilSelectat, $imobilAscuns] as $index => $imobil) {
+            $spatiu = Spatiu::query()->create([
+                'imobil_id' => $imobil->id,
+                'identificator' => 'F-'.$index,
+                'status' => 'inchiriat',
+                'moneda' => 'EUR',
+            ]);
+
+            $contract = Contract::query()->create([
+                'spatiu_id' => $spatiu->id,
+                'numar_contract' => 'C-'.$index,
+                'chirias' => 'Chiriaș '.$index,
+                'data_start' => '2026-01-01',
+                'chirie' => 1000,
+                'moneda' => 'EUR',
+                'status' => 'activ',
+            ]);
+
+            $anexa = Anexa::query()->create([
+                'contract_id' => $contract->id,
+                'luna' => '2026-05',
+                'total' => 100,
+            ]);
+
+            Factura::query()->create([
+                'anexa_id' => $anexa->id,
+                'numar_factura' => 'FACT-'.$index,
+                'curs_eur' => 5,
+                'chirie_eur' => 1000,
+                'chirie_lei' => 5000,
+                'total' => 5100,
+                'penalitati' => 0,
+                'status' => 'draft',
+            ]);
+        }
+
+        $this->get(route('facturare.imobil', $imobilSelectat))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('Facturare/Imobil')
+                ->where('imobil.id', $imobilSelectat->id)
+                ->where('facturi.0.numar_factura', 'FACT-0')
+                ->has('facturi', 1)
+            );
+    }
+
+    public function test_generarea_din_pagina_imobilului_redirecteaza_inapoi_la_imobil(): void
+    {
+        $imobil = Imobil::query()->create([
+            'nume' => 'Imobil generare facturi',
+            'strada' => 'Strada C',
+            'numar' => '3',
+            'localitate' => 'Timișoara',
+        ]);
+
+        $spatiu = Spatiu::query()->create([
+            'imobil_id' => $imobil->id,
+            'identificator' => 'F-GEN',
+            'status' => 'inchiriat',
+            'moneda' => 'EUR',
+        ]);
+
+        $contract = Contract::query()->create([
+            'spatiu_id' => $spatiu->id,
+            'numar_contract' => 'C-GEN',
+            'chirias' => 'Chiriaș generare',
+            'data_start' => '2026-01-01',
+            'chirie' => 1000,
+            'moneda' => 'EUR',
+            'status' => 'activ',
+        ]);
+
+        Anexa::query()->create([
+            'contract_id' => $contract->id,
+            'luna' => '2026-05',
+            'total' => 100,
+        ]);
+
+        $this->post(route('facturare.generate'), [
+            'imobil_id' => $imobil->id,
+        ])->assertRedirect(route('facturare.imobil', $imobil));
+
+        $this->assertCount(1, Factura::query()->get());
     }
 }

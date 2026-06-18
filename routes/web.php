@@ -33,6 +33,8 @@ Route::delete('/imobile/{imobil}', [ImobilController::class, 'destroy'])->name('
 Route::get('/imobile/{imobil}/cf/{index}/vizualizare', [ImobilController::class, 'viewCfFile'])->name('imobile.cf.view');
 Route::get('/imobile/{imobil}/cf/{index}/descarcare', [ImobilController::class, 'downloadCfFile'])->name('imobile.cf.download');
 Route::get('/configurare-anexa', [ConfigurareAnexaController::class, 'index'])->name('configurare-anexa.index');
+Route::put('/configurare-anexa/curs', [ConfigurareAnexaController::class, 'updateCurs'])->name('configurare-anexa.curs.update');
+Route::put('/configurare-anexa/servicii-standard/pret/bulk', [ServiciuStandardAnexaController::class, 'updateBulkPreturi'])->name('configurare-anexa.servicii-standard.pret.bulk');
 Route::get('/configurare-anexa/servicii-standard/{tip}', [ServiciuStandardAnexaController::class, 'index'])->name('configurare-anexa.servicii-standard.index');
 Route::post('/configurare-anexa/servicii-standard/{tip}', [ServiciuStandardAnexaController::class, 'store'])->name('configurare-anexa.servicii-standard.store');
 Route::put('/configurare-anexa/servicii-standard/{tip}/{serviciuStandard}', [ServiciuStandardAnexaController::class, 'update'])->name('configurare-anexa.servicii-standard.update');
@@ -71,6 +73,7 @@ Route::post('/contracte', [ContractController::class, 'store'])->name('contracte
 Route::get('/contracte/{contract}/editare', [ContractController::class, 'edit'])->name('contracte.edit');
 Route::put('/contracte/{contract}', [ContractController::class, 'update'])->name('contracte.update');
 Route::get('/facturare', [FacturaController::class, 'index'])->name('facturare.index');
+Route::get('/facturare/imobil/{imobil}', [FacturaController::class, 'imobil'])->name('facturare.imobil');
 Route::put('/facturare/curs', [FacturaController::class, 'updateCurs'])->name('facturare.curs.update');
 Route::post('/facturare/generare', [FacturaController::class, 'generate'])->name('facturare.generate');
 Route::get('/facturare/{factura}', [FacturaController::class, 'show'])->name('facturare.show');
