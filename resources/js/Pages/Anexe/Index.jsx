@@ -1,6 +1,5 @@
 import React from 'react';
 import { Deferred, router, useForm } from '@inertiajs/react';
-import { Trash2 } from 'lucide-react';
 import AppLayout from '../../Layouts/AppLayout';
 
 function formatMoney(value) {
@@ -38,7 +37,12 @@ function RezumatImobileTable({ rezumatImobile = [] }) {
                     </thead>
                     <tbody>
                         {rezumatImobile.map((imobil) => (
-                            <tr key={imobil.id}>
+                            <tr
+                                key={imobil.id}
+                                className="clickable-row"
+                                data-prefetch-href={`/anexe/imobil/${imobil.id}`}
+                                onClick={() => router.visit(`/anexe/imobil/${imobil.id}`)}
+                            >
                                 <td>{imobil.nume} ({imobil.localitate})</td>
                                 <td>{imobil.spatii_inchiriate}</td>
                                 <td>{imobil.anexe_generate}</td>
@@ -57,7 +61,7 @@ function RezumatImobileTable({ rezumatImobile = [] }) {
     );
 }
 
-export default function Index({ anexe = [], rezumatImobile = [], lunaImplicita = '', contracteEligibile = 0 }) {
+export default function Index({ rezumatImobile = [], lunaImplicita = '', contracteEligibile = 0 }) {
     const [anImplicit, lunaImplicit] = String(lunaImplicita || '').split('-');
     const { data, setData, processing } = useForm({
         luna: lunaImplicit || String(new Date().getMonth() + 1).padStart(2, '0'),
@@ -71,14 +75,9 @@ export default function Index({ anexe = [], rezumatImobile = [], lunaImplicita =
 
     function generate(event) {
         event.preventDefault();
-        router.post('/anexe/generare', { luna: lunaPentruBackend }, { preserveScroll: true });
-    }
-
-    function deleteAnexa(event, anexa) {
-        event.stopPropagation();
-        if (!window.confirm(`Ștergi anexa pentru contractul ${anexa.contract}?`)) return;
-
-        router.delete(`/anexe/${anexa.id}`, { preserveScroll: true });
+        router.post('/anexe/generare', {
+            luna: lunaPentruBackend,
+        }, { preserveScroll: true });
     }
 
     const topbarActions = (
@@ -94,7 +93,7 @@ export default function Index({ anexe = [], rezumatImobile = [], lunaImplicita =
     );
 
     return (
-        <AppLayout title={`Generare anexe (${anexe.length})`} subtitle="Generează și previzualizează anexele pentru spațiile cu contract activ" showGlobalSearch={false} topbarActions={topbarActions}>
+        <AppLayout title="Generare anexe" subtitle="Generează și previzualizează anexele pentru spațiile cu contract activ" showGlobalSearch={false} topbarActions={topbarActions}>
             <section className="readonly-info-card annex-generation-status">
                 <h2>{contracteEligibile} spații eligibile pentru generare</h2>
                 <p>
@@ -107,52 +106,6 @@ export default function Index({ anexe = [], rezumatImobile = [], lunaImplicita =
             <Deferred data="rezumatImobile" fallback={<section className="readonly-info-card">Se încarcă rezumatul pe imobile...</section>}>
                 <RezumatImobileTable rezumatImobile={rezumatImobile} />
             </Deferred>
-
-            <section className="table-card module-table-card">
-                <div className="responsive-table">
-                    <table>
-                        <thead>
-                            <tr>
-                                <th>Contract</th>
-                                <th>Imobil</th>
-                                <th>Spațiu</th>
-                                <th>Chiriaș</th>
-                                <th>Luna</th>
-                                <th>Total</th>
-                                <th>Status</th>
-                                <th />
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {anexe.map((anexa) => {
-                                const anexaHref = `/anexe/${anexa.id}`;
-
-                                return (
-                                <tr key={anexa.id} className="clickable-row" data-prefetch-href={anexaHref} onClick={() => router.visit(anexaHref)}>
-                                    <td>{anexa.contract}</td>
-                                    <td>{anexa.imobil}</td>
-                                    <td>{anexa.spatiu}</td>
-                                    <td>{anexa.chirias}</td>
-                                    <td>{anexa.luna}</td>
-                                    <td>{formatMoney(anexa.total)}</td>
-                                    <td>{anexa.status}</td>
-                                    <td className="table-action-cell">
-                                        <button className="delete-inline-button" type="button" onClick={(event) => deleteAnexa(event, anexa)} aria-label="Șterge anexa">
-                                            <Trash2 size={15} strokeWidth={2.4} />
-                                        </button>
-                                    </td>
-                                </tr>
-                                );
-                            })}
-                            {anexe.length === 0 ? (
-                                <tr>
-                                    <td colSpan="8">Nu există anexe generate. Alege luna și apasă Generează anexele.</td>
-                                </tr>
-                            ) : null}
-                        </tbody>
-                    </table>
-                </div>
-            </section>
         </AppLayout>
     );
 }

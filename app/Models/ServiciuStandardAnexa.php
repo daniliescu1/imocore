@@ -27,6 +27,7 @@ class ServiciuStandardAnexa extends Model
         'tip',
         'valoare',
         'label',
+        'coeficient',
         'activ',
         'ordine',
     ];
@@ -34,6 +35,7 @@ class ServiciuStandardAnexa extends Model
     protected $casts = [
         'activ' => 'boolean',
         'ordine' => 'integer',
+        'coeficient' => 'decimal:4',
     ];
 
     public static function optionsForForm(): array
@@ -59,6 +61,7 @@ class ServiciuStandardAnexa extends Model
                     'label' => $item->tip === self::TIP_TVA
                         ? self::tvaLabel($item->valoare)
                         : ($item->label ?: $item->valoare),
+                    'coeficient' => $item->coeficient,
                 ])
                 ->values()
                 ->all();
@@ -125,7 +128,7 @@ class ServiciuStandardAnexa extends Model
         foreach (static::tipCalculDefaults() as $valoare => $label) {
             static::query()->firstOrCreate(
                 ['tip' => self::TIP_TIP_CALCUL, 'valoare' => $valoare],
-                ['label' => $label, 'activ' => true]
+                ['label' => $label, 'coeficient' => $valoare === 'mp_coeficient' ? '0.0900' : null, 'activ' => true]
             );
         }
 

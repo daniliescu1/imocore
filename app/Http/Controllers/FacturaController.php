@@ -118,6 +118,39 @@ class FacturaController extends Controller
         $anexaLiniiServiciu = $anexaLinii->filter(fn ($linie): bool => ($linie->tip_linie ?: 'serviciu') !== 'header');
         $anexaSubtotal = $anexaLiniiServiciu->sum(fn ($linie): float => (float) $linie->valoare);
         $anexaTotalTva = $anexaLiniiServiciu->sum(fn ($linie): float => (float) ($linie->tva_21 ?? 0));
+        $liniiFactura = [
+            [
+                'nr_crt' => 1,
+                'denumire' => trim('Chirie spațiu '.$lunaChirie),
+                'cantitate' => 1,
+                'um' => 'LUNĂ',
+                'pret_unitar' => $factura->chirie_lei,
+                'valoare' => $factura->chirie_lei,
+                'tva' => null,
+            ],
+        ];
+
+        foreach ($this->grupeazaUtilitatiPeTva($anexaLiniiServiciu) as $grupTva) {
+            $liniiFactura[] = [
+                'nr_crt' => count($liniiFactura) + 1,
+                'denumire' => trim("Utilități {$grupTva['procent']}% {$lunaUtilitati}"),
+                'cantitate' => 1,
+                'um' => 'LUNĂ',
+                'pret_unitar' => $grupTva['valoare'],
+                'valoare' => $grupTva['valoare'],
+                'tva' => $grupTva['tva'],
+            ];
+        }
+
+        $liniiFactura[] = [
+            'nr_crt' => count($liniiFactura) + 1,
+            'denumire' => 'Penalități',
+            'cantitate' => null,
+            'um' => null,
+            'pret_unitar' => null,
+            'valoare' => $factura->penalitati,
+            'tva' => null,
+        ];
 
         return Inertia::render('Facturare/Show', [
             'factura' => [
@@ -147,35 +180,7 @@ class FacturaController extends Controller
                     'adresa' => trim(implode(' ', array_filter([$imobil?->strada, $imobil?->numar]))),
                     'localitate' => $imobil?->localitate,
                 ],
-                'linii' => [
-                    [
-                        'nr_crt' => 1,
-                        'denumire' => trim('Chirie spațiu '.$lunaChirie),
-                        'cantitate' => 1,
-                        'um' => 'LUNĂ',
-                        'pret_unitar' => $factura->chirie_lei,
-                        'valoare' => $factura->chirie_lei,
-                        'tva' => null,
-                    ],
-                    [
-                        'nr_crt' => 2,
-                        'denumire' => trim('Utilități '.$lunaUtilitati),
-                        'cantitate' => 1,
-                        'um' => 'LUNĂ',
-                        'pret_unitar' => $anexaSubtotal,
-                        'valoare' => $anexaSubtotal,
-                        'tva' => $anexaTotalTva,
-                    ],
-                    [
-                        'nr_crt' => 3,
-                        'denumire' => 'Penalități',
-                        'cantitate' => null,
-                        'um' => null,
-                        'pret_unitar' => null,
-                        'valoare' => $factura->penalitati,
-                        'tva' => null,
-                    ],
-                ],
+                'linii' => $liniiFactura,
                 'anexa_detaliu' => [
                     'numar' => '01',
                     'luna' => $anexa?->luna,
@@ -236,6 +241,40 @@ class FacturaController extends Controller
         $numarLuna = $luna ? substr($luna, -2) : null;
 
         return $luni[$numarLuna] ?? '';
+    }
+
+    private function grupeazaUtilitatiPeTva($linii): array
+    {
+        $grupuri = [];
+
+        foreach ($linii as $linie) {
+            $valoare = (float) ($linie->valoare ?? 0);
+            $tva = (float) ($linie->tva_21 ?? 0);
+            $procent = $valoare > 0 && $tva > 0
+                ? (int) round($tva / $valoare * 100)
+                : 0;
+
+            if (! isset($grupuri[$procent])) {
+                $grupuri[$procent] = [
+                    'procent' => $procent,
+                    'valoare' => 0.0,
+                    'tva' => 0.0,
+                ];
+            }
+
+            $grupuri[$procent]['valoare'] += $valoare;
+            $grupuri[$procent]['tva'] += $tva;
+        }
+
+        return collect($grupuri)
+            ->sortByDesc(fn (array $grup): int => $grup['procent'])
+            ->values()
+            ->map(fn (array $grup): array => [
+                'procent' => $grup['procent'],
+                'valoare' => round($grup['valoare'], 2),
+                'tva' => round($grup['tva'], 2),
+            ])
+            ->all();
     }
 
     private function numeLunaUrmatoare(?string $luna): string

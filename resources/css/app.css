@@ -1056,6 +1056,25 @@ td {
     font-weight: 900;
 }
 
+.generated-annex-section-total td {
+    border-top: 1px solid var(--border);
+    border-bottom: 2px solid var(--primary-green);
+    color: var(--primary-green);
+    font-size: 13px;
+    font-weight: 900;
+}
+
+.table-row-selected td {
+    background: #edf8f2;
+    color: var(--primary-green);
+    font-weight: 900;
+}
+
+.annex-clear-building-button {
+    margin-top: 12px;
+    width: fit-content;
+}
+
 .invoice-exchange-rate-note {
     margin: 18px 0 0;
     color: var(--text-secondary);
@@ -1457,6 +1476,14 @@ tr:last-child td {
     z-index: 1;
 }
 
+.standard-value-meta {
+    display: block;
+    margin-top: 4px;
+    color: #6f766f;
+    font-size: 12px;
+    font-weight: 600;
+}
+
 .form-field input[type="number"] {
     -moz-appearance: textfield;
     appearance: textfield;
@@ -1694,7 +1721,7 @@ tr:last-child td {
 .annex-line-header,
 .annex-line-row {
     display: grid;
-    grid-template-columns: minmax(52px, 0.42fr) minmax(180px, 1.6fr) repeat(2, minmax(88px, 0.78fr)) minmax(74px, 0.64fr) minmax(54px, 0.46fr) repeat(3, minmax(78px, 0.66fr)) minmax(110px, 0.9fr) 58px 28px;
+    grid-template-columns: minmax(110px, 0.9fr) minmax(52px, 0.42fr) minmax(180px, 1.6fr) repeat(2, minmax(88px, 0.78fr)) minmax(74px, 0.64fr) minmax(54px, 0.46fr) repeat(3, minmax(78px, 0.66fr)) 58px 28px;
     align-items: end;
     gap: 8px;
 }
@@ -1770,6 +1797,11 @@ tr:last-child td {
     background: #f7f4ee;
     color: var(--text-secondary);
     cursor: default;
+}
+
+.annex-empty-cell {
+    display: block;
+    min-height: 36px;
 }
 
 .annex-line-main {

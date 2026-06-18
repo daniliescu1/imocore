@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Contor;
 use App\Models\PerioadaInchiriereFatada;
 use App\Models\ConfigurareAnexaImobil;
 use App\Models\ConfigurareAnexaLinie;
@@ -10,6 +11,7 @@ use App\Models\Locator;
 use App\Models\Spatiu;
 use App\Support\DecimalInput;
 use App\Support\InternalReturnUrl;
+use App\Support\SincronizareContoareDinAnexa;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -313,6 +315,7 @@ class SpatiuController extends Controller
         $spatiu = Spatiu::create($validated);
         $this->syncPersoaneForAdministrativ($spatiu);
         $this->syncPersoaneForComun($spatiu);
+        SincronizareContoareDinAnexa::syncForSpatiu($spatiu->fresh());
         $spatiu->imobil->recalculeazaSpatii();
 
         return redirect($this->spatiiIndexUrl($spatiu->imobil_id))->with('success', 'Spațiul a fost adăugat.');
@@ -324,6 +327,7 @@ class SpatiuController extends Controller
         $spatiu->update($this->validatedData($request, $spatiu));
         $this->syncPersoaneForAdministrativ($spatiu->fresh());
         $this->syncPersoaneForComun($spatiu->fresh());
+        SincronizareContoareDinAnexa::syncForSpatiu($spatiu->fresh());
 
         $spatiu->refresh()->imobil->recalculeazaSpatii();
 
@@ -341,6 +345,7 @@ class SpatiuController extends Controller
         $imobilId = $spatiu->imobil_id;
         $imobil = $spatiu->imobil;
 
+        Contor::query()->where('spatiu_id', $spatiu->id)->delete();
         $spatiu->delete();
 
         $imobil->recalculeazaSpatii();
@@ -371,6 +376,7 @@ class SpatiuController extends Controller
         }
 
         $spatiu->update(['configurare_anexa_id' => $noua->id]);
+        SincronizareContoareDinAnexa::syncForSpatiu($spatiu->fresh());
 
         $returnUrl = InternalReturnUrl::normalize($request->input('return_url'))
             ?: route('spatii.edit', $spatiu);

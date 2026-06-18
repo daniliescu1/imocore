@@ -46,6 +46,7 @@ class ServiciuStandardAnexaController extends Controller
                     'label' => $tip === ServiciuStandardAnexa::TIP_TVA
                         ? ServiciuStandardAnexa::tvaLabel($item->valoare)
                         : ($item->label ?: $item->valoare),
+                    'coeficient' => $item->coeficient,
                 ]),
         ]);
     }
@@ -57,14 +58,17 @@ class ServiciuStandardAnexaController extends Controller
         $validated = $request->validate([
             'valoare' => ['required', 'string', 'max:255'],
             'label' => ['nullable', 'string', 'max:255'],
+            'coeficient' => ['nullable', 'numeric', 'min:0'],
         ]);
 
         $valoare = ServiciuStandardAnexa::normalizeValoare($tip, $validated['valoare']);
+        $coeficient = $this->coeficientForStore($tip, $valoare, $validated['coeficient'] ?? null);
 
         ServiciuStandardAnexa::query()->updateOrCreate(
             ['tip' => $tip, 'valoare' => $valoare],
             [
                 'label' => $this->labelForStore($tip, $valoare, $validated['label'] ?? null),
+                'coeficient' => $coeficient,
                 'activ' => true,
             ]
         );
@@ -85,19 +89,28 @@ class ServiciuStandardAnexaController extends Controller
         $validated = $request->validate([
             'valoare' => ['required', 'string', 'max:255'],
             'label' => ['nullable', 'string', 'max:255'],
+            'coeficient' => ['nullable', 'numeric', 'min:0'],
             'activ' => ['nullable', 'boolean'],
         ]);
 
         $valoareNoua = ServiciuStandardAnexa::normalizeValoare($tip, $validated['valoare']);
         $valoareVeche = $serviciuStandard->valoare;
+        $coeficient = $this->coeficientForStore($tip, $valoareNoua, $validated['coeficient'] ?? null);
 
         if ($valoareNoua !== $valoareVeche && $this->esteFolosit($tip, $valoareVeche)) {
             $this->actualizeazaLiniiConfigurate($tip, $valoareVeche, $valoareNoua);
         }
 
+        if ($tip === ServiciuStandardAnexa::TIP_TIP_CALCUL && $valoareNoua === 'mp_coeficient' && $coeficient !== null) {
+            ConfigurareAnexaLinie::query()
+                ->where('tip_calcul', 'mp_coeficient')
+                ->update(['coeficient' => $coeficient]);
+        }
+
         $serviciuStandard->update([
             'valoare' => $valoareNoua,
             'label' => $this->labelForStore($tip, $valoareNoua, $validated['label'] ?? null),
+            'coeficient' => $coeficient,
             'activ' => (bool) ($validated['activ'] ?? $serviciuStandard->activ),
         ]);
 
@@ -147,6 +160,19 @@ class ServiciuStandardAnexaController extends Controller
         }
 
         return ServiciuStandardAnexa::tipCalculDefaults()[$valoare] ?? $valoare;
+    }
+
+    private function coeficientForStore(string $tip, string $valoare, mixed $coeficient): ?string
+    {
+        if ($tip !== ServiciuStandardAnexa::TIP_TIP_CALCUL || $valoare !== 'mp_coeficient') {
+            return null;
+        }
+
+        if ($coeficient === null || trim((string) $coeficient) === '') {
+            return null;
+        }
+
+        return (string) $coeficient;
     }
 
     private function esteFolosit(string $tip, string $valoare): bool

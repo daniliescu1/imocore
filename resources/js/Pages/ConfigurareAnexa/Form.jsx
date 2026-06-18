@@ -44,7 +44,22 @@ const emptyCoeficientLine = {
 };
 
 function isMpCoeficientLine(line) {
-    return line.tip_calcul === 'mp_coeficient';
+    return isMpCoeficientValue(line.tip_calcul);
+}
+
+function isMpCoeficientValue(value) {
+    const normalized = String(value || '')
+        .toLowerCase()
+        .replace(/[×*_\s-]/g, '');
+
+    return normalized.startsWith('mp') && normalized.includes('coeficient');
+}
+
+function templateFaraCantitati(tipCalcul) {
+    return tipCalcul === 'contor'
+        || ['mp', 'pe_mp'].includes(tipCalcul)
+        || tipCalcul === 'persoane'
+        || isMpCoeficientValue(tipCalcul);
 }
 
 function defaultPluvialaDenumire(denumiri) {
@@ -116,6 +131,25 @@ function calculatedValoare(facturat, pretUnitar) {
     return formatDecimalForInput((cantitate * pret).toFixed(2));
 }
 
+function calculatedMpCoeficient(mp, coeficient) {
+    const suprafata = numericValue(mp);
+    const coef = numericValue(coeficient);
+
+    if (suprafata === null || coef === null) return '';
+
+    return formatDecimalForInput((suprafata * coef).toFixed(3));
+}
+
+function coeficientFallback(value) {
+    const number = numericValue(value);
+
+    if (number !== null && number > 0 && number <= 1) {
+        return formatDecimalForInput(value);
+    }
+
+    return '';
+}
+
 function renumberLines(lines) {
     let zoneCounter = 0;
 
@@ -137,16 +171,22 @@ function formatLineForForm(line) {
         return { tip_linie: 'header', id: line.id ?? null };
     }
 
+    const isCoeficient = isMpCoeficientValue(line.tip_calcul);
+    const tipCalcul = isCoeficient ? 'mp_coeficient' : (line.tip_calcul || 'manual');
+    const stripQuantities = templateFaraCantitati(tipCalcul);
+
     return {
         ...line,
         tip_linie: 'serviciu',
-        tip_calcul: line.tip_calcul || 'manual',
-        index_vechi: formatDecimalForInput(line.index_vechi),
-        index_nou: formatDecimalForInput(line.index_nou),
-        facturat: formatDecimalForInput(line.facturat),
+        tip_calcul: tipCalcul,
+        index_vechi: stripQuantities ? '' : formatDecimalForInput(line.index_vechi),
+        index_nou: stripQuantities ? '' : formatDecimalForInput(line.index_nou),
+        facturat: stripQuantities ? '' : formatDecimalForInput(line.facturat),
         pret_unitar: formatDecimalForInput(line.pret_unitar),
-        valoare: formatDecimalForInput(line.valoare),
-        coeficient: formatDecimalForInput(line.coeficient),
+        valoare: stripQuantities ? '' : formatDecimalForInput(line.valoare),
+        coeficient: isCoeficient
+            ? (coeficientFallback(line.coeficient) || coeficientFallback(line.index_nou) || '0.09')
+            : formatDecimalForInput(line.coeficient),
         tva_21: normalizeTvaValue(line.tva_21),
     };
 }
@@ -154,16 +194,16 @@ function formatLineForForm(line) {
 function AnnexColumnHeader({ showActions = false, lineIndex = null, onMoveUp, onMoveDown, onRemove, canMoveUp = false, canMoveDown = false }) {
     return (
         <div className={`annex-line-header${showActions ? ' annex-line-header-row' : ''}`}>
+            <span>Tip calcul</span>
             <span>Nr. crt</span>
             <span>Denumire serviciu</span>
             <span>Index contor vechi</span>
-            <span>Index contor nou</span>
+            <span>Index contor nou / Coeficient</span>
             <span>Facturat</span>
             <span>UM</span>
             <span>Preț unitar</span>
             <span>Valoare</span>
             <span>TVA %</span>
-            <span>Tip calcul</span>
             <span>Ordine</span>
             {showActions ? (
                 <>
@@ -193,6 +233,7 @@ export default function Form({
     serviciiStandard = {},
     returnUrl = null,
     spatiuId = null,
+    previewSpatiu = null,
     context = null,
 }) {
     const isEditing = Boolean(anexa);
@@ -204,26 +245,35 @@ export default function Form({
                 return { tip_linie: 'header', id: linie.id ?? null };
             }
 
-            if (isMpCoeficientLine(linie)) {
+            const tipCalcul = isMpCoeficientLine(linie) ? 'mp_coeficient' : (linie.tip_calcul || 'manual');
+            const base = {
+                ...linie,
+                tip_linie: 'serviciu',
+                tip_calcul: tipCalcul,
+                tva_21: normalizeTvaValue(linie.tva_21),
+            };
+
+            if (templateFaraCantitati(tipCalcul)) {
                 return {
-                    ...linie,
-                    tip_linie: 'serviciu',
-                    tip_calcul: 'mp_coeficient',
-                    coeficient: linie.coeficient ?? '',
+                    ...base,
                     index_vechi: '',
                     index_nou: '',
                     facturat: '',
                     valoare: '',
-                    tva_21: normalizeTvaValue(linie.tva_21),
+                    coeficient: isMpCoeficientLine(linie) ? (linie.coeficient ?? '') : '',
                 };
             }
 
-            return {
-                ...linie,
-                tip_linie: 'serviciu',
-                tip_calcul: linie.tip_calcul || 'manual',
-                tva_21: normalizeTvaValue(linie.tva_21),
-            };
+            if (linie.tip_calcul === 'fix') {
+                return {
+                    ...base,
+                    index_vechi: '',
+                    index_nou: '',
+                    valoare: calculatedValoare(linie.facturat, linie.pret_unitar),
+                };
+            }
+
+            return base;
         });
     }
 
@@ -262,13 +312,44 @@ export default function Form({
 
             const nextLine = { ...linie, [field]: field === 'nr_crt' ? lineIndex + 1 : value };
 
-            if (isMpCoeficientLine(nextLine)) {
-                if (['coeficient', 'pret_unitar'].includes(field)) {
+            if (field === 'tip_calcul') {
+                if (templateFaraCantitati(value)) {
+                    nextLine.index_vechi = '';
+                    nextLine.index_nou = '';
                     nextLine.facturat = '';
                     nextLine.valoare = '';
                 }
 
+                if (value !== 'mp_coeficient') {
+                    nextLine.coeficient = '';
+                }
+
+                if (value === 'mp_coeficient') {
+                    nextLine.coeficient = nextLine.coeficient || '0.09';
+                }
+            }
+
+            if (isMpCoeficientLine(nextLine)) {
+                nextLine.index_vechi = '';
+                nextLine.index_nou = '';
+                nextLine.facturat = '';
+                nextLine.valoare = '';
+
                 return nextLine;
+            }
+
+            if (templateFaraCantitati(nextLine.tip_calcul)) {
+                nextLine.index_vechi = '';
+                nextLine.index_nou = '';
+                nextLine.facturat = '';
+                nextLine.valoare = '';
+
+                return nextLine;
+            }
+
+            if (nextLine.tip_calcul === 'fix') {
+                nextLine.index_vechi = '';
+                nextLine.index_nou = '';
             }
 
             if (['index_vechi', 'index_nou'].includes(field)) {
@@ -314,6 +395,18 @@ export default function Form({
         setData('linii', renumberLines(nextLines));
     }
 
+    function valoareForDisplay(linie) {
+        if (templateFaraCantitati(linie.tip_calcul)) {
+            return '';
+        }
+
+        if (linie.tip_calcul === 'fix') {
+            return calculatedValoare(linie.facturat, linie.pret_unitar);
+        }
+
+        return linie.valoare ?? '';
+    }
+
     const denumiri = serviciiStandard.denumire || [];
     const unitati = serviciiStandard.um || [];
     const tvaOptions = serviciiStandard.tva || [];
@@ -328,6 +421,9 @@ export default function Form({
                     Această anexă e alocată la {context.spatii_count} spații. Modificările se aplică tuturor spațiilor care o folosesc.
                 </div>
             ) : null}
+            <div className="readonly-info-card annex-template-info">
+                <p>Anexa definește doar serviciile, tipul de calcul, prețul și TVA. Citirile contoare se introduc în <strong>Citiri contoare</strong>, iar mp și numărul de persoane se iau automat din fiecare spațiu la generare.</p>
+            </div>
             <form className="cf-card module-table-card" onSubmit={submit}>
                 <div className="cf-card-heading">
                     <div>
@@ -374,108 +470,56 @@ export default function Form({
                                 canMoveDown={lineIndex < data.linii.length - 1}
                             />
                         ) : isMpCoeficientLine(linie) ? (
+                            (() => {
+                                const coeficientValue = coeficientFallback(linie.coeficient) || '0.09';
+
+                                return (
                             <div className="annex-line-row annex-line-row-coeficient" key={`line-${lineIndex}`}>
-                                <label className="form-field annex-line-small">
-                                    <input type="number" min="0" value={linie.nr_crt ?? ''} readOnly tabIndex={-1} aria-label="Nr. crt" />
-                                </label>
-                                <label className="form-field annex-line-main">
-                                    <select value={linie.denumire || ''} aria-label="Denumire serviciu" onChange={(event) => updateLine(lineIndex, 'denumire', event.target.value)}>
-                                        <option value="">Alege serviciul</option>
-                                        {denumiri.map((opt) => <option value={opt.valoare} key={opt.valoare}>{opt.label}</option>)}
-                                        {linie.denumire && !denumiri.some((opt) => opt.valoare === linie.denumire) ? <option value={linie.denumire}>{linie.denumire}</option> : null}
-                                    </select>
-                                </label>
-                                <label className="form-field annex-line-medium">
-                                    <input className="calculated-input" type="text" value="" readOnly tabIndex={-1} placeholder="mp spațiu" aria-label="Suprafață mp spațiu" title="Se completează automat din spațiu la generare" />
-                                </label>
-                                <label className="form-field annex-line-medium">
-                                    <input type="number" step="0.0001" min="0" value={linie.coeficient ?? ''} aria-label="Coeficient mp" onChange={(event) => updateLine(lineIndex, 'coeficient', event.target.value)} />
-                                </label>
-                                <label className="form-field annex-line-small">
-                                    <input className="calculated-input" type="text" value="" readOnly tabIndex={-1} placeholder="auto" aria-label="Facturat" title="mp × coeficient, calculat la generare" />
-                                </label>
-                                <label className="form-field annex-line-small">
-                                    <select value={linie.um || ''} aria-label="UM" onChange={(event) => updateLine(lineIndex, 'um', event.target.value)}>
-                                        <option value="">—</option>
-                                        {unitati.map((opt) => <option value={opt.valoare} key={opt.valoare}>{opt.label}</option>)}
-                                        {linie.um && !unitati.some((opt) => opt.valoare === linie.um) ? <option value={linie.um}>{linie.um}</option> : null}
-                                    </select>
-                                </label>
-                                <label className="form-field annex-line-small">
-                                    <input type="number" step="0.0001" value={linie.pret_unitar ?? ''} aria-label="Preț unitar" onChange={(event) => updateLine(lineIndex, 'pret_unitar', event.target.value)} />
-                                </label>
-                                <label className="form-field annex-line-small">
-                                    <input className="calculated-input" type="text" value="" readOnly tabIndex={-1} aria-label="Valoare" title="Calculată la generare" />
-                                </label>
-                                <label className="form-field annex-line-small">
-                                    <select value={linie.tva_21 ?? ''} aria-label="TVA %" onChange={(event) => updateLine(lineIndex, 'tva_21', event.target.value)}>
-                                        <option value="">Fără TVA</option>
-                                        {tvaOptions.map((opt) => <option value={opt.valoare} key={opt.valoare}>{opt.label}</option>)}
-                                        {linie.tva_21 && !tvaOptions.some((opt) => tvaValuesMatch(opt.valoare, linie.tva_21)) ? <option value={normalizeTvaValue(linie.tva_21)}>{formatTvaLabel(linie.tva_21)}</option> : null}
-                                    </select>
-                                </label>
-                                <label className="form-field">
-                                    <input className="calculated-input" type="text" value="Mp × coeficient" readOnly tabIndex={-1} aria-label="Tip calcul" />
-                                </label>
-                                <div className="annex-order-actions">
-                                    <button type="button" className="annex-order-button" onClick={() => moveLine(lineIndex, -1)} disabled={lineIndex === 0} aria-label="Mută rândul mai sus">
-                                        <ArrowUp size={13} strokeWidth={2.4} />
-                                    </button>
-                                    <button type="button" className="annex-order-button" onClick={() => moveLine(lineIndex, 1)} disabled={lineIndex === data.linii.length - 1} aria-label="Mută rândul mai jos">
-                                        <ArrowDown size={13} strokeWidth={2.4} />
-                                    </button>
-                                </div>
-                                <button type="button" className="delete-inline-button annex-delete-button annex-line-delete-button" onClick={() => removeLine(lineIndex)} aria-label="Șterge linie anexă">
-                                    <Trash2 size={14} strokeWidth={2.4} />
-                                </button>
-                            </div>
-                        ) : (
-                            <div className="annex-line-row" key={`line-${lineIndex}`}>
-                                <label className="form-field annex-line-small">
-                                    <input type="number" min="0" value={linie.nr_crt ?? ''} readOnly tabIndex={-1} aria-label="Nr. crt" />
-                                </label>
-                                <label className="form-field annex-line-main">
-                                    <select value={linie.denumire || ''} aria-label="Denumire serviciu" onChange={(event) => updateLine(lineIndex, 'denumire', event.target.value)}>
-                                        <option value="">Alege serviciul</option>
-                                        {denumiri.map((opt) => <option value={opt.valoare} key={opt.valoare}>{opt.label}</option>)}
-                                        {linie.denumire && !denumiri.some((opt) => opt.valoare === linie.denumire) ? <option value={linie.denumire}>{linie.denumire}</option> : null}
-                                    </select>
-                                </label>
-                                <label className="form-field annex-line-medium">
-                                    <input type="text" value={linie.index_vechi || ''} aria-label="Index contor vechi" onChange={(event) => updateLine(lineIndex, 'index_vechi', event.target.value)} />
-                                </label>
-                                <label className="form-field annex-line-medium">
-                                    <input type="text" value={linie.index_nou || ''} aria-label="Index contor nou" onChange={(event) => updateLine(lineIndex, 'index_nou', event.target.value)} />
-                                </label>
-                                <label className="form-field annex-line-small">
-                                    <input type="number" step="0.001" value={linie.facturat ?? ''} aria-label="Facturat" onChange={(event) => updateLine(lineIndex, 'facturat', event.target.value)} />
-                                </label>
-                                <label className="form-field annex-line-small">
-                                    <select value={linie.um || ''} aria-label="UM" onChange={(event) => updateLine(lineIndex, 'um', event.target.value)}>
-                                        <option value="">—</option>
-                                        {unitati.map((opt) => <option value={opt.valoare} key={opt.valoare}>{opt.label}</option>)}
-                                        {linie.um && !unitati.some((opt) => opt.valoare === linie.um) ? <option value={linie.um}>{linie.um}</option> : null}
-                                    </select>
-                                </label>
-                                <label className="form-field annex-line-small">
-                                    <input type="number" step="0.0001" value={linie.pret_unitar ?? ''} aria-label="Preț unitar" onChange={(event) => updateLine(lineIndex, 'pret_unitar', event.target.value)} />
-                                </label>
-                                <label className="form-field annex-line-small">
-                                    <input className="calculated-input" type="number" step="0.01" value={linie.valoare ?? ''} readOnly tabIndex={-1} aria-readonly="true" aria-label="Valoare" />
-                                </label>
-                                <label className="form-field annex-line-small">
-                                    <select value={linie.tva_21 ?? ''} aria-label="TVA %" onChange={(event) => updateLine(lineIndex, 'tva_21', event.target.value)}>
-                                        <option value="">Fără TVA</option>
-                                        {tvaOptions.map((opt) => <option value={opt.valoare} key={opt.valoare}>{opt.label}</option>)}
-                                        {linie.tva_21 && !tvaOptions.some((opt) => tvaValuesMatch(opt.valoare, linie.tva_21)) ? <option value={normalizeTvaValue(linie.tva_21)}>{formatTvaLabel(linie.tva_21)}</option> : null}
-                                    </select>
-                                </label>
                                 <label className="form-field">
                                     <select value={linie.tip_calcul} aria-label="Tip calcul" onChange={(event) => updateLine(lineIndex, 'tip_calcul', event.target.value)}>
                                         {tipCalculOptions.map((opt) => <option value={opt.valoare} key={opt.valoare}>{opt.label}</option>)}
                                         {linie.tip_calcul && !tipCalculOptions.some((opt) => opt.valoare === linie.tip_calcul) ? <option value={linie.tip_calcul}>{linie.tip_calcul}</option> : null}
                                     </select>
                                 </label>
+                                <label className="form-field annex-line-small">
+                                    <input type="number" min="0" value={linie.nr_crt ?? ''} readOnly tabIndex={-1} aria-label="Nr. crt" />
+                                </label>
+                                <label className="form-field annex-line-main">
+                                    <select value={linie.denumire || ''} aria-label="Denumire serviciu" onChange={(event) => updateLine(lineIndex, 'denumire', event.target.value)}>
+                                        <option value="">Alege serviciul</option>
+                                        {denumiri.map((opt) => <option value={opt.valoare} key={opt.valoare}>{opt.label}</option>)}
+                                        {linie.denumire && !denumiri.some((opt) => opt.valoare === linie.denumire) ? <option value={linie.denumire}>{linie.denumire}</option> : null}
+                                    </select>
+                                </label>
+                                <label className="form-field annex-line-medium">
+                                    <span className="annex-empty-cell" aria-hidden="true" />
+                                </label>
+                                <label className="form-field annex-line-medium">
+                                    <input type="number" step="0.0001" min="0" value={coeficientValue} aria-label="Coeficient mp" onChange={(event) => updateLine(lineIndex, 'coeficient', event.target.value)} />
+                                </label>
+                                <label className="form-field annex-line-small">
+                                    <span className="annex-empty-cell" aria-hidden="true" />
+                                </label>
+                                <label className="form-field annex-line-small">
+                                    <select value={linie.um || ''} aria-label="UM" onChange={(event) => updateLine(lineIndex, 'um', event.target.value)}>
+                                        <option value="">—</option>
+                                        {unitati.map((opt) => <option value={opt.valoare} key={opt.valoare}>{opt.label}</option>)}
+                                        {linie.um && !unitati.some((opt) => opt.valoare === linie.um) ? <option value={linie.um}>{linie.um}</option> : null}
+                                    </select>
+                                </label>
+                                <label className="form-field annex-line-small">
+                                    <input type="number" step="0.0001" value={linie.pret_unitar ?? ''} aria-label="Preț unitar" onChange={(event) => updateLine(lineIndex, 'pret_unitar', event.target.value)} />
+                                </label>
+                                <label className="form-field annex-line-small">
+                                    <span className="annex-empty-cell" aria-hidden="true" />
+                                </label>
+                                <label className="form-field annex-line-small">
+                                    <select value={linie.tva_21 ?? ''} aria-label="TVA %" onChange={(event) => updateLine(lineIndex, 'tva_21', event.target.value)}>
+                                        <option value="">Fără TVA</option>
+                                        {tvaOptions.map((opt) => <option value={opt.valoare} key={opt.valoare}>{opt.label}</option>)}
+                                        {linie.tva_21 && !tvaOptions.some((opt) => tvaValuesMatch(opt.valoare, linie.tva_21)) ? <option value={normalizeTvaValue(linie.tva_21)}>{formatTvaLabel(linie.tva_21)}</option> : null}
+                                    </select>
+                                </label>
                                 <div className="annex-order-actions">
                                     <button type="button" className="annex-order-button" onClick={() => moveLine(lineIndex, -1)} disabled={lineIndex === 0} aria-label="Mută rândul mai sus">
                                         <ArrowUp size={13} strokeWidth={2.4} />
@@ -488,6 +532,97 @@ export default function Form({
                                     <Trash2 size={14} strokeWidth={2.4} />
                                 </button>
                             </div>
+                                );
+                            })()
+                        ) : (
+                            (() => {
+                                const isFixLine = linie.tip_calcul === 'fix';
+                                const hideIndexFields = templateFaraCantitati(linie.tip_calcul) || isFixLine;
+                                const hideQuantityFields = templateFaraCantitati(linie.tip_calcul);
+
+                                return (
+                            <div className="annex-line-row" key={`line-${lineIndex}`}>
+                                <label className="form-field">
+                                    <select value={linie.tip_calcul} aria-label="Tip calcul" onChange={(event) => updateLine(lineIndex, 'tip_calcul', event.target.value)}>
+                                        {tipCalculOptions.map((opt) => <option value={opt.valoare} key={opt.valoare}>{opt.label}</option>)}
+                                        {linie.tip_calcul && !tipCalculOptions.some((opt) => opt.valoare === linie.tip_calcul) ? <option value={linie.tip_calcul}>{linie.tip_calcul}</option> : null}
+                                    </select>
+                                </label>
+                                <label className="form-field annex-line-small">
+                                    <input type="number" min="0" value={linie.nr_crt ?? ''} readOnly tabIndex={-1} aria-label="Nr. crt" />
+                                </label>
+                                <label className="form-field annex-line-main">
+                                    <select value={linie.denumire || ''} aria-label="Denumire serviciu" onChange={(event) => updateLine(lineIndex, 'denumire', event.target.value)}>
+                                        <option value="">Alege serviciul</option>
+                                        {denumiri.map((opt) => <option value={opt.valoare} key={opt.valoare}>{opt.label}</option>)}
+                                        {linie.denumire && !denumiri.some((opt) => opt.valoare === linie.denumire) ? <option value={linie.denumire}>{linie.denumire}</option> : null}
+                                    </select>
+                                </label>
+                                <label className="form-field annex-line-medium">
+                                    {hideIndexFields ? (
+                                        <span className="annex-empty-cell" aria-hidden="true" />
+                                    ) : (
+                                        <input type="text" value={linie.index_vechi || ''} aria-label="Index contor vechi" onChange={(event) => updateLine(lineIndex, 'index_vechi', event.target.value)} />
+                                    )}
+                                </label>
+                                <label className="form-field annex-line-medium">
+                                    {hideIndexFields ? (
+                                        <span className="annex-empty-cell" aria-hidden="true" />
+                                    ) : (
+                                        <input type="text" value={linie.index_nou || ''} aria-label="Index contor nou" onChange={(event) => updateLine(lineIndex, 'index_nou', event.target.value)} />
+                                    )}
+                                </label>
+                                <label className="form-field annex-line-small">
+                                    {hideQuantityFields ? (
+                                        <span className="annex-empty-cell" aria-hidden="true" />
+                                    ) : (
+                                        <input
+                                            type="number"
+                                            step="0.001"
+                                            value={linie.facturat ?? ''}
+                                            aria-label="Facturat"
+                                            onChange={(event) => updateLine(lineIndex, 'facturat', event.target.value)}
+                                        />
+                                    )}
+                                </label>
+                                <label className="form-field annex-line-small">
+                                    <select value={linie.um || ''} aria-label="UM" onChange={(event) => updateLine(lineIndex, 'um', event.target.value)}>
+                                        <option value="">—</option>
+                                        {unitati.map((opt) => <option value={opt.valoare} key={opt.valoare}>{opt.label}</option>)}
+                                        {linie.um && !unitati.some((opt) => opt.valoare === linie.um) ? <option value={linie.um}>{linie.um}</option> : null}
+                                    </select>
+                                </label>
+                                <label className="form-field annex-line-small">
+                                    <input type="number" step="0.0001" value={linie.pret_unitar ?? ''} aria-label="Preț unitar" onChange={(event) => updateLine(lineIndex, 'pret_unitar', event.target.value)} />
+                                </label>
+                                <label className="form-field annex-line-small">
+                                    {hideQuantityFields ? (
+                                        <span className="annex-empty-cell" aria-hidden="true" />
+                                    ) : (
+                                        <input className={isFixLine ? 'calculated-input' : undefined} type="number" step="0.01" value={valoareForDisplay(linie)} readOnly={isFixLine} tabIndex={isFixLine ? -1 : undefined} aria-readonly={isFixLine ? 'true' : undefined} aria-label="Valoare" onChange={(event) => updateLine(lineIndex, 'valoare', event.target.value)} />
+                                    )}
+                                </label>
+                                <label className="form-field annex-line-small">
+                                    <select value={linie.tva_21 ?? ''} aria-label="TVA %" onChange={(event) => updateLine(lineIndex, 'tva_21', event.target.value)}>
+                                        <option value="">Fără TVA</option>
+                                        {tvaOptions.map((opt) => <option value={opt.valoare} key={opt.valoare}>{opt.label}</option>)}
+                                        {linie.tva_21 && !tvaOptions.some((opt) => tvaValuesMatch(opt.valoare, linie.tva_21)) ? <option value={normalizeTvaValue(linie.tva_21)}>{formatTvaLabel(linie.tva_21)}</option> : null}
+                                    </select>
+                                </label>
+                                <div className="annex-order-actions">
+                                    <button type="button" className="annex-order-button" onClick={() => moveLine(lineIndex, -1)} disabled={lineIndex === 0} aria-label="Mută rândul mai sus">
+                                        <ArrowUp size={13} strokeWidth={2.4} />
+                                    </button>
+                                    <button type="button" className="annex-order-button" onClick={() => moveLine(lineIndex, 1)} disabled={lineIndex === data.linii.length - 1} aria-label="Mută rândul mai jos">
+                                        <ArrowDown size={13} strokeWidth={2.4} />
+                                    </button>
+                                </div>
+                                <button type="button" className="delete-inline-button annex-delete-button annex-line-delete-button" onClick={() => removeLine(lineIndex)} aria-label="Șterge linie anexă">
+                                    <Trash2 size={14} strokeWidth={2.4} />
+                                </button>
+                            </div>
+                                );
+                            })()
                         )
                     ))}
                     <div className="annex-lines-actions">

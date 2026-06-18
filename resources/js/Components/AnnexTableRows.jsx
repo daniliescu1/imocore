@@ -16,13 +16,46 @@ export function AnnexSectionHeaderRow() {
     );
 }
 
+function zeroSectionTotal() {
+    return { valoare: 0, tva: 0, count: 0 };
+}
+
+function sectionTotalRow(total, key, formatMoney) {
+    if (!total.count) {
+        return null;
+    }
+
+    const formatValue = formatMoney || ((value) => String(Number(value).toFixed(2)).replace(/(\.\d*?)0+$/, '$1').replace(/\.$/, ''));
+
+    return (
+        <tr className="generated-annex-section-total" key={key}>
+            <td colSpan="6" />
+            <td>Total</td>
+            <td>{formatValue(total.valoare)}</td>
+            <td>{formatValue(total.tva)}</td>
+        </tr>
+    );
+}
+
 export function AnnexTableBodyRows({ linii, formatDecimal, formatMoney = null }) {
-    return linii.map((linie, index) => {
+    const rows = [];
+    let sectionTotal = zeroSectionTotal();
+    let sectionIndex = 1;
+
+    linii.forEach((linie, index) => {
         if (linie.tip_linie === 'header') {
-            return <AnnexSectionHeaderRow key={`header-${index}`} />;
+            rows.push(sectionTotalRow(sectionTotal, `section-total-${sectionIndex}`, formatMoney));
+            rows.push(<AnnexSectionHeaderRow key={`header-${index}`} />);
+            sectionTotal = zeroSectionTotal();
+            sectionIndex += 1;
+            return;
         }
 
-        return (
+        sectionTotal.valoare += Number(linie.valoare || 0);
+        sectionTotal.tva += Number(linie.tva_21 || 0);
+        sectionTotal.count += 1;
+
+        rows.push(
             <tr key={`${linie.nr_crt}-${linie.denumire}-${index}`}>
                 <td>{linie.nr_crt || index + 1}</td>
                 <td>{linie.denumire}</td>
@@ -36,4 +69,8 @@ export function AnnexTableBodyRows({ linii, formatDecimal, formatMoney = null })
             </tr>
         );
     });
+
+    rows.push(sectionTotalRow(sectionTotal, `section-total-${sectionIndex}`, formatMoney));
+
+    return rows;
 }

@@ -13,6 +13,7 @@ class Contor extends Model
     protected $fillable = [
         'imobil_id',
         'spatiu_id',
+        'configurare_anexa_linie_id',
         'tip_utilitate',
         'cod_contor',
         'nivel',
@@ -32,6 +33,11 @@ class Contor extends Model
     public function spatiu(): BelongsTo
     {
         return $this->belongsTo(Spatiu::class);
+    }
+
+    public function configurareAnexaLinie(): BelongsTo
+    {
+        return $this->belongsTo(ConfigurareAnexaLinie::class, 'configurare_anexa_linie_id');
     }
 
     public function citiri(): HasMany

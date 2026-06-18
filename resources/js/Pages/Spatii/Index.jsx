@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Link, router } from '@inertiajs/react';
 import { GripVertical } from 'lucide-react';
 import AppLayout from '../../Layouts/AppLayout';
@@ -98,37 +98,29 @@ function ImobilListRow({
     onDrop,
     onDragEnd,
 }) {
-    const skipClickRef = useRef(false);
     const imobilHref = `/spatii?imobil_id=${imobil.id}`;
 
     function handleClick() {
-        if (skipClickRef.current) {
-            skipClickRef.current = false;
-            return;
-        }
-
         onOpen(imobil);
-    }
-
-    function handleDragEnd() {
-        skipClickRef.current = true;
-        onDragEnd();
     }
 
     return (
         <tr
             className={`clickable-row${isDragging ? ' is-dragging' : ''}${canReorder ? ' draggable-row' : ''}`}
             data-prefetch-href={imobilHref}
-            draggable={canReorder}
-            onDragStart={(event) => onDragStart(event, imobil.id)}
             onDragOver={(event) => onDragOver(event, imobil.id)}
             onDrop={(event) => onDrop(event, imobil.id)}
-            onDragEnd={handleDragEnd}
             onClick={handleClick}
         >
             {canReorder ? (
                 <td className="drag-handle-cell" onClick={(event) => event.stopPropagation()}>
-                    <span className="drag-handle" title="Trage pentru a reordona">
+                    <span
+                        className="drag-handle"
+                        title="Trage pentru a reordona"
+                        draggable
+                        onDragStart={(event) => onDragStart(event, imobil.id)}
+                        onDragEnd={onDragEnd}
+                    >
                         <GripVertical size={16} strokeWidth={2.2} />
                     </span>
                 </td>
@@ -154,38 +146,31 @@ function SpatiuRow({
     onDrop,
     onDragEnd,
 }) {
-    const skipClickRef = useRef(false);
     const spatiuHref = `/spatii/${spatiu.id}/editare`;
 
     function handleClick() {
-        if (skipClickRef.current) {
-            skipClickRef.current = false;
-            return;
-        }
-
         onOpen(spatiu);
-    }
-
-    function handleDragEnd() {
-        skipClickRef.current = true;
-        onDragEnd();
     }
 
     return (
         <tr
             className={`clickable-row${marcajRowClass(spatiu)}${isDragging ? ' is-dragging' : ''}${canReorder ? ' draggable-row' : ''}`}
             data-prefetch-href={spatiuHref}
+            data-prefetch-on-intent="true"
             title={spatiu.de_lamurit && spatiu.de_lamurit_detaliu ? spatiu.de_lamurit_detaliu : undefined}
-            draggable={canReorder}
-            onDragStart={(event) => onDragStart(event, spatiu.id)}
             onDragOver={(event) => onDragOver(event, spatiu.id)}
             onDrop={(event) => onDrop(event, spatiu.id)}
-            onDragEnd={handleDragEnd}
             onClick={handleClick}
         >
             {canReorder ? (
                 <td className="drag-handle-cell" onClick={(event) => event.stopPropagation()}>
-                    <span className="drag-handle" title="Trage pentru a reordona">
+                    <span
+                        className="drag-handle"
+                        title="Trage pentru a reordona"
+                        draggable
+                        onDragStart={(event) => onDragStart(event, spatiu.id)}
+                        onDragEnd={onDragEnd}
+                    >
                         <GripVertical size={16} strokeWidth={2.2} />
                     </span>
                 </td>

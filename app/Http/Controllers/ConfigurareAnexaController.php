@@ -7,6 +7,7 @@ use App\Models\Imobil;
 use App\Models\ServiciuStandardAnexa;
 use App\Models\Spatiu;
 use App\Support\InternalReturnUrl;
+use App\Support\SincronizareContoareDinAnexa;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -55,6 +56,7 @@ class ConfigurareAnexaController extends Controller
             'serviciiStandard' => ServiciuStandardAnexa::optionsForForm(),
             'returnUrl' => $returnUrl,
             'spatiuId' => $request->integer('spatiu_id') ?: null,
+            'previewSpatiu' => $this->previewSpatiuForForm(null, $request->integer('spatiu_id') ?: null),
         ]);
     }
 
@@ -77,8 +79,15 @@ class ConfigurareAnexaController extends Controller
                 ->where('imobil_id', $imobil->id)
                 ->update(['configurare_anexa_id' => $configurare->id]);
 
+            $spatiu = Spatiu::query()->find($spatiuId);
+            if ($spatiu) {
+                SincronizareContoareDinAnexa::syncForSpatiu($spatiu);
+            }
+
             return redirect($returnUrl)->with('success', 'Anexa a fost adăugată și alocată spațiului.');
         }
+
+        SincronizareContoareDinAnexa::syncForConfigurare($configurare);
 
         return redirect()
             ->route('configurare-anexa.edit', $configurare)
@@ -90,6 +99,7 @@ class ConfigurareAnexaController extends Controller
         $configurare->load(['imobil', 'linii']);
         $returnUrl = InternalReturnUrl::normalize($request->string('return_url')->toString());
         $spatiiCount = Spatiu::query()->where('configurare_anexa_id', $configurare->id)->count();
+        $spatiuId = $request->integer('spatiu_id') ?: null;
 
         return Inertia::render('ConfigurareAnexa/Form', [
             'imobile' => $this->imobileForSelect(),
@@ -98,6 +108,7 @@ class ConfigurareAnexaController extends Controller
             'serviciiStandard' => ServiciuStandardAnexa::optionsForForm(),
             'returnUrl' => $returnUrl,
             'spatiuId' => null,
+            'previewSpatiu' => $this->previewSpatiuForForm($configurare, $spatiuId),
             'context' => [
                 'spatii_count' => $spatiiCount,
             ],
@@ -113,6 +124,7 @@ class ConfigurareAnexaController extends Controller
         $validated = $request->validate($this->validationRules(requireImobil: true));
         $imobil = Imobil::query()->findOrFail($validated['imobil_id']);
         $configurare = $this->saveConfigurare($validated, $imobil, $configurare);
+        SincronizareContoareDinAnexa::syncForConfigurare($configurare);
 
         $returnUrl = InternalReturnUrl::normalize($request->input('return_url'));
 
@@ -136,6 +148,33 @@ class ConfigurareAnexaController extends Controller
             ]);
     }
 
+    private function previewSpatiuForForm(?ConfigurareAnexaImobil $configurare, ?int $spatiuId = null): ?array
+    {
+        $spatiu = null;
+
+        if ($spatiuId) {
+            $spatiu = Spatiu::query()->find($spatiuId);
+        }
+
+        if (! $spatiu && $configurare) {
+            $spatiu = Spatiu::query()
+                ->where('configurare_anexa_id', $configurare->id)
+                ->orderBy('identificator')
+                ->first();
+        }
+
+        if (! $spatiu) {
+            return null;
+        }
+
+        return [
+            'id' => $spatiu->id,
+            'identificator' => $spatiu->identificator,
+            'suprafata_contractuala_mp' => $this->decimalForForm($spatiu->suprafata_contractuala_mp),
+            'persoane_pentru_anexa' => $spatiu->persoanePentruAnexa(),
+        ];
+    }
+
     private function configurareForForm(ConfigurareAnexaImobil $configurare): array
     {
         return [
@@ -145,24 +184,33 @@ class ConfigurareAnexaController extends Controller
             'implicit' => $configurare->implicit,
             'activ' => $configurare->activ,
             'observatii' => $configurare->observatii,
-            'linii' => $configurare->linii->map(fn ($linie) => [
-                'id' => $linie->id,
-                'tip_linie' => $linie->tip_linie ?: 'serviciu',
-                'denumire' => $linie->denumire,
-                'nr_crt' => $linie->nr_crt,
-                'index_vechi' => $linie->index_vechi,
-                'index_nou' => $linie->index_nou,
-                'facturat' => $linie->facturat,
-                'coeficient' => $this->decimalForForm($linie->coeficient),
-                'um' => $linie->um,
-                'pret_unitar' => $linie->pret_unitar,
-                'valoare' => $linie->valoare,
-                'tva_21' => $this->tvaForForm($linie->tva_21),
-                'tip_calcul' => $linie->tip_calcul,
-                'apare_cu_zero' => $linie->apare_cu_zero,
-                'activ' => $linie->activ,
-                'observatii' => $linie->observatii,
-            ])->values(),
+            'linii' => $configurare->linii->map(function ($linie): array {
+                $tipCalcul = $this->normalizeTipCalcul($linie->tip_calcul);
+                $coeficient = $this->coeficientForForm($linie->coeficient, $linie->index_nou);
+
+                if ($tipCalcul === 'mp_coeficient') {
+                    $coeficient = $coeficient ?: '0.09';
+                }
+
+                return [
+                    'id' => $linie->id,
+                    'tip_linie' => $linie->tip_linie ?: 'serviciu',
+                    'denumire' => $linie->denumire,
+                    'nr_crt' => $linie->nr_crt,
+                    'index_vechi' => $this->indexForForm($linie, $tipCalcul),
+                    'index_nou' => $this->indexNouForForm($linie, $tipCalcul),
+                    'facturat' => $this->facturatForForm($linie, $tipCalcul),
+                    'coeficient' => $coeficient,
+                    'um' => $linie->um,
+                    'pret_unitar' => $linie->pret_unitar,
+                    'valoare' => $this->valoareForForm($linie, $tipCalcul),
+                    'tva_21' => $this->tvaForForm($linie->tva_21),
+                    'tip_calcul' => $tipCalcul,
+                    'apare_cu_zero' => $linie->apare_cu_zero,
+                    'activ' => $linie->activ,
+                    'observatii' => $linie->observatii,
+                ];
+            })->values(),
         ];
     }
 
@@ -226,7 +274,11 @@ class ConfigurareAnexaController extends Controller
                 ? $configurare->linii()->whereKey($linieData['id'])->first()
                 : null;
 
-            $lineValues = [
+            $tipCalcul = $tipLinie === 'header'
+                ? 'manual'
+                : $this->normalizeTipCalcul($linieData['tip_calcul'] ?? 'manual');
+
+            $lineValues = $this->sanitizeLinieTemplateValues([
                 'ordine' => $index + 1,
                 'tip_linie' => $tipLinie,
                 'denumire' => $tipLinie === 'header' ? '' : trim($linieData['denumire']),
@@ -239,11 +291,11 @@ class ConfigurareAnexaController extends Controller
                 'pret_unitar' => $tipLinie === 'header' ? null : ($linieData['pret_unitar'] ?? null),
                 'valoare' => $tipLinie === 'header' ? null : ($linieData['valoare'] ?? null),
                 'tva_21' => $tipLinie === 'header' ? null : $this->normalizeTvaForSave($linieData['tva_21'] ?? null),
-                'tip_calcul' => $tipLinie === 'header' ? 'manual' : ($linieData['tip_calcul'] ?? 'manual'),
+                'tip_calcul' => $tipCalcul,
                 'apare_cu_zero' => $tipLinie === 'header' ? false : (bool) ($linieData['apare_cu_zero'] ?? true),
                 'activ' => $tipLinie === 'header' ? true : (bool) ($linieData['activ'] ?? true),
                 'observatii' => $tipLinie === 'header' ? null : ($linieData['observatii'] ?? null),
-            ];
+            ], $tipCalcul, $tipLinie);
 
             if ($linie) {
                 $linie->update($lineValues);
@@ -275,8 +327,37 @@ class ConfigurareAnexaController extends Controller
             return true;
         }
 
-        return ($linieData['tip_calcul'] ?? '') === 'mp_coeficient'
+        return $this->normalizeTipCalcul($linieData['tip_calcul'] ?? '') === 'mp_coeficient'
             && trim((string) ($linieData['coeficient'] ?? '')) !== '';
+    }
+
+    private function normalizeTipCalcul(?string $tipCalcul): string
+    {
+        $tipCalcul = trim((string) $tipCalcul);
+        $normalized = str_replace([' ', '*', '×', '_', '-'], '', strtolower($tipCalcul));
+
+        if (str_starts_with($normalized, 'mp') && str_contains($normalized, 'coeficient')) {
+            return 'mp_coeficient';
+        }
+
+        return $tipCalcul ?: 'manual';
+    }
+
+    private function coeficientForForm(null|string|int|float $coeficient, null|string|int|float $fallbackIndexNou = null): string
+    {
+        $coeficientNormalizat = $this->decimalForForm($coeficient);
+
+        if ($coeficientNormalizat !== '' && (float) $coeficientNormalizat > 0 && (float) $coeficientNormalizat <= 1) {
+            return $coeficientNormalizat;
+        }
+
+        $fallback = (float) str_replace(',', '.', (string) $fallbackIndexNou);
+
+        if ($fallback > 0 && $fallback <= 1) {
+            return $this->decimalForForm($fallbackIndexNou);
+        }
+
+        return '';
     }
 
     private function decimalForForm(null|string|int|float $value): string
@@ -330,5 +411,74 @@ class ConfigurareAnexaController extends Controller
         $denumire = trim((string) ($configurare['denumire'] ?? ''));
 
         return $denumire !== '' ? $denumire : 'Anexă imobil';
+    }
+
+    private function sanitizeLinieTemplateValues(array $lineValues, string $tipCalcul, string $tipLinie): array
+    {
+        if ($tipLinie === 'header') {
+            return $lineValues;
+        }
+
+        $tip = $this->normalizeTipCalcul($tipCalcul);
+
+        if ($tip === 'contor' || in_array($tip, ['mp', 'pe_mp'], true) || $tip === 'persoane' || $tip === 'mp_coeficient') {
+            $lineValues['index_vechi'] = null;
+            $lineValues['index_nou'] = null;
+            $lineValues['facturat'] = null;
+            $lineValues['valoare'] = null;
+        }
+
+        if ($tip === 'fix') {
+            $lineValues['index_vechi'] = null;
+            $lineValues['index_nou'] = null;
+        }
+
+        return $lineValues;
+    }
+
+    private function indexForForm($linie, string $tipCalcul): mixed
+    {
+        if ($this->linieTemplateFaraCantitati($tipCalcul)) {
+            return '';
+        }
+
+        return $linie->index_vechi;
+    }
+
+    private function indexNouForForm($linie, string $tipCalcul): mixed
+    {
+        if ($this->linieTemplateFaraCantitati($tipCalcul)) {
+            return '';
+        }
+
+        return $linie->index_nou;
+    }
+
+    private function facturatForForm($linie, string $tipCalcul): mixed
+    {
+        if ($this->linieTemplateFaraCantitati($tipCalcul)) {
+            return '';
+        }
+
+        return $linie->facturat;
+    }
+
+    private function valoareForForm($linie, string $tipCalcul): mixed
+    {
+        if ($this->linieTemplateFaraCantitati($tipCalcul)) {
+            return '';
+        }
+
+        return $linie->valoare;
+    }
+
+    private function linieTemplateFaraCantitati(string $tipCalcul): bool
+    {
+        $tip = $this->normalizeTipCalcul($tipCalcul);
+
+        return $tip === 'contor'
+            || in_array($tip, ['mp', 'pe_mp'], true)
+            || $tip === 'persoane'
+            || $tip === 'mp_coeficient';
     }
 }

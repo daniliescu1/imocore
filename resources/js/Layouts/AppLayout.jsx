@@ -106,6 +106,10 @@ function prefetchElement(element) {
         return;
     }
 
+    if (element.matches('[data-prefetch-on-intent="true"]')) {
+        return;
+    }
+
     prefetchInternalHref(element.getAttribute('href') || element.getAttribute('data-prefetch-href'));
 }
 
@@ -299,6 +303,7 @@ export default function AppLayout({
 
     useEffect(() => {
         const hrefs = Array.from(document.querySelectorAll('a[href], [data-prefetch-href]'))
+            .filter((element) => !element.matches('[data-prefetch-on-intent="true"]'))
             .map((element) => element.getAttribute('href') || element.getAttribute('data-prefetch-href'))
             .filter(Boolean);
         const uniqueHrefs = [...new Set([...priorityPrefetchHrefs, ...hrefs])];
@@ -324,6 +329,10 @@ export default function AppLayout({
     useEffect(() => {
         const elements = Array.from(document.querySelectorAll('a[href], [data-prefetch-href]'))
             .filter((element) => {
+                if (element.matches('[data-prefetch-on-intent="true"]')) {
+                    return false;
+                }
+
                 const href = element.getAttribute('href') || element.getAttribute('data-prefetch-href');
 
                 return Boolean(normalizedInternalHref(href));

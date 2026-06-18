@@ -7,7 +7,6 @@ use App\Http\Controllers\CitireContorController;
 use App\Http\Controllers\ConfigurareAnexaController;
 use App\Http\Controllers\ServiciuStandardAnexaController;
 use App\Http\Controllers\ContabilitatePrimaraController;
-use App\Http\Controllers\ContractController;
 use App\Http\Controllers\FacturaController;
 use App\Http\Controllers\ImobilController;
 use App\Http\Controllers\IndexareChiriiController;
@@ -59,10 +58,11 @@ Route::post('/locatori', [LocatorController::class, 'store'])->name('locatori.st
 Route::get('/locatori/{locator}/editare', [LocatorController::class, 'edit'])->name('locatori.edit');
 Route::put('/locatori/{locator}', [LocatorController::class, 'update'])->name('locatori.update');
 Route::get('/citiri-contoare', [CitireContorController::class, 'index'])->name('citiri-contoare.index');
-Route::get('/citiri-contoare/adauga', [CitireContorController::class, 'index'])->name('citiri-contoare.create');
+Route::get('/citiri-contoare/imobil/{imobil}', [CitireContorController::class, 'imobil'])->name('citiri-contoare.imobil');
 Route::post('/citiri-contoare', [CitireContorController::class, 'store'])->name('citiri-contoare.store');
 Route::get('/anexe', [AnexaController::class, 'index'])->name('anexe.index');
 Route::post('/anexe/generare', [AnexaController::class, 'generate'])->name('anexe.generate');
+Route::get('/anexe/imobil/{imobil}', [AnexaController::class, 'imobil'])->name('anexe.imobil');
 Route::get('/anexe/{anexa}', [AnexaController::class, 'show'])->name('anexe.show');
 Route::delete('/anexe/{anexa}', [AnexaController::class, 'destroy'])->name('anexe.destroy');
 Route::get('/contracte', [ContractController::class, 'index'])->name('contracte.index');
@@ -89,7 +89,7 @@ Route::patch('/indexare-chirii/{spatiu}', [IndexareChiriiController::class, 'upd
 Route::get('/backup/{date}/{type}', [BackupController::class, 'download'])->name('backup.download');
 Route::get('/backup/{date}/spatii/{file}', [BackupController::class, 'downloadSpatii'])->name('backup.download.spatii');
 
-foreach (['rezervari', 'pv-predare', 'contoare', 'utilitati'] as $crudModule) {
+foreach (['rezervari', 'pv-predare', 'utilitati'] as $crudModule) {
     Route::get("/{$crudModule}", [SimpleCrudController::class, 'index'])->defaults('module', $crudModule);
     Route::get("/{$crudModule}/adauga", [SimpleCrudController::class, 'create'])->defaults('module', $crudModule);
     Route::post("/{$crudModule}", [SimpleCrudController::class, 'store'])->defaults('module', $crudModule);

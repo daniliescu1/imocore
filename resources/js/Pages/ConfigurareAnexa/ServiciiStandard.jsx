@@ -22,7 +22,9 @@ function StandardTabs({ tipuri, tipActiv }) {
 function EditRow({ tip, item, onCancel }) {
     const { data, setData, put, processing } = useForm({
         valoare: item.valoare,
+        coeficient: item.coeficient || '',
     });
+    const showCoeficient = tip === 'tip_calcul' && data.valoare === 'mp_coeficient';
 
     function submit(event) {
         event.preventDefault();
@@ -37,6 +39,16 @@ function EditRow({ tip, item, onCancel }) {
             <td colSpan="2">
                 <form className="standard-inline-form" onSubmit={submit}>
                     <input type="text" value={data.valoare} onChange={(event) => setData('valoare', event.target.value)} />
+                    {showCoeficient ? (
+                        <input
+                            type="number"
+                            min="0"
+                            step="0.0001"
+                            value={data.coeficient}
+                            onChange={(event) => setData('coeficient', event.target.value)}
+                            placeholder="Coeficient, ex. 0.09"
+                        />
+                    ) : null}
                     <button className="primary-button" type="submit" disabled={processing}>Salvează</button>
                     <button className="secondary-button" type="button" onClick={onCancel}>Anulează</button>
                 </form>
@@ -98,7 +110,12 @@ export default function ServiciiStandard({ tipActiv, tipuri = [], valori = [] })
                                     <EditRow key={item.id} tip={tipActiv} item={item} onCancel={() => setEditingId(null)} />
                                 ) : (
                                     <tr key={item.id}>
-                                        <td>{item.label}</td>
+                                        <td>
+                                            {item.label}
+                                            {tipActiv === 'tip_calcul' && item.valoare === 'mp_coeficient' && item.coeficient ? (
+                                                <small className="standard-value-meta">coeficient {item.coeficient}</small>
+                                            ) : null}
+                                        </td>
                                         <td className="table-action-cell">
                                             <button className="annex-order-button" type="button" onClick={() => setEditingId(item.id)} aria-label="Editează">
                                                 <Pencil size={14} strokeWidth={2.4} />
