@@ -389,6 +389,29 @@ class SpatiuController extends Controller
             ->with('success', 'Anexa individuală a fost creată pentru acest spațiu.');
     }
 
+    public function updateAnexa(Request $request, Spatiu $spatiu): RedirectResponse
+    {
+        $validated = $request->validate([
+            'configurare_anexa_id' => ['nullable', 'exists:configurari_anexe_imobil,id'],
+        ]);
+
+        $configurareAnexaId = $validated['configurare_anexa_id'] ?? null;
+
+        if ($configurareAnexaId) {
+            $belongsToImobil = ConfigurareAnexaImobil::query()
+                ->whereKey($configurareAnexaId)
+                ->where('imobil_id', $spatiu->imobil_id)
+                ->exists();
+
+            abort_unless($belongsToImobil, 422, 'Configurarea de anexă nu aparține imobilului spațiului.');
+        }
+
+        $spatiu->update(['configurare_anexa_id' => $configurareAnexaId]);
+        SincronizareContoareDinAnexa::syncForSpatiu($spatiu->fresh());
+
+        return back()->with('success', 'Anexa spațiului a fost actualizată.');
+    }
+
     public function updateMarcaj(Request $request, Spatiu $spatiu): RedirectResponse
     {
         $validated = $request->validate([

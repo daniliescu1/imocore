@@ -49,6 +49,7 @@ Route::get('/spatii/adauga', [SpatiuController::class, 'create'])->name('spatii.
 Route::post('/spatii', [SpatiuController::class, 'store'])->name('spatii.store');
 Route::get('/spatii/{spatiu}/editare', [SpatiuController::class, 'edit'])->name('spatii.edit');
 Route::patch('/spatii/{spatiu}/marcaj', [SpatiuController::class, 'updateMarcaj'])->name('spatii.marcaj');
+Route::patch('/spatii/{spatiu}/anexa', [SpatiuController::class, 'updateAnexa'])->name('spatii.anexa');
 Route::post('/spatii/{spatiu}/perioade-fatada', [PerioadaInchiriereFatadaController::class, 'store'])->name('spatii.perioade-fatada.store');
 Route::put('/spatii/{spatiu}/perioade-fatada/{perioada}', [PerioadaInchiriereFatadaController::class, 'update'])->name('spatii.perioade-fatada.update');
 Route::put('/spatii/{spatiu}', [SpatiuController::class, 'update'])->name('spatii.update');

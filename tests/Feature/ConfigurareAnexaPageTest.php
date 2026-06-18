@@ -523,4 +523,37 @@ class ConfigurareAnexaPageTest extends TestCase
         $this->assertSame('1.5280', (string) $pret->fresh()->coeficient);
         $this->assertSame('1.5280', ServiciuStandardAnexa::pretPentruDenumire('Energie electrica'));
     }
+
+    public function test_preturile_standard_salveaza_si_tva_bulk(): void
+    {
+        ServiciuStandardAnexa::query()->create([
+            'tip' => ServiciuStandardAnexa::TIP_DENUMIRE,
+            'valoare' => 'Incalzire / mp',
+            'label' => 'Incalzire / mp',
+            'activ' => true,
+        ]);
+
+        ServiciuStandardAnexa::query()->create([
+            'tip' => ServiciuStandardAnexa::TIP_TVA,
+            'valoare' => '21',
+            'label' => '21%',
+            'activ' => true,
+        ]);
+
+        ServiciuStandardAnexa::syncPreturiFromDenumire();
+
+        $pret = ServiciuStandardAnexa::query()
+            ->where('tip', ServiciuStandardAnexa::TIP_PRET)
+            ->where('valoare', 'Incalzire / mp')
+            ->firstOrFail();
+
+        $this->put(route('configurare-anexa.servicii-standard.pret.bulk'), [
+            'preturi' => [
+                ['id' => $pret->id, 'coeficient' => '8.82', 'tva' => '21'],
+            ],
+        ])->assertRedirect(route('configurare-anexa.servicii-standard.index', ['tip' => ServiciuStandardAnexa::TIP_PRET]));
+
+        $this->assertSame('8.8200', (string) $pret->fresh()->coeficient);
+        $this->assertSame('21', ServiciuStandardAnexa::tvaPentruDenumire('Incalzire / mp'));
+    }
 }

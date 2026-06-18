@@ -1,4 +1,4 @@
-import React, { useRef, useState } from 'react';
+import React, { useRef } from 'react';
 import { Link, router, useForm } from '@inertiajs/react';
 import { Trash2 } from 'lucide-react';
 import AppLayout from '../../Layouts/AppLayout';
@@ -190,7 +190,6 @@ export default function Create({
     contractActiv = null,
 }) {
     const isEditing = Boolean(spatiu);
-    const [anexaEditDialogOpen, setAnexaEditDialogOpen] = useState(false);
     const initialStatus = spatiu?.status || 'inchiriat';
     const { data, setData, post, put, processing, errors, transform } = useForm({
         imobil_id: spatiu?.imobil_id || initialImobilId || '',
@@ -240,12 +239,6 @@ export default function Create({
     const contractEditUrl = contractActiv && spatiuEditUrl
         ? `/contracte/${contractActiv.id}/editare?return_url=${encodedReturnUrl}`
         : null;
-    const anexaCreateUrl = arataDocumente
-        ? `/configurare-anexa/adauga?imobil_id=${data.imobil_id}&spatiu_id=${spatiu.id}&return_url=${encodedReturnUrl}`
-        : null;
-    const anexaEditUrl = data.configurare_anexa_id && spatiuEditUrl
-        ? `/configurare-anexa/${data.configurare_anexa_id}/editare?return_url=${encodedReturnUrl}`
-        : null;
     const anexaAlocataCurenta = configurariPentruImobil.find(
         (configurare) => Number(configurare.id) === Number(data.configurare_anexa_id),
     ) || null;
@@ -279,31 +272,20 @@ export default function Create({
         router.delete(`/spatii/${spatiu.id}`);
     }
 
-    function openAnexaEditFlow() {
-        if (!anexaEditUrl || !anexaAlocataCurenta) {
+    function handleAnexaChange(event) {
+        const configurareAnexaId = event.target.value;
+        setData('configurare_anexa_id', configurareAnexaId);
+
+        if (!isEditing || !arataDocumente) {
             return;
         }
 
-        if ((anexaAlocataCurenta.spatii_count ?? 1) <= 1) {
-            window.location.href = anexaEditUrl;
-            return;
-        }
-
-        setAnexaEditDialogOpen(true);
-    }
-
-    function editAnexaPartajata() {
-        if (!anexaEditUrl) {
-            return;
-        }
-
-        setAnexaEditDialogOpen(false);
-        window.location.href = anexaEditUrl;
-    }
-
-    function createAnexaIndividuala() {
-        setAnexaEditDialogOpen(false);
-        router.post(`/spatii/${spatiu.id}/anexa-individuala`);
+        router.patch(`/spatii/${spatiu.id}/anexa`, {
+            configurare_anexa_id: configurareAnexaId || null,
+        }, {
+            preserveScroll: true,
+            preserveState: true,
+        });
     }
 
     function toggleMarcaj(field) {
@@ -667,7 +649,7 @@ export default function Create({
                                 <select
                                     className="spatiu-documente-select"
                                     value={data.configurare_anexa_id}
-                                    onChange={(event) => setData('configurare_anexa_id', event.target.value)}
+                                    onChange={handleAnexaChange}
                                     disabled={!data.imobil_id || configurariPentruImobil.length === 0}
                                 >
                                     <option value="">{configurariPentruImobil.length ? 'Alege anexa alocată' : 'Nu există anexă pe imobil'}</option>
@@ -687,39 +669,10 @@ export default function Create({
                                 )}
                                 {errors.configurare_anexa_id ? <small>{errors.configurare_anexa_id}</small> : null}
                             </div>
-                            <div className="spatiu-documente-actions">
-                                {data.configurare_anexa_id ? (
-                                    <button type="button" className="secondary-button" onClick={openAnexaEditFlow}>Editează anexa</button>
-                                ) : null}
-                                <Link className="secondary-button button-link" href={anexaCreateUrl}>+ Adaugă anexă</Link>
-                            </div>
                         </div>
                     </div>
                 ) : null}
             </form>
-
-            {anexaEditDialogOpen && anexaAlocataCurenta ? (
-                <div className="spatiu-dialog-backdrop" onClick={() => setAnexaEditDialogOpen(false)}>
-                    <div className="spatiu-dialog-card" onClick={(event) => event.stopPropagation()} role="dialog" aria-modal="true" aria-labelledby="anexa-edit-dialog-title">
-                        <h3 id="anexa-edit-dialog-title">Anexa e folosită de {anexaAlocataCurenta.spatii_count} spații</h3>
-                        <p>
-                            Anexa «{anexaAlocataCurenta.denumire}» e alocată la mai multe spații.
-                            Modificările se pot aplica tuturor sau doar acestui spațiu.
-                        </p>
-                        <div className="spatiu-dialog-actions">
-                            <button type="button" className="primary-button" onClick={editAnexaPartajata}>
-                                Schimb anexa celor {anexaAlocataCurenta.spatii_count} spații
-                            </button>
-                            <button type="button" className="secondary-button" onClick={createAnexaIndividuala}>
-                                Creez anexă individuală doar pentru acest spațiu
-                            </button>
-                            <button type="button" className="secondary-button" onClick={() => setAnexaEditDialogOpen(false)}>
-                                Anulează
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            ) : null}
 
             {esteFatada && isEditing ? (
                 <FacadeRentalCalendar spatiuId={spatiu.id} />

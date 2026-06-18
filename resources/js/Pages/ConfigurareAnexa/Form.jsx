@@ -55,8 +55,13 @@ function isMpCoeficientValue(value) {
     return normalized.startsWith('mp') && normalized.includes('coeficient');
 }
 
+function isPausalValue(value) {
+    return String(value || '').trim().toLowerCase() === 'pausal';
+}
+
 function templateFaraCantitati(tipCalcul) {
     return tipCalcul === 'contor'
+        || isPausalValue(tipCalcul)
         || ['mp', 'pe_mp'].includes(tipCalcul)
         || tipCalcul === 'persoane'
         || isMpCoeficientValue(tipCalcul);
@@ -68,14 +73,73 @@ function defaultPluvialaDenumire(denumiri) {
     return match?.valoare || '';
 }
 
-function buildFormState(anexa, selectedImobilId) {
+function formatDecimalForInput(value) {
+    if (value === null || value === undefined || value === '') return '';
+    const normalized = String(value).trim().replace(',', '.');
+    if (!/^-?\d+(\.\d+)?$/.test(normalized)) return value;
+
+    return normalized.replace(/(\.\d*?)0+$/, '$1').replace(/\.$/, '');
+}
+
+function normalizeDenumireKey(value) {
+    return String(value || '').trim().toLowerCase();
+}
+
+function pretUnitarForDenumire(denumire, serviciiStandard) {
+    return standardForDenumire(denumire, serviciiStandard)?.pret ?? null;
+}
+
+function tvaForDenumire(denumire, serviciiStandard) {
+    return standardForDenumire(denumire, serviciiStandard)?.tva ?? null;
+}
+
+function standardForDenumire(denumire, serviciiStandard) {
+    if (!denumire) return null;
+
+    const key = normalizeDenumireKey(denumire);
+    const pretStandard = (serviciiStandard.pret || []).find(
+        (item) => normalizeDenumireKey(item.valoare) === key
+            || normalizeDenumireKey(item.label) === key,
+    );
+
+    if (!pretStandard) {
+        return null;
+    }
+
+    const pret = pretStandard.coeficient === null || pretStandard.coeficient === undefined || String(pretStandard.coeficient).trim() === ''
+        ? null
+        : formatDecimalForInput(pretStandard.coeficient);
+    const tva = pretStandard.tva ? normalizeTvaValue(pretStandard.tva) : null;
+
+    return { pret, tva };
+}
+
+function applyStandardValuesToLine(line, serviciiStandard) {
+    const standard = standardForDenumire(line.denumire, serviciiStandard);
+
+    if (!standard) {
+        return line;
+    }
+
+    return {
+        ...line,
+        ...(standard.pret !== null ? { pret_unitar: standard.pret } : {}),
+        ...(standard.tva !== null && standard.tva !== '' ? { tva_21: standard.tva } : {}),
+    };
+}
+
+function buildFormState(anexa, selectedImobilId, serviciiStandard = {}) {
     return {
         imobil_id: anexa?.imobil_id || selectedImobilId || '',
         denumire: anexa?.denumire || '',
         implicit: Boolean(anexa?.implicit),
         activ: anexa?.activ === undefined ? true : Boolean(anexa?.activ),
         observatii: anexa?.observatii || '',
-        linii: renumberLines(anexa?.linii?.length ? anexa.linii.map(formatLineForForm) : [{ ...emptyAnexaLine }]),
+        linii: renumberLines(
+            anexa?.linii?.length
+                ? anexa.linii.map((line) => applyStandardValuesToLine(formatLineForForm(line), serviciiStandard))
+                : [{ ...emptyAnexaLine }],
+        ),
     };
 }
 
@@ -86,14 +150,6 @@ function numericValue(value) {
 
     const number = Number(normalized);
     return Number.isFinite(number) ? number : null;
-}
-
-function formatDecimalForInput(value) {
-    if (value === null || value === undefined || value === '') return '';
-    const normalized = String(value).trim().replace(',', '.');
-    if (!/^-?\d+(\.\d+)?$/.test(normalized)) return value;
-
-    return normalized.replace(/(\.\d*?)0+$/, '$1').replace(/\.$/, '');
 }
 
 function normalizeTvaValue(value) {
@@ -237,7 +293,7 @@ export default function Form({
     context = null,
 }) {
     const isEditing = Boolean(anexa);
-    const { data, setData, post, put, processing, errors, transform } = useForm(buildFormState(anexa, selectedImobilId));
+    const { data, setData, post, put, processing, errors, transform } = useForm(buildFormState(anexa, selectedImobilId, serviciiStandard));
 
     function normalizeLiniiForSave(linii) {
         return linii.map((linie) => {
@@ -312,6 +368,20 @@ export default function Form({
 
             const nextLine = { ...linie, [field]: field === 'nr_crt' ? lineIndex + 1 : value };
 
+            if (field === 'denumire') {
+                const standard = standardForDenumire(value, serviciiStandard);
+                nextLine.pret_unitar = standard?.pret ?? '';
+                nextLine.tva_21 = standard?.tva ?? '';
+            } else if (field === 'tip_calcul' && nextLine.denumire) {
+                const standard = standardForDenumire(nextLine.denumire, serviciiStandard);
+                if (standard?.pret !== null && standard?.pret !== undefined) {
+                    nextLine.pret_unitar = standard.pret;
+                }
+                if (standard?.tva) {
+                    nextLine.tva_21 = standard.tva;
+                }
+            }
+
             if (field === 'tip_calcul') {
                 if (templateFaraCantitati(value)) {
                     nextLine.index_vechi = '';
@@ -356,14 +426,7 @@ export default function Form({
                 nextLine.facturat = calculatedFacturat(nextLine.index_vechi, nextLine.index_nou);
             }
 
-            if (field === 'denumire') {
-                const pretStandard = (serviciiStandard.pret || []).find((item) => item.valoare === value);
-                if (pretStandard?.coeficient) {
-                    nextLine.pret_unitar = formatDecimalForInput(pretStandard.coeficient);
-                }
-            }
-
-            if (['index_vechi', 'index_nou', 'facturat', 'pret_unitar', 'denumire'].includes(field)) {
+            if (['index_vechi', 'index_nou', 'facturat', 'pret_unitar', 'denumire', 'tip_calcul'].includes(field)) {
                 nextLine.valoare = calculatedValoare(nextLine.facturat, nextLine.pret_unitar);
             }
 
@@ -380,12 +443,13 @@ export default function Form({
     }
 
     function addCoeficientLine() {
+        const denumire = defaultPluvialaDenumire(serviciiStandard.denumire || []);
         setData('linii', renumberLines([
             ...data.linii,
-            {
+            applyStandardValuesToLine({
                 ...emptyCoeficientLine,
-                denumire: defaultPluvialaDenumire(serviciiStandard.denumire || []),
-            },
+                denumire,
+            }, serviciiStandard),
         ]));
     }
 
@@ -522,7 +586,7 @@ export default function Form({
                                     <span className="annex-empty-cell" aria-hidden="true" />
                                 </label>
                                 <label className="form-field annex-line-small">
-                                    <select value={linie.tva_21 ?? ''} aria-label="TVA %" onChange={(event) => updateLine(lineIndex, 'tva_21', event.target.value)}>
+                                    <select value={linie.tva_21 ?? ''} disabled tabIndex={-1} aria-readonly="true" aria-label="TVA %">
                                         <option value="">Fără TVA</option>
                                         {tvaOptions.map((opt) => <option value={opt.valoare} key={opt.valoare}>{opt.label}</option>)}
                                         {linie.tva_21 && !tvaOptions.some((opt) => tvaValuesMatch(opt.valoare, linie.tva_21)) ? <option value={normalizeTvaValue(linie.tva_21)}>{formatTvaLabel(linie.tva_21)}</option> : null}
@@ -611,7 +675,7 @@ export default function Form({
                                     )}
                                 </label>
                                 <label className="form-field annex-line-small">
-                                    <select value={linie.tva_21 ?? ''} aria-label="TVA %" onChange={(event) => updateLine(lineIndex, 'tva_21', event.target.value)}>
+                                    <select value={linie.tva_21 ?? ''} disabled tabIndex={-1} aria-readonly="true" aria-label="TVA %">
                                         <option value="">Fără TVA</option>
                                         {tvaOptions.map((opt) => <option value={opt.valoare} key={opt.valoare}>{opt.label}</option>)}
                                         {linie.tva_21 && !tvaOptions.some((opt) => tvaValuesMatch(opt.valoare, linie.tva_21)) ? <option value={normalizeTvaValue(linie.tva_21)}>{formatTvaLabel(linie.tva_21)}</option> : null}

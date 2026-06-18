@@ -17,6 +17,10 @@ class TipCalculAnexa
             return 'contor';
         }
 
+        if ($normalized === 'pausal') {
+            return 'pausal';
+        }
+
         if (in_array($normalized, ['mp', 'pemp'], true)) {
             return 'mp';
         }
@@ -33,11 +37,22 @@ class TipCalculAnexa
         return self::normalize($tipCalcul) === 'contor';
     }
 
+    public static function isPausal(?string $tipCalcul): bool
+    {
+        return self::normalize($tipCalcul) === 'pausal';
+    }
+
+    public static function isCitire(?string $tipCalcul): bool
+    {
+        return self::isContor($tipCalcul) || self::isPausal($tipCalcul);
+    }
+
     public static function applyLiniiContorScope($query)
     {
         return $query
             ->where(function ($query): void {
-                $query->whereRaw('lower(trim(tip_calcul)) = ?', ['contor']);
+                $query->whereRaw('lower(trim(tip_calcul)) = ?', ['contor'])
+                    ->orWhereRaw('lower(trim(tip_calcul)) = ?', ['pausal']);
             })
             ->where(function ($query): void {
                 $query->whereNull('tip_linie')

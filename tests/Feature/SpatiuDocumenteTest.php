@@ -194,6 +194,46 @@ class SpatiuDocumenteTest extends TestCase
         $this->assertSame($configurare->id, $spatiu->fresh()->configurare_anexa_id);
     }
 
+    public function test_selectarea_anexei_din_editare_spatiu_se_salveaza_automat(): void
+    {
+        $imobil = Imobil::query()->create([
+            'nume' => '700 Office',
+            'strada' => 'Strada Test',
+            'numar' => '1',
+            'localitate' => 'Timișoara',
+        ]);
+
+        $anexaInitiala = ConfigurareAnexaImobil::query()->create([
+            'imobil_id' => $imobil->id,
+            'denumire' => 'Anexă inițială',
+            'implicit' => true,
+            'activ' => true,
+        ]);
+
+        $anexaNoua = ConfigurareAnexaImobil::query()->create([
+            'imobil_id' => $imobil->id,
+            'denumire' => 'Anexă nouă',
+            'implicit' => false,
+            'activ' => true,
+        ]);
+
+        $spatiu = Spatiu::query()->create([
+            'imobil_id' => $imobil->id,
+            'identificator' => 'HQE 103',
+            'status' => 'inchiriat',
+            'configurare_anexa_id' => $anexaInitiala->id,
+            'ordine' => 1,
+        ]);
+
+        $this->from(route('spatii.edit', $spatiu))
+            ->patch(route('spatii.anexa', $spatiu), [
+                'configurare_anexa_id' => $anexaNoua->id,
+            ])
+            ->assertRedirect(route('spatii.edit', $spatiu));
+
+        $this->assertSame($anexaNoua->id, $spatiu->fresh()->configurare_anexa_id);
+    }
+
     public function test_clone_anexa_individuala_creeaza_copie_si_realoca_doar_spatiul_curent(): void
     {
         $imobil = Imobil::query()->create([

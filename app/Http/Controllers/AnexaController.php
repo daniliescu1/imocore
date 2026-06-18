@@ -9,6 +9,7 @@ use App\Models\Contract;
 use App\Models\ConfigurareAnexaLinie;
 use App\Models\Imobil;
 use App\Models\Spatiu;
+use App\Support\TipCalculAnexa;
 use Carbon\Carbon;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -285,6 +286,12 @@ class AnexaController extends Controller
             if ($citire) {
                 $indexVechi = $citire->index_vechi;
                 $indexNou = $citire->index_nou;
+                $cantitate = $citire->consum;
+            }
+        } elseif (TipCalculAnexa::isPausal($tipCalcul)) {
+            $citire = $this->citirePentruAnexa($spatiuId, $linieConfigurata->id, $lunaUtilitati, $lunaFacturare);
+
+            if ($citire) {
                 $cantitate = $citire->consum;
             }
         } elseif ($tipCalcul === 'fix' || $tipCalcul === 'manual') {

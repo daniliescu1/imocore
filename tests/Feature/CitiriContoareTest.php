@@ -182,6 +182,51 @@ class CitiriContoareTest extends TestCase
         ]);
     }
 
+    public function test_pagina_imobilului_afiseaza_liniile_de_tip_pausal(): void
+    {
+        $imobil = $this->creeazaImobil();
+        $configurare = $this->creeazaConfigurare($imobil);
+        $liniePausal = $this->creeazaLiniePausal($configurare, 'Servicii Gunoi Menajer');
+        $spatiu = $this->creeazaSpatiu($imobil, $configurare);
+
+        $this->get(route('citiri-contoare.imobil', ['imobil' => $imobil->id, 'mode' => 'new']))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('CitiriContoare/Imobil')
+                ->where('spatii.0.liniiContor.0.configurare_anexa_linie_id', $liniePausal->id)
+                ->where('spatii.0.liniiContor.0.tip_calcul', 'pausal')
+                ->has('spatii.0.liniiContor', 1)
+            );
+    }
+
+    public function test_citiri_pausal_salveaza_cantitatea_direct_in_consum(): void
+    {
+        $imobil = $this->creeazaImobil();
+        $configurare = $this->creeazaConfigurare($imobil);
+        $linie = $this->creeazaLiniePausal($configurare, 'Gunoi menajer');
+        $spatiu = $this->creeazaSpatiu($imobil, $configurare);
+
+        $this->post(route('citiri-contoare.store'), [
+            'imobil_id' => $imobil->id,
+            'luna' => '2026-06',
+            'data_citire' => '2026-06-20T14:30',
+            'citiri' => [[
+                'spatiu_id' => $spatiu->id,
+                'configurare_anexa_linie_id' => $linie->id,
+                'consum' => 3,
+            ]],
+        ])->assertRedirect();
+
+        $this->assertDatabaseHas('citiri_contoare', [
+            'spatiu_id' => $spatiu->id,
+            'configurare_anexa_linie_id' => $linie->id,
+            'luna' => '2026-06',
+            'consum' => 3,
+            'index_vechi' => 0,
+            'index_nou' => 0,
+        ]);
+    }
+
     private function creeazaImobil(): Imobil
     {
         return Imobil::query()->create([
@@ -208,6 +253,16 @@ class CitiriContoareTest extends TestCase
             'configurare_anexa_id' => $configurare->id,
             'denumire' => $denumire,
             'tip_calcul' => 'contor',
+            'activ' => true,
+        ]);
+    }
+
+    private function creeazaLiniePausal(ConfigurareAnexaImobil $configurare, string $denumire): ConfigurareAnexaLinie
+    {
+        return ConfigurareAnexaLinie::query()->create([
+            'configurare_anexa_id' => $configurare->id,
+            'denumire' => $denumire,
+            'tip_calcul' => 'pausal',
             'activ' => true,
         ]);
     }

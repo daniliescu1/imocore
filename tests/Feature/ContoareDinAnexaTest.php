@@ -42,6 +42,30 @@ class ContoareDinAnexaTest extends TestCase
         ]);
     }
 
+    public function test_contoare_se_creeaza_si_pentru_linii_pausal(): void
+    {
+        $imobil = $this->creeazaImobil();
+        $configurare = $this->creeazaConfigurare($imobil);
+        $linieGunoi = $this->creeazaLiniePausal($configurare, 'Gunoi menajer');
+
+        $spatiu = Spatiu::query()->create([
+            'imobil_id' => $imobil->id,
+            'identificator' => 'A1',
+            'status' => 'inchiriat',
+            'configurare_anexa_id' => $configurare->id,
+        ]);
+
+        SincronizareContoareDinAnexa::syncForSpatiu($spatiu);
+
+        $this->assertDatabaseCount('contoare', 1);
+        $this->assertDatabaseHas('contoare', [
+            'spatiu_id' => $spatiu->id,
+            'configurare_anexa_linie_id' => $linieGunoi->id,
+            'tip_utilitate' => 'Gunoi menajer',
+            'cod_contor' => 'A1 · Gunoi menajer',
+        ]);
+    }
+
     public function test_contoare_se_sterg_cand_spatiu_pierde_anexa(): void
     {
         $imobil = $this->creeazaImobil();
@@ -182,6 +206,18 @@ class ContoareDinAnexaTest extends TestCase
             'nr_crt' => 3,
             'tip_calcul' => 'fix',
             'um' => 'lună',
+            'activ' => true,
+        ]);
+    }
+
+    private function creeazaLiniePausal(ConfigurareAnexaImobil $configurare, string $denumire, int $nrCrt = 1): ConfigurareAnexaLinie
+    {
+        return ConfigurareAnexaLinie::query()->create([
+            'configurare_anexa_id' => $configurare->id,
+            'denumire' => $denumire,
+            'nr_crt' => $nrCrt,
+            'tip_calcul' => 'pausal',
+            'um' => 'Pers',
             'activ' => true,
         ]);
     }

@@ -2,6 +2,14 @@ import React, { useEffect, useMemo, useRef } from 'react';
 import { Link, router, useForm } from '@inertiajs/react';
 import AppLayout from '../../Layouts/AppLayout';
 
+function isPausalTip(tipCalcul) {
+    return String(tipCalcul || '').trim().toLowerCase() === 'pausal';
+}
+
+function tipCitireLabel(tipCalcul) {
+    return isPausalTip(tipCalcul) ? 'Pausal' : 'Contor';
+}
+
 function calculatedConsum(indexVechi, indexNou) {
     const vechi = Number(String(indexVechi || '').replace(',', '.'));
     const nou = Number(String(indexNou || '').replace(',', '.'));
@@ -22,12 +30,26 @@ function formatDecimalForInput(value) {
 }
 
 function flattenCitiri(spatii) {
-    return spatii.flatMap((spatiu) => (spatiu.liniiContor || []).map((linie) => ({
-        spatiu_id: spatiu.id,
-        configurare_anexa_linie_id: linie.configurare_anexa_linie_id,
-        index_vechi: formatDecimalForInput(linie.index_vechi),
-        index_nou: formatDecimalForInput(linie.index_nou),
-    })));
+    return spatii.flatMap((spatiu) => (spatiu.liniiContor || []).map((linie) => {
+        const base = {
+            spatiu_id: spatiu.id,
+            configurare_anexa_linie_id: linie.configurare_anexa_linie_id,
+            tip_calcul: linie.tip_calcul,
+        };
+
+        if (isPausalTip(linie.tip_calcul)) {
+            return {
+                ...base,
+                consum: formatDecimalForInput(linie.consum),
+            };
+        }
+
+        return {
+            ...base,
+            index_vechi: formatDecimalForInput(linie.index_vechi),
+            index_nou: formatDecimalForInput(linie.index_nou),
+        };
+    }));
 }
 
 function buildFormState({ imobilId, luna, dataCitire, spatii }) {
@@ -99,20 +121,25 @@ export default function Imobil({
         }, { preserveScroll: true });
     }
 
-    function updateCitire(spatiuId, linieId, field, value) {
+    function updateCitire(spatiuId, linieId, field, value, tipCalcul) {
         const index = citireIndexFor(spatiuId, linieId);
 
         if (index === -1) {
-            setData('citiri', [
-                ...data.citiri,
-                {
-                    spatiu_id: spatiuId,
-                    configurare_anexa_linie_id: linieId,
-                    index_vechi: '',
-                    index_nou: '',
-                    [field]: value,
-                },
-            ]);
+            const entry = {
+                spatiu_id: spatiuId,
+                configurare_anexa_linie_id: linieId,
+                tip_calcul: tipCalcul,
+                [field]: value,
+            };
+
+            if (isPausalTip(tipCalcul)) {
+                entry.consum = value;
+            } else {
+                entry.index_vechi = field === 'index_vechi' ? value : '';
+                entry.index_nou = field === 'index_nou' ? value : '';
+            }
+
+            setData('citiri', [...data.citiri, entry]);
 
             return;
         }
@@ -161,13 +188,13 @@ export default function Imobil({
     return (
         <AppLayout
             title={`Citiri contoare ${imobil.nume}`}
-            subtitle={isNewMode ? 'Index vechi preluat automat din ultima citire; completezi index nou.' : 'Istoric citiri: lunile vechi sunt blocate pentru editare.'}
+            subtitle={isNewMode ? 'Contor: index vechi preluat automat, completezi index nou. Pausal: introduci cantitatea direct.' : 'Istoric citiri: lunile vechi sunt blocate pentru editare.'}
             showGlobalSearch={false}
             topbarActions={topbarActions}
         >
             <section className="readonly-info-card compact-info-card">
                 <p>
-                    Contoare de citit derivate din anexele alocate spațiilor din <strong>{imobil.nume} ({imobil.localitate})</strong>.
+                    Contoare și servicii pausal de citit derivate din anexele alocate spațiilor din <strong>{imobil.nume} ({imobil.localitate})</strong>.
                     {' '}
                     <Link className="secondary-button button-link annex-clear-building-button" href="/citiri-contoare">Înapoi la imobile</Link>
                 </p>
@@ -177,7 +204,7 @@ export default function Imobil({
                 {randuriCitiri.length === 0 ? (
                     <div className="readonly-info-card">
                         <h2>Nu există contoare de citit</h2>
-                        <p>Niciun spațiu din acest imobil nu are anexă cu linii de tip Contor. Alocă anexa pe spații și adaugă servicii cu tip calcul Contor.</p>
+                        <p>Niciun spațiu din acest imobil nu are anexă cu linii de tip Contor sau Pausal. Alocă anexa pe spații și adaugă servicii cu tip calcul Contor sau Pausal.</p>
                     </div>
                 ) : (
                     <div className="meter-reading-groups">
@@ -188,19 +215,25 @@ export default function Imobil({
                                         <th>Spațiu</th>
                                         <th>Nume chiriaș</th>
                                         <th>Anexă</th>
-                                        <th>Contor / serviciu</th>
+                                        <th>Serviciu</th>
+                                        <th>Tip</th>
                                         <th>UM</th>
                                         <th>Index vechi</th>
                                         <th>Index nou</th>
-                                        <th>Consum</th>
+                                        <th>Cantitate / Consum</th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     {randuriCitiri.map(({ spatiu, linie }) => {
-                                        const citire = data.citiri[citireIndexFor(spatiu.id, linie.configurare_anexa_linie_id)] || {
-                                            index_vechi: formatDecimalForInput(linie.index_vechi),
-                                            index_nou: formatDecimalForInput(linie.index_nou),
-                                        };
+                                        const pausal = isPausalTip(linie.tip_calcul);
+                                        const citire = data.citiri[citireIndexFor(spatiu.id, linie.configurare_anexa_linie_id)] || (
+                                            pausal
+                                                ? { consum: formatDecimalForInput(linie.consum) }
+                                                : {
+                                                    index_vechi: formatDecimalForInput(linie.index_vechi),
+                                                    index_nou: formatDecimalForInput(linie.index_nou),
+                                                }
+                                        );
                                         const indexVechiAfisat = citire.index_vechi ?? formatDecimalForInput(linie.index_vechi);
 
                                         return (
@@ -209,32 +242,73 @@ export default function Imobil({
                                                 <td>{spatiu.chirias || '—'}</td>
                                                 <td>{spatiu.anexa || '—'}</td>
                                                 <td>{linie.denumire}</td>
+                                                <td>{tipCitireLabel(linie.tip_calcul)}</td>
                                                 <td>{linie.um || '—'}</td>
-                                                <td>
-                                                    <input
-                                                        className="table-input"
-                                                        type="text"
-                                                        inputMode="decimal"
-                                                        value={indexVechiAfisat}
-                                                        readOnly={!isNewMode}
-                                                        tabIndex={!isNewMode ? -1 : undefined}
-                                                        aria-readonly={!isNewMode ? 'true' : undefined}
-                                                        onChange={(event) => updateCitire(spatiu.id, linie.configurare_anexa_linie_id, 'index_vechi', event.target.value)}
-                                                    />
-                                                </td>
-                                                <td>
-                                                    <input
-                                                        className="table-input"
-                                                        type="text"
-                                                        inputMode="decimal"
-                                                        value={citire.index_nou ?? ''}
-                                                        readOnly={!isNewMode}
-                                                        tabIndex={!isNewMode ? -1 : undefined}
-                                                        aria-readonly={!isNewMode ? 'true' : undefined}
-                                                        onChange={(event) => updateCitire(spatiu.id, linie.configurare_anexa_linie_id, 'index_nou', event.target.value)}
-                                                    />
-                                                </td>
-                                                <td>{calculatedConsum(citire.index_vechi ?? indexVechiAfisat, citire.index_nou) || '—'}</td>
+                                                {pausal ? (
+                                                    <>
+                                                        <td>—</td>
+                                                        <td>—</td>
+                                                        <td>
+                                                            <input
+                                                                className="table-input"
+                                                                type="text"
+                                                                inputMode="decimal"
+                                                                value={citire.consum ?? ''}
+                                                                readOnly={!isNewMode}
+                                                                tabIndex={!isNewMode ? -1 : undefined}
+                                                                aria-readonly={!isNewMode ? 'true' : undefined}
+                                                                aria-label="Cantitate pausal"
+                                                                onChange={(event) => updateCitire(
+                                                                    spatiu.id,
+                                                                    linie.configurare_anexa_linie_id,
+                                                                    'consum',
+                                                                    event.target.value,
+                                                                    linie.tip_calcul,
+                                                                )}
+                                                            />
+                                                        </td>
+                                                    </>
+                                                ) : (
+                                                    <>
+                                                        <td>
+                                                            <input
+                                                                className="table-input"
+                                                                type="text"
+                                                                inputMode="decimal"
+                                                                value={indexVechiAfisat}
+                                                                readOnly={!isNewMode}
+                                                                tabIndex={!isNewMode ? -1 : undefined}
+                                                                aria-readonly={!isNewMode ? 'true' : undefined}
+                                                                onChange={(event) => updateCitire(
+                                                                    spatiu.id,
+                                                                    linie.configurare_anexa_linie_id,
+                                                                    'index_vechi',
+                                                                    event.target.value,
+                                                                    linie.tip_calcul,
+                                                                )}
+                                                            />
+                                                        </td>
+                                                        <td>
+                                                            <input
+                                                                className="table-input"
+                                                                type="text"
+                                                                inputMode="decimal"
+                                                                value={citire.index_nou ?? ''}
+                                                                readOnly={!isNewMode}
+                                                                tabIndex={!isNewMode ? -1 : undefined}
+                                                                aria-readonly={!isNewMode ? 'true' : undefined}
+                                                                onChange={(event) => updateCitire(
+                                                                    spatiu.id,
+                                                                    linie.configurare_anexa_linie_id,
+                                                                    'index_nou',
+                                                                    event.target.value,
+                                                                    linie.tip_calcul,
+                                                                )}
+                                                            />
+                                                        </td>
+                                                        <td>{calculatedConsum(citire.index_vechi ?? indexVechiAfisat, citire.index_nou) || '—'}</td>
+                                                    </>
+                                                )}
                                             </tr>
                                         );
                                     })}

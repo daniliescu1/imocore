@@ -227,6 +227,64 @@ class AnexaCoeficientTest extends TestCase
         $this->assertEquals(233.76, round((float) $linie->valoare, 2));
     }
 
+    public function test_generarea_anexei_foloseste_citirile_pausal(): void
+    {
+        $imobil = Imobil::query()->create([
+            'nume' => 'Imobil pausal',
+            'strada' => 'Strada Test',
+            'numar' => '1',
+            'localitate' => 'Timisoara',
+        ]);
+
+        $configurare = $imobil->configurariAnexe()->create([
+            'denumire' => 'Anexa pausal',
+            'implicit' => true,
+        ]);
+
+        $linieConfig = $configurare->linii()->create([
+            'denumire' => 'Servicii Gunoi Menajer',
+            'tip_calcul' => 'pausal',
+            'um' => 'Pers',
+            'pret_unitar' => '9.74',
+            'tva_21' => '21',
+            'ordine' => 1,
+            'nr_crt' => 1,
+        ]);
+
+        $spatiu = Spatiu::query()->create([
+            'imobil_id' => $imobil->id,
+            'identificator' => 'A1',
+            'status' => 'inchiriat',
+            'configurare_anexa_id' => $configurare->id,
+        ]);
+
+        CitireContor::query()->create([
+            'spatiu_id' => $spatiu->id,
+            'configurare_anexa_linie_id' => $linieConfig->id,
+            'luna' => '2026-05',
+            'consum' => 4,
+        ]);
+
+        Contract::query()->create([
+            'spatiu_id' => $spatiu->id,
+            'numar_contract' => 'C-002',
+            'chirias' => 'Test Pausal SRL',
+            'data_start' => '2026-01-01',
+            'status' => 'activ',
+        ]);
+
+        $this->post('/anexe/generare', ['luna' => '2026-06'])
+            ->assertRedirect('/anexe');
+
+        $linie = Anexa::query()->with('linii')->firstOrFail()->linii->first();
+
+        $this->assertSame('pausal', $linie->tip_calcul);
+        $this->assertNull($linie->index_vechi);
+        $this->assertNull($linie->index_nou);
+        $this->assertEquals(4, (float) $linie->cantitate);
+        $this->assertEquals(38.96, round((float) $linie->valoare, 2));
+    }
+
     public function test_generarea_anexei_poate_fi_limitata_la_un_imobil(): void
     {
         $imobilSelectat = $this->creeazaImobilEligibil('Imobil selectat', 'A1');

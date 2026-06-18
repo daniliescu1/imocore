@@ -31,7 +31,7 @@ class SincronizareContoareDinAnexa
 
         $liniiContor = $spatiu->configurare_anexa_id && $spatiu->configurareAnexa
             ? $spatiu->configurareAnexa->linii->filter(
-                fn (ConfigurareAnexaLinie $linie): bool => TipCalculAnexa::isContor($linie->tip_calcul)
+                fn (ConfigurareAnexaLinie $linie): bool => TipCalculAnexa::isCitire($linie->tip_calcul)
                     && ($linie->tip_linie ?: 'serviciu') !== 'header'
                     && $linie->activ
             )->values()

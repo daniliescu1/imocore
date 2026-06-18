@@ -76,6 +76,7 @@ class CitireContorController extends Controller
             'citiri.*.configurare_anexa_linie_id' => ['required', 'exists:configurare_anexa_linii,id'],
             'citiri.*.index_nou' => ['nullable', 'numeric', 'min:0'],
             'citiri.*.index_vechi' => ['nullable', 'numeric', 'min:0'],
+            'citiri.*.consum' => ['nullable', 'numeric', 'min:0'],
         ]);
 
         if ($this->existaLunaUlterioara($validated['imobil_id'], $validated['luna'])) {
@@ -97,7 +98,7 @@ class CitireContorController extends Controller
         $linii = ConfigurareAnexaLinie::query()
             ->whereIn('id', collect($validated['citiri'] ?? [])->pluck('configurare_anexa_linie_id'))
             ->get(['id', 'configurare_anexa_id', 'tip_calcul'])
-            ->filter(fn (ConfigurareAnexaLinie $linie): bool => TipCalculAnexa::isContor($linie->tip_calcul))
+            ->filter(fn (ConfigurareAnexaLinie $linie): bool => TipCalculAnexa::isCitire($linie->tip_calcul))
             ->keyBy('id');
 
         foreach ($validated['citiri'] ?? [] as $citireData) {
@@ -105,6 +106,28 @@ class CitireContorController extends Controller
             $linie = $linii->get((int) $citireData['configurare_anexa_linie_id']);
 
             if (! $spatiu || ! $linie || (int) $spatiu->configurare_anexa_id !== (int) $linie->configurare_anexa_id) {
+                continue;
+            }
+
+            if (TipCalculAnexa::isPausal($linie->tip_calcul)) {
+                $consum = (float) ($citireData['consum'] ?? 0);
+
+                CitireContor::query()->updateOrCreate(
+                    [
+                        'spatiu_id' => $citireData['spatiu_id'],
+                        'configurare_anexa_linie_id' => $citireData['configurare_anexa_linie_id'],
+                        'luna' => $validated['luna'],
+                    ],
+                    [
+                        'contor_id' => null,
+                        'spatiu_id' => $citireData['spatiu_id'],
+                        'data_citire' => $validated['data_citire'],
+                        'index_vechi' => 0,
+                        'index_nou' => 0,
+                        'consum' => max(0, $consum),
+                    ]
+                );
+
                 continue;
             }
 
@@ -193,9 +216,14 @@ class CitireContorController extends Controller
                             'spatiu_id' => $spatiu->id,
                             'configurare_anexa_linie_id' => $linie->id,
                             'denumire' => $linie->denumire,
+                            'tip_calcul' => $linie->tip_calcul,
                             'um' => $linie->um,
-                            'index_vechi' => $lunaNoua ? $ultimulIndexNou : ($citire?->index_vechi ?? ''),
-                            'index_nou' => $citire?->index_nou ?? '',
+                            'index_vechi' => TipCalculAnexa::isPausal($linie->tip_calcul)
+                                ? ''
+                                : ($lunaNoua ? $ultimulIndexNou : ($citire?->index_vechi ?? '')),
+                            'index_nou' => TipCalculAnexa::isPausal($linie->tip_calcul)
+                                ? ''
+                                : ($citire?->index_nou ?? ''),
                             'consum' => $citire?->consum ?? '',
                         ];
                     })->values()->all()

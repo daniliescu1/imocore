@@ -31,6 +31,7 @@ class ServiciuStandardAnexa extends Model
         'valoare',
         'label',
         'coeficient',
+        'tva',
         'activ',
         'ordine',
     ];
@@ -67,6 +68,9 @@ class ServiciuStandardAnexa extends Model
                         default => $item->label ?: $item->valoare,
                     },
                     'coeficient' => $item->coeficient,
+                    'tva' => $item->tip === self::TIP_PRET && $item->tva
+                        ? self::normalizeValoare(self::TIP_TVA, (string) $item->tva)
+                        : null,
                 ])
                 ->values()
                 ->all();
@@ -155,16 +159,21 @@ class ServiciuStandardAnexa extends Model
             ->whereNotNull('denumire')
             ->where('denumire', '!=', '')
             ->whereNotNull('pret_unitar')
-            ->select('denumire', 'pret_unitar')
+            ->select('denumire', 'pret_unitar', 'tva_21')
             ->distinct()
             ->orderBy('denumire')
             ->get()
             ->groupBy('denumire')
             ->each(function ($linii, string $denumire): void {
-                $pret = (string) $linii->first()->pret_unitar;
+                $linie = $linii->first();
+                $pret = (string) $linie->pret_unitar;
+                $tva = $linie->tva_21 !== null && $linie->tva_21 !== ''
+                    ? self::normalizeValoare(self::TIP_TVA, (string) $linie->tva_21)
+                    : null;
+
                 static::query()->updateOrCreate(
                     ['tip' => self::TIP_PRET, 'valoare' => trim($denumire)],
-                    ['label' => trim($denumire), 'coeficient' => $pret, 'activ' => true]
+                    ['label' => trim($denumire), 'coeficient' => $pret, 'tva' => $tva, 'activ' => true]
                 );
             });
 
@@ -204,6 +213,21 @@ class ServiciuStandardAnexa extends Model
         return $pret !== null && $pret !== '' ? (string) $pret : null;
     }
 
+    public static function tvaPentruDenumire(string $denumire): ?string
+    {
+        $tva = static::query()
+            ->where('tip', self::TIP_PRET)
+            ->where('valoare', $denumire)
+            ->where('activ', true)
+            ->value('tva');
+
+        if ($tva === null || $tva === '') {
+            return null;
+        }
+
+        return self::normalizeValoare(self::TIP_TVA, (string) $tva);
+    }
+
     public static function tipCalculDefaults(): array
     {
         return [
@@ -213,6 +237,7 @@ class ServiciuStandardAnexa extends Model
             'mp_coeficient' => 'Mp × coeficient',
             'persoane' => 'Pe persoane',
             'contor' => 'Contor',
+            'pausal' => 'Pausal',
             'zero' => '0 lei',
         ];
     }
