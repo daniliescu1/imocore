@@ -24,15 +24,17 @@ class SpatiuController extends Controller
         $localitate = $request->string('localitate')->toString();
         $search = $request->string('search')->toString();
         $status = $this->normalizeStatusFilter($request->string('status')->toString());
-        $regimIncalzire = $this->normalizeRegimIncalzireFilter($request->string('regim_incalzire')->toString());
+        $documente = $this->normalizeDocumenteFilter($request->string('documente')->toString());
+        $etaj = $this->normalizeEtajFilter($request->string('etaj')->toString());
         $imobilId = $request->integer('imobil_id') ?: null;
+        $globalSpatiiList = $request->boolean('global');
 
         if ($imobilId) {
-            return $this->indexSpatiiForImobil($imobilId, $search, $status, $regimIncalzire);
+            return $this->indexSpatiiForImobil($imobilId, $search, $status, $documente);
         }
 
-        if ($status !== '') {
-            return $this->indexSpatiiGlobalFilter($localitate, $search, $status, $regimIncalzire);
+        if ($globalSpatiiList || $status !== '') {
+            return $this->indexSpatiiGlobalFilter($localitate, $search, $status, $etaj);
         }
 
         return $this->indexImobileList($localitate, $search);
@@ -86,13 +88,14 @@ class SpatiuController extends Controller
                 'localitate' => $localitate,
                 'search' => $search,
                 'status' => '',
-                'regim_incalzire' => '',
+                'documente' => '',
+                'etaj' => '',
                 'imobil_id' => null,
             ],
         ]);
     }
 
-    private function indexSpatiiForImobil(int $imobilId, string $search, string $status, string $regimIncalzire): Response
+    private function indexSpatiiForImobil(int $imobilId, string $search, string $status, string $documente): Response
     {
         $imobil = Imobil::query()->findOrFail($imobilId);
 
@@ -112,9 +115,7 @@ class SpatiuController extends Controller
             $query->where('status', $status);
         }
 
-        if ($regimIncalzire !== '') {
-            $query->where('regim_incalzire', $regimIncalzire);
-        }
+        $this->applyDocumenteFilter($query, $documente);
 
         if ($search !== '') {
             $query->where(function ($query) use ($search) {
@@ -139,13 +140,14 @@ class SpatiuController extends Controller
                 'localitate' => '',
                 'search' => $search,
                 'status' => $status,
-                'regim_incalzire' => $regimIncalzire,
+                'documente' => $documente,
+                'etaj' => '',
                 'imobil_id' => $imobil->id,
             ],
         ]);
     }
 
-    private function indexSpatiiGlobalFilter(string $localitate, string $search, string $status, string $regimIncalzire): Response
+    private function indexSpatiiGlobalFilter(string $localitate, string $search, string $status, string $etaj): Response
     {
         $query = Spatiu::query()
             ->with([
@@ -154,15 +156,18 @@ class SpatiuController extends Controller
                 'contracte' => fn ($query) => $query->where('status', 'activ')->latest('id'),
             ])
             ->withExists(['contracte as are_contract_inregistrat'])
-            ->withExists(['contracte as are_contract_activ' => fn ($query) => $query->where('status', 'activ')])
-            ->where('status', $status);
+            ->withExists(['contracte as are_contract_activ' => fn ($query) => $query->where('status', 'activ')]);
+
+        if ($status !== '') {
+            $query->where('status', $status);
+        }
 
         if ($localitate !== '') {
             $query->whereHas('imobil', fn ($imobilQuery) => $imobilQuery->where('localitate', $localitate));
         }
 
-        if ($regimIncalzire !== '') {
-            $query->where('regim_incalzire', $regimIncalzire);
+        if ($etaj !== '') {
+            $query->where('etaj', $etaj);
         }
 
         if ($search !== '') {
@@ -193,10 +198,41 @@ class SpatiuController extends Controller
                 'localitate' => $localitate,
                 'search' => $search,
                 'status' => $status,
-                'regim_incalzire' => $regimIncalzire,
+                'documente' => '',
+                'etaj' => $etaj,
+                'global' => true,
                 'imobil_id' => null,
             ],
         ]);
+    }
+
+    private function normalizeEtajFilter(string $etaj): string
+    {
+        $allowed = ['-1', 'Parter', '1', '2', '3', '4', '5', 'Acoperiș', 'Fațadă', 'Parcare'];
+
+        return in_array($etaj, $allowed, true) ? $etaj : '';
+    }
+
+    private function normalizeDocumenteFilter(string $documente): string
+    {
+        $allowed = ['fara_anexa', 'fara_contract', 'cu_contract', 'cu_anexa'];
+
+        return in_array($documente, $allowed, true) ? $documente : '';
+    }
+
+    private function applyDocumenteFilter($query, string $documente): void
+    {
+        match ($documente) {
+            'fara_anexa' => $query
+                ->whereNotIn('status', ['administrativ', 'comun'])
+                ->whereNull('configurare_anexa_id'),
+            'fara_contract' => $query
+                ->where('status', 'inchiriat')
+                ->whereDoesntHave('contracte'),
+            'cu_contract' => $query->whereHas('contracte'),
+            'cu_anexa' => $query->whereNotNull('configurare_anexa_id'),
+            default => null,
+        };
     }
 
     private function normalizeRegimIncalzireFilter(string $regimIncalzire): string

@@ -18,11 +18,23 @@ use Inertia\Response;
 
 class ContractController extends Controller
 {
-    public function index(): Response
+    public function index(Request $request): Response
     {
-        $contracte = Contract::query()
+        $status = $request->string('status')->toString();
+
+        if (! in_array($status, ['', 'activ', 'incomplet'], true)) {
+            $status = '';
+        }
+
+        $query = Contract::query()
             ->with('spatiu.imobil')
-            ->latest()
+            ->latest();
+
+        if ($status !== '') {
+            $query->where('status', $status);
+        }
+
+        $contracte = $query
             ->get()
             ->map(fn (Contract $contract): array => [
                 'id' => $contract->id,
@@ -38,6 +50,9 @@ class ContractController extends Controller
 
         return Inertia::render('Contracte/Index', [
             'contracte' => $contracte,
+            'filters' => [
+                'status' => $status,
+            ],
         ]);
     }
 

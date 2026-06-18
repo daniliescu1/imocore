@@ -11,12 +11,14 @@ const STATUS_LABELS = {
     administrativ: 'Administrativ',
 };
 
-const REGIM_INCALZIRE_LABELS = {
-    integral: 'Încălzit integral',
-    partial: 'Țevi încălzire / parțial',
-    neincalzit: 'Neîncălzit',
-    manual: 'Excepție',
+const DOCUMENTE_FILTER_LABELS = {
+    fara_anexa: 'Fără anexă',
+    fara_contract: 'Fără contract',
+    cu_contract: 'Cu contract',
+    cu_anexa: 'Cu anexă',
 };
+
+const ETAJ_OPTIONS = ['-1', 'Parter', '1', '2', '3', '4', '5', 'Acoperiș', 'Fațadă', 'Parcare'];
 
 function statusLabel(status) {
     return STATUS_LABELS[status] || status;
@@ -55,7 +57,9 @@ function buildFilters(filters, overrides = {}) {
         localitate: filters.localitate || '',
         search: filters.search || '',
         status: filters.status || '',
-        regim_incalzire: filters.regim_incalzire || '',
+        documente: filters.documente || '',
+        etaj: filters.etaj || '',
+        global: filters.global ? 1 : '',
         imobil_id: filters.imobil_id || '',
         ...overrides,
     };
@@ -213,9 +217,9 @@ function SpatiuRow({
 
 export default function Index({ imobile = [], imobil = null, spatii = [], localitati, filters }) {
     const isInsideImobil = Boolean(imobil);
-    const isGlobalStatusView = Boolean(!imobil && filters.status);
+    const isGlobalStatusView = Boolean(!imobil && filters.global);
     const isSpatiiListView = isInsideImobil || isGlobalStatusView;
-    const canReorderSpatii = isInsideImobil && !filters.search && !filters.status && !filters.regim_incalzire && spatii.length > 1;
+    const canReorderSpatii = isInsideImobil && !filters.search && !filters.status && !filters.documente && spatii.length > 1;
     const canReorderImobile = !isSpatiiListView && !filters.search && !filters.localitate && imobile.length > 1;
     const [orderedSpatii, setOrderedSpatii] = useState(spatii);
     const [orderedImobile, setOrderedImobile] = useState(imobile);
@@ -229,8 +233,23 @@ export default function Index({ imobile = [], imobil = null, spatii = [], locali
         : isGlobalStatusView
             ? (filters.status === 'liber'
                 ? `Spații libere (${spatii.length})`
-                : `${STATUS_LABELS[filters.status] || filters.status} (${spatii.length})`)
+                : filters.status
+                    ? `${STATUS_LABELS[filters.status] || filters.status} (${spatii.length})`
+                    : `Spații (${spatii.length})`)
             : `Spații (${totalSpatii})`;
+
+    function updateFilters(overrides = {}) {
+        if ((isGlobalStatusView || overrides.global) && overrides.global !== '') {
+            router.get('/spatii', buildFilters(filters, { global: 1, ...overrides }), { preserveState: true, preserveScroll: true });
+            return;
+        }
+
+        router.get('/spatii', buildFilters(filters, overrides), { preserveState: true, preserveScroll: true });
+    }
+
+    function openImobil(row) {
+        router.get('/spatii', buildFilters(filters, { imobil_id: row.id, search: '', status: '', documente: '', etaj: '', global: '' }), { preserveState: true });
+    }
 
     useEffect(() => {
         setOrderedSpatii(spatii);
@@ -239,14 +258,6 @@ export default function Index({ imobile = [], imobil = null, spatii = [], locali
     useEffect(() => {
         setOrderedImobile(imobile);
     }, [imobile]);
-
-    function updateFilters(overrides = {}) {
-        router.get('/spatii', buildFilters(filters, overrides), { preserveState: true, preserveScroll: true });
-    }
-
-    function openImobil(row) {
-        router.get('/spatii', buildFilters(filters, { imobil_id: row.id, search: '', status: '', regim_incalzire: '' }), { preserveState: true });
-    }
 
     function openSpatiu(spatiu) {
         router.visit(`/spatii/${spatiu.id}/editare`);
@@ -324,7 +335,9 @@ export default function Index({ imobile = [], imobil = null, spatii = [], locali
                         imobil_id: '',
                         search: '',
                         status: '',
-                        regim_incalzire: '',
+                        documente: '',
+                        etaj: '',
+                        global: '',
                         localitate: '',
                     })}
                 >
@@ -337,7 +350,7 @@ export default function Index({ imobile = [], imobil = null, spatii = [], locali
                         {isGlobalStatusView ? (
                             <label className="inline-topbar-field spaces-topbar-field">
                                 <span>Localitate</span>
-                                <select className="filter-input topbar-filter" value={filters.localitate || ''} onChange={(event) => updateFilters({ localitate: event.target.value, status: filters.status })}>
+                                <select className="filter-input topbar-filter" value={filters.localitate || ''} onChange={(event) => updateFilters({ localitate: event.target.value })}>
                                     <option value="">Toate</option>
                                     {localitati.map((localitate) => <option value={localitate} key={localitate}>{localitate}</option>)}
                                 </select>
@@ -350,7 +363,6 @@ export default function Index({ imobile = [], imobil = null, spatii = [], locali
                                 value={filters.status || ''}
                                 onChange={(event) => updateFilters({
                                     status: event.target.value,
-                                    imobil_id: isInsideImobil ? imobil.id : '',
                                 })}
                             >
                                 <option value="">Toate</option>
@@ -360,23 +372,41 @@ export default function Index({ imobile = [], imobil = null, spatii = [], locali
                             </select>
                         </label>
                         <label className="inline-topbar-field spaces-topbar-field">
-                            <span>Încălzire</span>
-                            <select
-                                className="filter-input topbar-filter"
-                                value={filters.regim_incalzire || ''}
-                                onChange={(event) => updateFilters({
-                                    regim_incalzire: event.target.value,
-                                    imobil_id: isInsideImobil ? imobil.id : '',
-                                    status: filters.status || '',
-                                })}
-                            >
-                                <option value="">Toate</option>
-                                {Object.entries(REGIM_INCALZIRE_LABELS)
-                                    .filter(([value]) => value !== 'manual')
-                                    .map(([value, label]) => (
-                                    <option value={value} key={value}>{label}</option>
-                                ))}
-                            </select>
+                            {isGlobalStatusView ? (
+                                <>
+                                    <span>Etaj</span>
+                                    <select
+                                        className="filter-input topbar-filter"
+                                        value={filters.etaj || ''}
+                                        onChange={(event) => updateFilters({
+                                            etaj: event.target.value,
+                                        })}
+                                    >
+                                        <option value="">Toate</option>
+                                        {ETAJ_OPTIONS.map((etaj) => (
+                                            <option value={etaj} key={etaj}>{etaj}</option>
+                                        ))}
+                                    </select>
+                                </>
+                            ) : (
+                                <>
+                                    <span>Documente</span>
+                                    <select
+                                        className="filter-input topbar-filter"
+                                        value={filters.documente || ''}
+                                        onChange={(event) => updateFilters({
+                                            documente: event.target.value,
+                                            imobil_id: imobil.id,
+                                            status: filters.status || '',
+                                        })}
+                                    >
+                                        <option value="">Toate</option>
+                                        {Object.entries(DOCUMENTE_FILTER_LABELS).map(([value, label]) => (
+                                            <option value={value} key={value}>{label}</option>
+                                        ))}
+                                    </select>
+                                </>
+                            )}
                         </label>
                     </>
                 ) : (
@@ -397,7 +427,8 @@ export default function Index({ imobile = [], imobil = null, spatii = [], locali
                         search: event.target.value,
                         imobil_id: isInsideImobil ? imobil.id : '',
                         status: isSpatiiListView ? (filters.status || '') : '',
-                        regim_incalzire: isSpatiiListView ? (filters.regim_incalzire || '') : '',
+                        documente: isInsideImobil ? (filters.documente || '') : '',
+                        etaj: isGlobalStatusView ? (filters.etaj || '') : '',
                         localitate: isGlobalStatusView ? (filters.localitate || '') : (filters.localitate || ''),
                     })}
                 />

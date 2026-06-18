@@ -7,8 +7,28 @@ function formatMoney(value, moneda = 'EUR') {
     return `${String(Number(value)).replace(/(\.\d*?)0+$/, '$1').replace(/\.$/, '')} ${moneda}`;
 }
 
-export default function Index({ contracte = [] }) {
-    const topbarActions = <Link className="primary-button button-link topbar-primary-button" href="/contracte/adauga">+ Adaugă</Link>;
+export default function Index({ contracte = [], filters = {} }) {
+    function updateFilters(nextFilters) {
+        router.get('/contracte', {
+            status: filters.status || '',
+            ...nextFilters,
+        }, { preserveState: true, preserveScroll: true });
+    }
+
+    const topbarActions = (
+        <>
+            <select
+                className="filter-input topbar-filter"
+                value={filters.status || ''}
+                onChange={(event) => updateFilters({ status: event.target.value })}
+            >
+                <option value="">Status: Toate</option>
+                <option value="activ">Activ</option>
+                <option value="incomplet">Incomplet</option>
+            </select>
+            <Link className="primary-button button-link topbar-primary-button" href="/contracte/adauga">+ Adaugă</Link>
+        </>
+    );
 
     return (
         <AppLayout title={`Contracte (${contracte.length})`} subtitle="Contracte legate de spații și imobile" showGlobalSearch={false} topbarActions={topbarActions}>
