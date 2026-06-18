@@ -556,4 +556,58 @@ class ConfigurareAnexaPageTest extends TestCase
         $this->assertSame('8.8200', (string) $pret->fresh()->coeficient);
         $this->assertSame('21', ServiciuStandardAnexa::tvaPentruDenumire('Incalzire / mp'));
     }
+
+    public function test_preturile_standard_salveaza_si_um_bulk(): void
+    {
+        ServiciuStandardAnexa::query()->create([
+            'tip' => ServiciuStandardAnexa::TIP_DENUMIRE,
+            'valoare' => 'Energie Electrica',
+            'label' => 'Energie Electrica',
+            'activ' => true,
+        ]);
+
+        ServiciuStandardAnexa::query()->create([
+            'tip' => ServiciuStandardAnexa::TIP_UM,
+            'valoare' => 'Kw',
+            'label' => 'Kw',
+            'activ' => true,
+        ]);
+
+        ServiciuStandardAnexa::syncPreturiFromDenumire();
+
+        $pret = ServiciuStandardAnexa::query()
+            ->where('tip', ServiciuStandardAnexa::TIP_PRET)
+            ->where('valoare', 'Energie Electrica')
+            ->firstOrFail();
+
+        $imobil = Imobil::query()->create([
+            'nume' => 'Imobil UM pret',
+            'strada' => 'Strada Test',
+            'numar' => '1',
+            'localitate' => 'Timisoara',
+        ]);
+
+        $configurare = $imobil->configurariAnexe()->create([
+            'denumire' => 'Anexa UM',
+            'implicit' => true,
+        ]);
+
+        $configurare->linii()->create([
+            'denumire' => 'Energie Electrica',
+            'tip_calcul' => 'contor',
+            'um' => 'MC',
+            'pret_unitar' => '1',
+            'activ' => true,
+        ]);
+
+        $this->put(route('configurare-anexa.servicii-standard.pret.bulk'), [
+            'preturi' => [
+                ['id' => $pret->id, 'coeficient' => '1.528', 'tva' => '21', 'um' => 'Kw'],
+            ],
+        ])->assertRedirect(route('configurare-anexa.servicii-standard.index', ['tip' => ServiciuStandardAnexa::TIP_PRET]));
+
+        $this->assertSame('1.5280', (string) $pret->fresh()->coeficient);
+        $this->assertSame('Kw', ServiciuStandardAnexa::umPentruDenumire('Energie Electrica'));
+        $this->assertSame('Kw', $configurare->linii()->first()->fresh()->um);
+    }
 }

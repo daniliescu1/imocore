@@ -110,8 +110,9 @@ function standardForDenumire(denumire, serviciiStandard) {
         ? null
         : formatDecimalForInput(pretStandard.coeficient);
     const tva = pretStandard.tva ? normalizeTvaValue(pretStandard.tva) : null;
+    const um = pretStandard.um ? String(pretStandard.um).trim() : null;
 
-    return { pret, tva };
+    return { pret, tva, um };
 }
 
 function applyStandardValuesToLine(line, serviciiStandard) {
@@ -125,6 +126,7 @@ function applyStandardValuesToLine(line, serviciiStandard) {
         ...line,
         ...(standard.pret !== null ? { pret_unitar: standard.pret } : {}),
         ...(standard.tva !== null && standard.tva !== '' ? { tva_21: standard.tva } : {}),
+        ...(standard.um ? { um: standard.um } : {}),
     };
 }
 
@@ -372,6 +374,7 @@ export default function Form({
                 const standard = standardForDenumire(value, serviciiStandard);
                 nextLine.pret_unitar = standard?.pret ?? '';
                 nextLine.tva_21 = standard?.tva ?? '';
+                nextLine.um = standard?.um ?? '';
             } else if (field === 'tip_calcul' && nextLine.denumire) {
                 const standard = standardForDenumire(nextLine.denumire, serviciiStandard);
                 if (standard?.pret !== null && standard?.pret !== undefined) {
@@ -379,6 +382,9 @@ export default function Form({
                 }
                 if (standard?.tva) {
                     nextLine.tva_21 = standard.tva;
+                }
+                if (standard?.um) {
+                    nextLine.um = standard.um;
                 }
             }
 

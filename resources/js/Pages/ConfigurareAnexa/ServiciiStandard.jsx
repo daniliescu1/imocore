@@ -9,11 +9,12 @@ function hasPret(value) {
     return value !== null && value !== undefined && String(value).trim() !== '';
 }
 
-function PreturiGrid({ valori, tvaOptiuni = [] }) {
+function PreturiGrid({ valori, tvaOptiuni = [], umOptiuni = [] }) {
     const [preturi, setPreturi] = useState(() => (
         Object.fromEntries(valori.map((item) => [item.id, {
             pret: formatDecimal(item.coeficient),
             tva: item.tva || '',
+            um: item.um || '',
         }]))
     ));
     const [saving, setSaving] = useState(false);
@@ -22,6 +23,7 @@ function PreturiGrid({ valori, tvaOptiuni = [] }) {
         setPreturi(Object.fromEntries(valori.map((item) => [item.id, {
             pret: formatDecimal(item.coeficient),
             tva: item.tva || '',
+            um: item.um || '',
         }])));
     }, [valori]);
 
@@ -39,6 +41,13 @@ function PreturiGrid({ valori, tvaOptiuni = [] }) {
         }));
     }
 
+    function updateUm(id, value) {
+        setPreturi((current) => ({
+            ...current,
+            [id]: { ...current[id], um: value },
+        }));
+    }
+
     function blurPret(id) {
         setPreturi((current) => ({
             ...current,
@@ -53,6 +62,7 @@ function PreturiGrid({ valori, tvaOptiuni = [] }) {
                 id: item.id,
                 coeficient: formatDecimal(preturi[item.id]?.pret) || '',
                 tva: preturi[item.id]?.tva || '',
+                um: preturi[item.id]?.um || '',
             })),
         }, {
             preserveScroll: true,
@@ -65,9 +75,10 @@ function PreturiGrid({ valori, tvaOptiuni = [] }) {
         <form className="standard-values-grid-wrap" onSubmit={submit}>
             <div className="standard-values-grid">
                 {valori.map((item) => {
-                    const row = preturi[item.id] || { pret: '', tva: '' };
+                    const row = preturi[item.id] || { pret: '', tva: '', um: '' };
                     const lipsestePret = !hasPret(row.pret);
                     const lipsesteTva = !hasPret(row.tva);
+                    const lipsesteUm = !hasPret(row.um);
 
                     return (
                         <div key={item.id} className="standard-values-grid-item">
@@ -86,7 +97,21 @@ function PreturiGrid({ valori, tvaOptiuni = [] }) {
                                     />
                                     <span className="preturi-grid-unit">lei</span>
                                 </div>
-                                <div className="preturi-grid-field">
+                                <div className="preturi-grid-meta-row">
+                                    <select
+                                        className="preturi-grid-um"
+                                        value={row.um}
+                                        aria-label={`UM ${item.label}`}
+                                        onChange={(event) => updateUm(item.id, event.target.value)}
+                                    >
+                                        <option value="">UM</option>
+                                        {umOptiuni.map((opt) => (
+                                            <option value={opt.valoare} key={opt.valoare}>{opt.label}</option>
+                                        ))}
+                                        {row.um && !umOptiuni.some((opt) => opt.valoare === row.um) ? (
+                                            <option value={row.um}>{row.um}</option>
+                                        ) : null}
+                                    </select>
                                     <select
                                         className="preturi-grid-tva"
                                         value={row.tva}
@@ -102,7 +127,10 @@ function PreturiGrid({ valori, tvaOptiuni = [] }) {
                                 {lipsestePret ? (
                                     <small className="preturi-missing">fără preț setat</small>
                                 ) : null}
-                                {!lipsestePret && lipsesteTva ? (
+                                {!lipsestePret && lipsesteUm ? (
+                                    <small className="preturi-missing">fără UM setată</small>
+                                ) : null}
+                                {!lipsestePret && !lipsesteUm && lipsesteTva ? (
                                     <small className="preturi-missing">fără TVA setat</small>
                                 ) : null}
                             </div>
@@ -201,7 +229,7 @@ function ValoriStandardGrid({ tipActiv, valori, editingId, setEditingId, onDelet
     );
 }
 
-export default function ServiciiStandard({ tipActiv, tipuri = [], valori = [], tvaOptiuni = [], cursImplicit = 5, cursSursa = '' }) {
+export default function ServiciiStandard({ tipActiv, tipuri = [], valori = [], tvaOptiuni = [], umOptiuni = [], cursImplicit = 5, cursSursa = '' }) {
     const [editingId, setEditingId] = useState(null);
     const activeTip = tipuri.find((tip) => tip.key === tipActiv);
     const isPret = tipActiv === 'pret';
@@ -230,7 +258,7 @@ export default function ServiciiStandard({ tipActiv, tipuri = [], valori = [], t
     return (
         <AppLayout
             title={`Valori standard — ${activeTip?.label || ''}`}
-            subtitle={isPret ? 'Preț unitar și TVA standard pentru fiecare denumire de serviciu' : 'Valorile apar ca dropdown la configurarea liniilor de anexă'}
+            subtitle={isPret ? 'Preț unitar, UM și TVA standard pentru fiecare denumire de serviciu' : 'Valorile apar ca dropdown la configurarea liniilor de anexă'}
             showGlobalSearch={false}
             topbarActions={topbarActions}
         >
@@ -239,11 +267,11 @@ export default function ServiciiStandard({ tipActiv, tipuri = [], valori = [], t
 
                 {isPret ? (
                     <>
-                        <p className="standard-values-note">Lista urmează denumirile din tab-ul Denumire serviciu. Setează prețul și TVA-ul pentru fiecare serviciu.</p>
+                        <p className="standard-values-note">Lista urmează denumirile din tab-ul Denumire serviciu. Setează prețul, UM și TVA pentru fiecare serviciu.</p>
                         {valori.length === 0 ? (
                             <p className="preturi-grid-empty">Nu există denumiri de serviciu. Adaugă servicii în tab-ul Denumire serviciu.</p>
                         ) : (
-                            <PreturiGrid valori={valori} tvaOptiuni={tvaOptiuni} />
+                            <PreturiGrid valori={valori} tvaOptiuni={tvaOptiuni} umOptiuni={umOptiuni} />
                         )}
                     </>
                 ) : (

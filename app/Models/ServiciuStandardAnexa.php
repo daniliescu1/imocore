@@ -32,6 +32,7 @@ class ServiciuStandardAnexa extends Model
         'label',
         'coeficient',
         'tva',
+        'um',
         'activ',
         'ordine',
     ];
@@ -70,6 +71,9 @@ class ServiciuStandardAnexa extends Model
                     'coeficient' => $item->coeficient,
                     'tva' => $item->tip === self::TIP_PRET && $item->tva
                         ? self::normalizeValoare(self::TIP_TVA, (string) $item->tva)
+                        : null,
+                    'um' => $item->tip === self::TIP_PRET && $item->um
+                        ? trim((string) $item->um)
                         : null,
                 ])
                 ->values()
@@ -159,7 +163,7 @@ class ServiciuStandardAnexa extends Model
             ->whereNotNull('denumire')
             ->where('denumire', '!=', '')
             ->whereNotNull('pret_unitar')
-            ->select('denumire', 'pret_unitar', 'tva_21')
+            ->select('denumire', 'pret_unitar', 'tva_21', 'um')
             ->distinct()
             ->orderBy('denumire')
             ->get()
@@ -170,10 +174,13 @@ class ServiciuStandardAnexa extends Model
                 $tva = $linie->tva_21 !== null && $linie->tva_21 !== ''
                     ? self::normalizeValoare(self::TIP_TVA, (string) $linie->tva_21)
                     : null;
+                $um = $linie->um !== null && trim((string) $linie->um) !== ''
+                    ? trim((string) $linie->um)
+                    : null;
 
                 static::query()->updateOrCreate(
                     ['tip' => self::TIP_PRET, 'valoare' => trim($denumire)],
-                    ['label' => trim($denumire), 'coeficient' => $pret, 'tva' => $tva, 'activ' => true]
+                    ['label' => trim($denumire), 'coeficient' => $pret, 'tva' => $tva, 'um' => $um, 'activ' => true]
                 );
             });
 
@@ -226,6 +233,21 @@ class ServiciuStandardAnexa extends Model
         }
 
         return self::normalizeValoare(self::TIP_TVA, (string) $tva);
+    }
+
+    public static function umPentruDenumire(string $denumire): ?string
+    {
+        $um = static::query()
+            ->where('tip', self::TIP_PRET)
+            ->where('valoare', $denumire)
+            ->where('activ', true)
+            ->value('um');
+
+        if ($um === null || trim((string) $um) === '') {
+            return null;
+        }
+
+        return trim((string) $um);
     }
 
     public static function tipCalculDefaults(): array

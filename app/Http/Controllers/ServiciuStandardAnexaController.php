@@ -58,6 +58,9 @@ class ServiciuStandardAnexaController extends Controller
                     'tva' => $tip === ServiciuStandardAnexa::TIP_PRET && $item->tva
                         ? ServiciuStandardAnexa::normalizeValoare(ServiciuStandardAnexa::TIP_TVA, (string) $item->tva)
                         : null,
+                    'um' => $tip === ServiciuStandardAnexa::TIP_PRET && $item->um
+                        ? trim((string) $item->um)
+                        : null,
                 ]),
             'tvaOptiuni' => $tip === ServiciuStandardAnexa::TIP_PRET
                 ? ServiciuStandardAnexa::query()
@@ -73,6 +76,20 @@ class ServiciuStandardAnexaController extends Controller
                     ->values()
                     ->all()
                 : [],
+            'umOptiuni' => $tip === ServiciuStandardAnexa::TIP_PRET
+                ? ServiciuStandardAnexa::query()
+                    ->where('tip', ServiciuStandardAnexa::TIP_UM)
+                    ->where('activ', true)
+                    ->orderBy('ordine')
+                    ->orderBy('label')
+                    ->get()
+                    ->map(fn (ServiciuStandardAnexa $item): array => [
+                        'valoare' => $item->valoare,
+                        'label' => $item->label ?: $item->valoare,
+                    ])
+                    ->values()
+                    ->all()
+                : [],
             ...$this->cursEurForm(),
         ]);
     }
@@ -84,6 +101,7 @@ class ServiciuStandardAnexaController extends Controller
             'preturi.*.id' => ['required', 'integer'],
             'preturi.*.coeficient' => ['nullable', 'string', 'max:32'],
             'preturi.*.tva' => ['nullable', 'string', 'max:16'],
+            'preturi.*.um' => ['nullable', 'string', 'max:32'],
         ]);
 
         foreach ($validated['preturi'] as $pret) {
@@ -108,9 +126,13 @@ class ServiciuStandardAnexaController extends Controller
                 ? null
                 : ServiciuStandardAnexa::normalizeValoare(ServiciuStandardAnexa::TIP_TVA, $tva);
 
+            $um = trim((string) ($pret['um'] ?? ''));
+            $um = $um === '' ? null : $um;
+
             $item->update([
                 'coeficient' => $coeficient,
                 'tva' => $tva,
+                'um' => $um,
             ]);
 
             ConfigurareAnexaLinie::query()
@@ -118,6 +140,7 @@ class ServiciuStandardAnexaController extends Controller
                 ->update([
                     'pret_unitar' => $coeficient,
                     'tva_21' => $tva,
+                    'um' => $um,
                 ]);
         }
 
@@ -189,6 +212,7 @@ class ServiciuStandardAnexaController extends Controller
             'label' => ['nullable', 'string', 'max:255'],
             'coeficient' => [$tip === ServiciuStandardAnexa::TIP_PRET ? 'required' : 'nullable', 'numeric', 'min:0'],
             'tva' => [$tip === ServiciuStandardAnexa::TIP_PRET ? 'nullable' : 'prohibited', 'string', 'max:16'],
+            'um' => [$tip === ServiciuStandardAnexa::TIP_PRET ? 'nullable' : 'prohibited', 'string', 'max:32'],
             'activ' => ['nullable', 'boolean'],
         ]);
 
@@ -197,6 +221,9 @@ class ServiciuStandardAnexaController extends Controller
         $coeficient = $this->coeficientForStore($tip, $valoareNoua, $validated['coeficient'] ?? null);
         $tva = $tip === ServiciuStandardAnexa::TIP_PRET
             ? $this->tvaForPretStore($validated['tva'] ?? null)
+            : null;
+        $um = $tip === ServiciuStandardAnexa::TIP_PRET
+            ? $this->umForPretStore($validated['um'] ?? null)
             : null;
 
         if ($valoareNoua !== $valoareVeche && $this->esteFolosit($tip, $valoareVeche)) {
@@ -213,6 +240,7 @@ class ServiciuStandardAnexaController extends Controller
             $linieUpdates = array_filter([
                 'pret_unitar' => $coeficient,
                 'tva_21' => $tva,
+                'um' => $um,
             ], fn ($value) => $value !== null);
 
             if ($linieUpdates !== []) {
@@ -237,6 +265,7 @@ class ServiciuStandardAnexaController extends Controller
             'label' => $this->labelForStore($tip, $valoareNoua, $validated['label'] ?? null),
             'coeficient' => $coeficient,
             'tva' => $tva,
+            'um' => $um,
             'activ' => (bool) ($validated['activ'] ?? $serviciuStandard->activ),
         ]);
 
@@ -301,6 +330,13 @@ class ServiciuStandardAnexaController extends Controller
         }
 
         return ServiciuStandardAnexa::normalizeValoare(ServiciuStandardAnexa::TIP_TVA, $tva);
+    }
+
+    private function umForPretStore(mixed $um): ?string
+    {
+        $um = trim((string) ($um ?? ''));
+
+        return $um === '' ? null : $um;
     }
 
     private function coeficientForStore(string $tip, string $valoare, mixed $coeficient): ?string
