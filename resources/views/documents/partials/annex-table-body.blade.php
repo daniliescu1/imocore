@@ -8,14 +8,14 @@
 @foreach ($linii as $index => $linie)
     @if (($linie['tip_linie'] ?? 'serviciu') === 'header')
         @if ($sectionTotal['count'] > 0)
-            <tr class="section-total">
+            <tr class="generated-annex-section-total">
                 <td colspan="6"></td>
                 <td>Total</td>
                 <td>{{ $moneyFormat ? DocumentFormatter::moneyValue($sectionTotal['valoare']) : DocumentFormatter::decimal($sectionTotal['valoare']) }}</td>
                 <td>{{ $moneyFormat ? DocumentFormatter::moneyValue($sectionTotal['tva']) : DocumentFormatter::decimal($sectionTotal['tva']) }}</td>
             </tr>
         @endif
-        <tr class="section-header">
+        <tr class="generated-annex-section-header">
             <th>Nr. crt</th>
             <th>Denumire serviciu</th>
             <th>Index vechi</th>
@@ -49,7 +49,7 @@
 @endforeach
 
 @if ($sectionTotal['count'] > 0)
-    <tr class="section-total">
+    <tr class="generated-annex-section-total">
         <td colspan="6"></td>
         <td>Total</td>
         <td>{{ $moneyFormat ? DocumentFormatter::moneyValue($sectionTotal['valoare']) : DocumentFormatter::decimal($sectionTotal['valoare']) }}</td>

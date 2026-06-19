@@ -4,159 +4,424 @@
     <meta charset="utf-8">
     <title>@yield('title')</title>
     <style>
-        @page { margin: 18mm 14mm; }
+        @page { margin: 14mm 12mm; }
+
+        * { box-sizing: border-box; }
+
         body {
             margin: 0;
             color: #1f2a2e;
             font-family: DejaVu Sans, sans-serif;
-            font-size: 11px;
+            font-size: 12px;
             line-height: 1.35;
         }
-        h2 {
+
+        p { margin: 0; }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        th,
+        td {
+            border-bottom: 1px solid #ece6db;
+            text-align: left;
+            vertical-align: top;
+        }
+
+        th {
+            background: #f4f4ee;
+            color: #285948;
+            font-size: 13px;
+            font-weight: 800;
+        }
+
+        td {
+            color: #1f2a2e;
+            font-size: 14px;
+            font-weight: 600;
+        }
+
+        tr:last-child td { border-bottom: 0; }
+
+        .generated-annex {
+            width: 100%;
+            border: 1px solid #e9e2d8;
+            border-radius: 18px;
+            padding: 34px;
+            background: #fff;
+        }
+
+        .generated-annex-header {
+            border-bottom: 2px solid #00553f;
+            padding-bottom: 18px;
+            margin-bottom: 22px;
+        }
+
+        .generated-annex-header h2 {
             margin: 0;
             color: #00553f;
-            font-size: 22px;
+            font-size: 30px;
             letter-spacing: 0.02em;
         }
-        p { margin: 4px 0 0; }
-        .muted { color: #6f6f6f; font-weight: 700; }
-        .doc-header {
-            border-bottom: 2px solid #00553f;
-            padding-bottom: 14px;
-            margin-bottom: 16px;
-        }
-        .doc-header-row {
-            width: 100%;
-            border-collapse: collapse;
-        }
-        .doc-header-row td { vertical-align: top; }
-        .meta-box {
-            border: 1px solid #d9d0c4;
-            border-radius: 8px;
-            padding: 10px 12px;
-            background: #faf8f4;
-        }
-        .meta-box span {
-            display: block;
+
+        .generated-annex-header p {
+            margin: 6px 0 0;
             color: #6f6f6f;
-            font-size: 10px;
             font-weight: 700;
-            text-transform: uppercase;
         }
-        .meta-box strong { display: block; margin-top: 4px; font-size: 11px; }
-        .parties-table {
+
+        .invoice-document-header {
+            display: table;
             width: 100%;
-            border-collapse: separate;
-            border-spacing: 10px 0;
-            margin: 0 -10px 16px;
+            table-layout: fixed;
         }
-        .party-card {
-            border: 1px solid #e9e2d8;
-            border-radius: 10px;
-            padding: 12px;
+
+        .invoice-document-header > div {
+            display: table-cell;
             vertical-align: top;
         }
-        .party-heading {
-            display: block;
-            color: #6f6f6f;
-            font-size: 10px;
-            font-weight: 700;
-            text-transform: uppercase;
+
+        .invoice-document-header > div:first-child {
+            width: 33%;
         }
-        .party-name {
-            display: block;
-            margin: 6px 0 8px;
+
+        .invoice-document-header-balance {
+            width: 33%;
+        }
+
+        .invoice-number {
+            margin: 8px 0 0;
+            color: #1e88e5;
+            font-size: 28px;
+            font-weight: 800;
+            letter-spacing: 0.01em;
+        }
+
+        .invoice-period-note {
+            margin-top: 6px;
+            color: #6f6f6f;
             font-size: 13px;
+            font-weight: 600;
         }
-        .party-detail { margin: 0 0 4px; }
-        .party-detail span {
-            display: inline-block;
-            min-width: 58px;
-            color: #6f6f6f;
-            font-weight: 700;
-        }
-        .annex-parties {
-            width: 100%;
-            border-collapse: collapse;
-            margin-bottom: 16px;
-        }
-        .annex-parties td {
-            width: 20%;
+
+        .generated-annex-meta {
             border: 1px solid #e9e2d8;
-            padding: 10px;
-            vertical-align: top;
+            border-radius: 12px;
+            padding: 14px 16px;
+            background: #fffdf8;
         }
-        .annex-parties span {
-            display: block;
-            color: #6f6f6f;
-            font-size: 10px;
+
+        .invoice-dates-meta {
+            width: 34%;
+            min-width: 240px;
+        }
+
+        .invoice-date-row {
+            display: table;
+            width: 100%;
+            margin-bottom: 8px;
+            color: #1f2a2e;
+            font-size: 14px;
             font-weight: 700;
+        }
+
+        .invoice-date-row:last-child { margin-bottom: 0; }
+
+        .invoice-date-row span,
+        .invoice-date-row strong {
+            display: table-cell;
+            vertical-align: baseline;
+        }
+
+        .invoice-date-row span {
+            width: 55%;
+            color: #6f6f6f;
+            font-size: 12px;
+            font-weight: 800;
+            letter-spacing: 0.03em;
             text-transform: uppercase;
         }
-        .annex-parties strong {
+
+        .invoice-date-row strong {
+            font-size: 14px;
+            font-weight: 800;
+            text-align: right;
+        }
+
+        .generated-annex-header-centered-meta {
+            display: table;
+            width: 100%;
+            table-layout: fixed;
+        }
+
+        .generated-annex-header-centered-meta > div {
+            display: table-cell;
+            vertical-align: top;
+        }
+
+        .generated-annex-header-centered-meta > div:first-child {
+            width: 33%;
+        }
+
+        .generated-annex-header-centered-meta .generated-annex-meta {
+            width: 34%;
+            text-align: center;
+        }
+
+        .generated-annex-header-balance {
+            width: 33%;
+        }
+
+        .generated-annex-meta span,
+        .generated-annex-parties span {
+            display: block;
+            color: #6f6f6f;
+            font-size: 12px;
+            font-weight: 800;
+            text-transform: uppercase;
+        }
+
+        .generated-annex-meta strong,
+        .generated-annex-parties strong {
             display: block;
             margin-top: 4px;
-            font-size: 11px;
+            color: #1f2a2e;
+            font-size: 16px;
+            font-weight: 800;
         }
-        .annex-parties small {
+
+        .generated-annex-meta small,
+        .generated-annex-parties small {
             display: block;
             margin-top: 3px;
             color: #6f6f6f;
-            font-size: 10px;
+            font-size: 12px;
+            font-weight: 600;
         }
-        .data-table {
+
+        .invoice-parties-grid {
+            display: table;
             width: 100%;
-            border-collapse: collapse;
+            margin-bottom: 24px;
+            border-spacing: 18px 0;
+        }
+
+        .invoice-party-card {
+            display: table-cell;
+            width: 50%;
+            padding: 18px 20px;
+            border: 1px solid #e9e2d8;
+            border-radius: 14px;
+            background: #fff;
+            vertical-align: top;
+        }
+
+        .invoice-party-heading {
+            display: block;
+            color: #6f6f6f;
+            font-size: 12px;
+            font-weight: 800;
+            letter-spacing: 0.04em;
+            text-transform: uppercase;
+        }
+
+        .invoice-party-name {
+            display: block;
+            margin: 2px 0 8px;
+            color: #1f2a2e;
+            font-size: 22px;
+            line-height: 1.15;
+            font-weight: 900;
+        }
+
+        .invoice-party-detail {
+            margin: 0 0 4px;
+            color: #1f2a2e;
+            font-size: 13px;
+            line-height: 1.45;
+            font-weight: 600;
+        }
+
+        .invoice-party-detail span {
+            display: inline-block;
+            min-width: 72px;
+            margin-right: 8px;
+            color: #6f6f6f;
+            font-size: 12px;
+            font-weight: 800;
+        }
+
+        .generated-annex-parties {
+            display: table;
+            width: 100%;
+            margin-bottom: 24px;
+            border-spacing: 12px 0;
+        }
+
+        .generated-annex-parties > div {
+            display: table-cell;
+            width: 20%;
+            padding: 13px 14px;
+            border: 1px solid #e9e2d8;
+            border-radius: 12px;
+            background: #fff;
+            vertical-align: top;
+        }
+
+        .generated-annex-table {
+            width: 100%;
             table-layout: fixed;
         }
-        .data-table th,
-        .data-table td {
-            border-bottom: 1px solid #ece6db;
-            padding: 7px 5px;
-            font-size: 10px;
-            vertical-align: top;
+
+        .generated-annex-table th,
+        .generated-annex-table td {
+            padding: 12px 9px;
+            font-size: 12px;
+            white-space: normal;
             word-wrap: break-word;
         }
-        .data-table th {
+
+        .generated-annex-table th:nth-child(1),
+        .generated-annex-table td:nth-child(1) { width: 58px; }
+
+        .generated-annex-table th:nth-child(2),
+        .generated-annex-table td:nth-child(2) { width: 31%; }
+
+        .generated-annex-table th:nth-child(3),
+        .generated-annex-table td:nth-child(3),
+        .generated-annex-table th:nth-child(4),
+        .generated-annex-table td:nth-child(4),
+        .generated-annex-table th:nth-child(5),
+        .generated-annex-table td:nth-child(5),
+        .generated-annex-table th:nth-child(6),
+        .generated-annex-table td:nth-child(6),
+        .generated-annex-table th:nth-child(7),
+        .generated-annex-table td:nth-child(7),
+        .generated-annex-table th:nth-child(8),
+        .generated-annex-table td:nth-child(8),
+        .generated-annex-table th:nth-child(9),
+        .generated-annex-table td:nth-child(9) { width: 9%; }
+
+        .generated-annex-section-header th {
             background: #f4f4ee;
             color: #285948;
+            font-size: 13px;
             font-weight: 800;
-            text-align: left;
+            padding: 10px 12px;
+            border-bottom: 1px solid #e9e2d8;
         }
-        .section-header th {
-            background: #edf8f2;
-            color: #00553f;
-        }
-        .section-total td {
+
+        .generated-annex-section-total td {
             border-top: 1px solid #e9e2d8;
             border-bottom: 2px solid #00553f;
             color: #00553f;
-            font-weight: 800;
+            font-size: 13px;
+            font-weight: 900;
         }
-        .totals-box {
-            width: 280px;
-            margin-left: auto;
-            margin-top: 14px;
+
+        .invoice-totals-summary {
+            width: 360px;
+            margin: 20px 0 0 auto;
         }
-        .totals-row {
+
+        .invoice-totals-row {
+            display: table;
             width: 100%;
-            border-collapse: collapse;
-        }
-        .totals-row td {
-            padding: 4px 0;
+            margin-bottom: 8px;
+            color: #1f2a2e;
+            font-size: 14px;
             font-weight: 700;
         }
-        .totals-row td:last-child { text-align: right; }
-        .totals-grand td {
-            padding: 8px 12px;
+
+        .invoice-totals-row span,
+        .invoice-totals-row strong {
+            display: table-cell;
+            vertical-align: middle;
+        }
+
+        .invoice-totals-row strong {
+            text-align: right;
+            font-size: 15px;
+            font-weight: 800;
+        }
+
+        .invoice-totals-grand-total {
+            margin-top: 4px;
+            padding: 12px 16px;
             border-radius: 999px;
             background: #1e88e5;
             color: #fff;
+            font-size: 15px;
             font-weight: 800;
         }
-        .footer-block { margin-top: 18px; padding-top: 14px; border-top: 1px solid #e9e2d8; }
-        .footer-block p { margin: 0 0 8px; font-size: 10px; font-weight: 600; }
-        .attached-annex { margin-top: 24px; padding-top: 18px; border-top: 1px solid #e9e2d8; }
+
+        .invoice-totals-grand-total span,
+        .invoice-totals-grand-total strong {
+            color: #fff;
+            font-size: 16px;
+        }
+
+        .invoice-payment-footer {
+            margin-top: 28px;
+            padding-top: 22px;
+            border-top: 1px solid #e9e2d8;
+        }
+
+        .invoice-payment-instructions {
+            margin-bottom: 18px;
+        }
+
+        .invoice-payment-instructions strong {
+            display: block;
+            margin-bottom: 6px;
+            color: #1f2a2e;
+            font-size: 14px;
+            font-weight: 800;
+        }
+
+        .invoice-payment-instructions p {
+            margin: 0;
+            color: #1f2a2e;
+            font-size: 13px;
+            line-height: 1.5;
+            font-weight: 700;
+        }
+
+        .invoice-legal-notes p {
+            margin: 0 0 12px;
+            color: #1f2a2e;
+            font-size: 12px;
+            line-height: 1.55;
+            font-weight: 600;
+        }
+
+        .invoice-legal-notes p:last-child { margin-bottom: 0; }
+
+        .invoice-payment-summary {
+            margin: 22px 0 0;
+            padding-top: 16px;
+            border-top: 1px solid #e9e2d8;
+            color: #6f6f6f;
+            font-size: 12px;
+            font-weight: 700;
+        }
+
+        .invoice-attached-annex {
+            margin-top: 34px;
+            padding-top: 24px;
+            border-top: 1px dashed #e9e2d8;
+        }
+
+        .compact-annex-header {
+            margin-bottom: 16px;
+            padding-bottom: 12px;
+        }
+
+        .compact-annex-header h2 {
+            font-size: 22px;
+        }
     </style>
 </head>
 <body>

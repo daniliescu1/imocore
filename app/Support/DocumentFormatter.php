@@ -99,4 +99,70 @@ class DocumentFormatter
 
         return $base.'.'.$extension;
     }
+
+    public static function facturaDownloadFilename(string $numeFirma, ?string $dataEmitere): string
+    {
+        $firma = self::numeFirmaPentruFisier($numeFirma);
+        $data = self::formatDataFisier($dataEmitere);
+
+        return self::safeFilename("Factura {$firma} {$data}", 'factura', 'pdf');
+    }
+
+    public static function anexaDownloadFilename(string $numeFirma, ?string $luna): string
+    {
+        $firma = self::numeFirmaPentruFisier($numeFirma);
+        $lunaLabel = self::lunaFisier($luna);
+
+        return self::safeFilename("Anexa {$firma} {$lunaLabel}", 'anexa', 'pdf');
+    }
+
+    public static function lunaFisier(?string $luna): string
+    {
+        $luni = [
+            '01' => 'Ianuarie',
+            '02' => 'Februarie',
+            '03' => 'Martie',
+            '04' => 'Aprilie',
+            '05' => 'Mai',
+            '06' => 'Iunie',
+            '07' => 'Iulie',
+            '08' => 'August',
+            '09' => 'Septembrie',
+            '10' => 'Octombrie',
+            '11' => 'Noiembrie',
+            '12' => 'Decembrie',
+        ];
+
+        [$year, $month] = array_pad(explode('-', (string) $luna, 2), 2, null);
+
+        if (! $year || ! $month) {
+            return 'fara-luna';
+        }
+
+        return ($luni[$month] ?? $month).'-'.$year;
+    }
+
+    private static function numeFirmaPentruFisier(string $numeFirma): string
+    {
+        $nume = trim($numeFirma);
+
+        if ($nume === '' || $nume === '—') {
+            return 'firma';
+        }
+
+        return $nume;
+    }
+
+    private static function formatDataFisier(?string $data): string
+    {
+        if ($data === null || trim($data) === '') {
+            return 'fara-data';
+        }
+
+        try {
+            return \Carbon\Carbon::parse($data)->format('d-m-Y');
+        } catch (\Throwable) {
+            return 'fara-data';
+        }
+    }
 }

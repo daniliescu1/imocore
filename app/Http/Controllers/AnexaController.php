@@ -195,11 +195,8 @@ class AnexaController extends Controller
     public function download(Anexa $anexa): HttpResponse
     {
         $payload = $this->buildAnexaPayload($anexa);
-        $filename = DocumentFormatter::safeFilename(
-            'anexa-'.($payload['numar'] ?? '01').'-'.($payload['luna'] ?? $anexa->id),
-            'anexa-'.$anexa->id,
-            'pdf',
-        );
+        $numeFirma = (string) ($payload['spatiu']['chirias'] ?? $payload['contract']['chirias'] ?? '');
+        $filename = DocumentFormatter::anexaDownloadFilename($numeFirma, $payload['luna'] ?? null);
 
         return Pdf::loadView('documents.anexa', ['anexa' => $payload])->download($filename);
     }

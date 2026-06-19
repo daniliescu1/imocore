@@ -22,7 +22,7 @@ class DocumentDownloadTest extends TestCase
         $this->get(route('facturare.download', $factura))
             ->assertOk()
             ->assertHeader('content-type', 'application/pdf')
-            ->assertDownload('FACT-000001.pdf');
+            ->assertDownload('Factura-ZBOELECTRONICS-SRL-18-06-2026.pdf');
     }
 
     public function test_anexa_can_be_downloaded_as_pdf(): void
@@ -32,7 +32,7 @@ class DocumentDownloadTest extends TestCase
         $this->get(route('anexe.download', $anexa))
             ->assertOk()
             ->assertHeader('content-type', 'application/pdf')
-            ->assertDownload('anexa-01-2026-05.pdf');
+            ->assertDownload('Anexa-ZBOELECTRONICS-SRL-Mai-2026.pdf');
     }
 
     public function test_factura_show_includes_download_url(): void

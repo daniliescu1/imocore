@@ -160,11 +160,10 @@ class FacturaController extends Controller
     public function download(Factura $factura): HttpResponse
     {
         $payload = $this->buildFacturaPayload($factura);
-        $filename = DocumentFormatter::safeFilename(
-            $payload['numar_factura'] ?: 'factura',
-            'factura-'.$factura->id,
-            'pdf',
-        );
+        $numeFirma = (string) ($payload['locatar']['nume'] ?? $payload['contract']['chirias'] ?? '');
+        $dataEmitere = $factura->data_emitere?->toDateString()
+            ?? $factura->created_at?->toDateString();
+        $filename = DocumentFormatter::facturaDownloadFilename($numeFirma, $dataEmitere);
 
         return Pdf::loadView('documents.factura', ['factura' => $payload])->download($filename);
     }

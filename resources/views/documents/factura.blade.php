@@ -4,155 +4,165 @@
 
 @php
     use App\Support\DocumentFormatter;
+
+    $sumar = $factura['sumar'] ?? [
+        'total_fara_tva' => collect($factura['linii'] ?? [])->sum(fn ($linie) => (float) ($linie['valoare'] ?? 0)),
+        'tva_21' => 0,
+        'tva_11' => 0,
+        'total' => $factura['total'] ?? null,
+    ];
 @endphp
 
 @section('content')
-    <div class="doc-header">
-        <table class="doc-header-row">
-            <tr>
-                <td style="width: 62%;">
-                    <h2>FACTURA</h2>
-                    <p><strong>{{ DocumentFormatter::display($factura['numar_factura']) }}</strong></p>
-                    <p class="muted">pentru anexa din luna {{ $factura['luna'] ?? '—' }}</p>
-                </td>
-                <td style="width: 38%;">
-                    <div class="meta-box">
-                        <div style="margin-bottom: 8px;">
-                            <span>Data emitere</span>
-                            <strong>{{ DocumentFormatter::display($factura['data_emitere']) }}</strong>
-                        </div>
-                        <div>
-                            <span>Data scadenta</span>
-                            <strong>{{ DocumentFormatter::display($factura['data_scadenta']) }}</strong>
-                        </div>
-                    </div>
-                </td>
-            </tr>
-        </table>
-    </div>
+    <section class="generated-annex">
+        <div class="generated-annex-header invoice-document-header">
+            <div>
+                <h2>FACTURA</h2>
+                <p class="invoice-number">{{ DocumentFormatter::display($factura['numar_factura'] ?? null) }}</p>
+                <p class="invoice-period-note">pentru anexa din luna {{ $factura['luna'] ?? '—' }}</p>
+            </div>
+            <div class="generated-annex-meta invoice-dates-meta">
+                <div class="invoice-date-row">
+                    <span>Data emitere:</span>
+                    <strong>{{ DocumentFormatter::display($factura['data_emitere'] ?? null) }}</strong>
+                </div>
+                <div class="invoice-date-row">
+                    <span>Data scadenta:</span>
+                    <strong>{{ DocumentFormatter::display($factura['data_scadenta'] ?? null) }}</strong>
+                </div>
+            </div>
+            <div class="invoice-document-header-balance"></div>
+        </div>
 
-    <table class="parties-table">
-        <tr>
-            <td class="party-card" style="width: 50%;">
-                <span class="party-heading">Locator</span>
-                <strong class="party-name">{{ DocumentFormatter::display($factura['locator']['nume'] ?? null) }}</strong>
-                <p class="party-detail"><span>CUI</span> {{ DocumentFormatter::display($factura['locator']['cui'] ?? null) }}</p>
-                <p class="party-detail"><span>Reg. Com.</span> {{ DocumentFormatter::display($factura['locator']['reg_com'] ?? null) }}</p>
-                <p class="party-detail"><span>Adresă</span> {{ DocumentFormatter::display($factura['locator']['adresa'] ?? null) }}</p>
-                <p class="party-detail"><span>Bancă</span> {{ DocumentFormatter::display($factura['locator']['banca'] ?? null) }}</p>
-                <p class="party-detail"><span>Cont</span> {{ DocumentFormatter::display($factura['locator']['cont_bancar'] ?? null) }}</p>
-                <p class="party-detail"><span>Email</span> {{ DocumentFormatter::display($factura['locator']['email'] ?? null) }}</p>
-            </td>
-            <td class="party-card" style="width: 50%;">
-                <span class="party-heading">Locatar</span>
-                <strong class="party-name">{{ DocumentFormatter::display($factura['locatar']['nume'] ?? null) }}</strong>
-                <p class="party-detail"><span>{{ $factura['locatar']['identificator_label'] ?? 'CUI' }}</span> {{ DocumentFormatter::display($factura['locatar']['identificator'] ?? null) }}</p>
+        <div class="invoice-parties-grid">
+            <div class="invoice-party-card">
+                <span class="invoice-party-heading">Locator</span>
+                <strong class="invoice-party-name">{{ DocumentFormatter::display($factura['locator']['nume'] ?? null) }}</strong>
+                <p class="invoice-party-detail"><span>CUI</span> {{ DocumentFormatter::display($factura['locator']['cui'] ?? null) }}</p>
+                <p class="invoice-party-detail"><span>Reg. Com.</span> {{ DocumentFormatter::display($factura['locator']['reg_com'] ?? null) }}</p>
+                <p class="invoice-party-detail"><span>Adresă</span> {{ DocumentFormatter::display($factura['locator']['adresa'] ?? null) }}</p>
+                <p class="invoice-party-detail"><span>Bancă</span> {{ DocumentFormatter::display($factura['locator']['banca'] ?? null) }}</p>
+                <p class="invoice-party-detail"><span>Cont</span> {{ DocumentFormatter::display($factura['locator']['cont_bancar'] ?? null) }}</p>
+                <p class="invoice-party-detail"><span>Email</span> {{ DocumentFormatter::display($factura['locator']['email'] ?? null) }}</p>
+            </div>
+            <div class="invoice-party-card">
+                <span class="invoice-party-heading">Locatar</span>
+                <strong class="invoice-party-name">{{ DocumentFormatter::display($factura['locatar']['nume'] ?? null) }}</strong>
+                <p class="invoice-party-detail"><span>{{ $factura['locatar']['identificator_label'] ?? 'CUI' }}</span> {{ DocumentFormatter::display($factura['locatar']['identificator'] ?? null) }}</p>
                 @if (($factura['locatar']['tip'] ?? null) === 'pf')
-                    <p class="party-detail"><span>CI</span> {{ DocumentFormatter::display($factura['locatar']['ci'] ?? null) }}</p>
+                    <p class="invoice-party-detail"><span>CI</span> {{ DocumentFormatter::display($factura['locatar']['ci'] ?? null) }}</p>
                 @endif
-                <p class="party-detail"><span>Adresă</span> {{ DocumentFormatter::display($factura['locatar']['adresa'] ?? null) }}</p>
-                <p class="party-detail"><span>Telefon</span> {{ DocumentFormatter::display($factura['locatar']['telefon'] ?? null) }}</p>
-                <p class="party-detail"><span>Email</span> {{ DocumentFormatter::display($factura['locatar']['email'] ?? null) }}</p>
-            </td>
-        </tr>
-    </table>
+                <p class="invoice-party-detail"><span>Adresă</span> {{ DocumentFormatter::display($factura['locatar']['adresa'] ?? null) }}</p>
+                <p class="invoice-party-detail"><span>Telefon</span> {{ DocumentFormatter::display($factura['locatar']['telefon'] ?? null) }}</p>
+                <p class="invoice-party-detail"><span>Email</span> {{ DocumentFormatter::display($factura['locatar']['email'] ?? null) }}</p>
+            </div>
+        </div>
 
-    <table class="data-table">
-        <thead>
-            <tr>
-                <th style="width: 7%;">Nr. crt</th>
-                <th style="width: 34%;">Denumire serviciu</th>
-                <th style="width: 9%;">Cantitate</th>
-                <th style="width: 9%;">UM</th>
-                <th style="width: 12%;">Preț unitar</th>
-                <th style="width: 14%;">Valoare</th>
-                <th style="width: 15%;">TVA</th>
-            </tr>
-        </thead>
-        <tbody>
-            @foreach ($factura['linii'] as $index => $linie)
+        <table class="generated-annex-table">
+            <thead>
                 <tr>
-                    <td>{{ $linie['nr_crt'] ?? ($index + 1) }}</td>
-                    <td>{{ $linie['denumire'] ?? '—' }}</td>
-                    <td>{{ DocumentFormatter::decimal($linie['cantitate'] ?? null) }}</td>
-                    <td>{{ $linie['um'] ?? '—' }}</td>
-                    <td>{{ DocumentFormatter::moneyValue($linie['pret_unitar'] ?? null) }}</td>
-                    <td>{{ DocumentFormatter::money($linie['valoare'] ?? null) }}</td>
-                    <td>{{ DocumentFormatter::money($linie['tva'] ?? null) }}</td>
+                    <th>Nr. crt</th>
+                    <th>Denumire serviciu</th>
+                    <th>Cantitate</th>
+                    <th>UM</th>
+                    <th>Preț unitar</th>
+                    <th>Valoare</th>
+                    <th>TVA</th>
                 </tr>
-            @endforeach
-        </tbody>
-    </table>
-
-    <div class="totals-box">
-        <table class="totals-row">
-            <tr>
-                <td>Total fără TVA:</td>
-                <td>{{ DocumentFormatter::amount($factura['sumar']['total_fara_tva'] ?? null) }}</td>
-            </tr>
-            <tr>
-                <td>TVA 21%:</td>
-                <td>{{ DocumentFormatter::amount($factura['sumar']['tva_21'] ?? null) }}</td>
-            </tr>
-            <tr>
-                <td>TVA 11%:</td>
-                <td>{{ DocumentFormatter::amount($factura['sumar']['tva_11'] ?? null) }}</td>
-            </tr>
-            <tr class="totals-grand">
-                <td>Total</td>
-                <td>{{ DocumentFormatter::amount($factura['sumar']['total'] ?? null) }} Lei</td>
-            </tr>
+            </thead>
+            <tbody>
+                @foreach ($factura['linii'] as $index => $linie)
+                    <tr>
+                        <td>{{ $linie['nr_crt'] ?? ($index + 1) }}</td>
+                        <td>{{ $linie['denumire'] ?? '—' }}</td>
+                        <td>{{ DocumentFormatter::decimal($linie['cantitate'] ?? null) }}</td>
+                        <td>{{ $linie['um'] ?? '—' }}</td>
+                        <td>{{ DocumentFormatter::moneyValue($linie['pret_unitar'] ?? null) }}</td>
+                        <td>{{ DocumentFormatter::money($linie['valoare'] ?? null) }}</td>
+                        <td>{{ DocumentFormatter::money($linie['tva'] ?? null) }}</td>
+                    </tr>
+                @endforeach
+            </tbody>
         </table>
-    </div>
 
-    <div class="footer-block">
-        <p><strong>Instructiuni de plata</strong></p>
-        <p>Banca: {{ DocumentFormatter::display($factura['locator']['banca'] ?? null) }}</p>
-        <p>Cont: {{ DocumentFormatter::display($factura['locator']['cont_bancar'] ?? null) }}</p>
-        <p style="margin-top: 12px;">
-            SCUTIT DE TVA IN BAZA LG 227/2015, ART 292, AL.2, LIT E. CURS BCR: 1 EURO={{ DocumentFormatter::decimal($factura['curs_eur'] ?? null) }} RON.
-            Factura circula fara semnatura si stampila cf Legii 227/2015, ART.39, ALIN.29
-        </p>
-        <p>Factura si conditiile de plata au fost acceptate de catre beneficiar.</p>
-        <p>
-            In cazul depasirii termenelor de plata convenite, penalizarile sunt de 1% pentru fiecare zi de intarziere,
-            aplicate la valoarea facturilor emise, preluate si neachitate.
-        </p>
-        <p>
-            Factura circula fara semnatura si stampila cf. art.V, alin (2) din Ordonanta nr.17/2015 si art. 319 alin (29)
-            din Legea nr. 227/2015 privind Codul fiscal.
-        </p>
-        <p><strong>{{ DocumentFormatter::display($factura['numar_factura']) }} {{ DocumentFormatter::amount($factura['sumar']['total'] ?? null) }} Lei scadenta la {{ DocumentFormatter::display($factura['data_scadenta']) }}</strong></p>
-    </div>
+        <div class="invoice-totals-summary">
+            <div class="invoice-totals-row">
+                <span>Total fără TVA:</span>
+                <strong>{{ DocumentFormatter::amount($sumar['total_fara_tva'] ?? null) }}</strong>
+            </div>
+            <div class="invoice-totals-row">
+                <span>TVA 21%:</span>
+                <strong>{{ DocumentFormatter::amount($sumar['tva_21'] ?? null) }}</strong>
+            </div>
+            <div class="invoice-totals-row">
+                <span>TVA 11%:</span>
+                <strong>{{ DocumentFormatter::amount($sumar['tva_11'] ?? null) }}</strong>
+            </div>
+            <div class="invoice-totals-row invoice-totals-grand-total">
+                <span>Total</span>
+                <strong>{{ DocumentFormatter::amount($sumar['total'] ?? null) }} Lei</strong>
+            </div>
+        </div>
 
-    @if (! empty($factura['anexa_detaliu']))
-        <div class="attached-annex">
-            <div class="doc-header">
-                <h2>ANEXA nr.{{ $factura['anexa_detaliu']['numar'] ?? '01' }}</h2>
-                <p class="muted">utilități {{ $factura['anexa_detaliu']['luna_utilitati'] ?? '—' }}</p>
+        <section class="invoice-payment-footer">
+            <div class="invoice-payment-instructions">
+                <strong>Instructiuni de plata</strong>
+                <p>Banca: {{ DocumentFormatter::display($factura['locator']['banca'] ?? null) }}</p>
+                <p>Cont: {{ DocumentFormatter::display($factura['locator']['cont_bancar'] ?? null) }}</p>
             </div>
 
-            <table class="data-table">
-                <thead>
-                    <tr>
-                        <th>Nr. crt</th>
-                        <th>Denumire serviciu</th>
-                        <th>Index vechi</th>
-                        <th>Index nou</th>
-                        <th>Facturat</th>
-                        <th>UM</th>
-                        <th>Preț unitar</th>
-                        <th>Valoare</th>
-                        <th>TVA</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @include('documents.partials.annex-table-body', [
-                        'linii' => $factura['anexa_detaliu']['linii'] ?? [],
-                        'moneyFormat' => true,
-                    ])
-                </tbody>
-            </table>
-        </div>
-    @endif
+            <div class="invoice-legal-notes">
+                <p>
+                    SCUTIT DE TVA IN BAZA LG 227/2015, ART 292, AL.2, LIT E. CURS BCR: 1 EURO={{ DocumentFormatter::decimal($factura['curs_eur'] ?? null) }} RON.
+                    Factura circula fara semnatura si stampila cf Legii 227/2015, ART.39, ALIN.29
+                </p>
+                <p>Factura si conditiile de plata au fost acceptate de catre beneficiar.</p>
+                <p>
+                    In cazul depasirii termenelor de plata convenite, penalizarile sunt de 1% pentru fiecare zi de intarziere,
+                    aplicate la valoarea facturilor emise, preluate si neachitate.
+                </p>
+                <p>
+                    Factura circula fara semnatura si stampila cf. art.V, alin (2) din Ordonanta nr.17/2015 si art. 319 alin (29)
+                    din Legea nr. 227/2015 privind Codul fiscal.
+                </p>
+            </div>
+
+            <p class="invoice-payment-summary">
+                {{ DocumentFormatter::display($factura['numar_factura'] ?? null) }} {{ DocumentFormatter::amount($sumar['total'] ?? null) }} Lei scadenta la {{ DocumentFormatter::display($factura['data_scadenta'] ?? null) }}
+            </p>
+        </section>
+
+        @if (! empty($factura['anexa_detaliu']))
+            <section class="invoice-attached-annex">
+                <div class="generated-annex-header compact-annex-header">
+                    <div>
+                        <h2>ANEXA nr.{{ $factura['anexa_detaliu']['numar'] ?? '01' }}</h2>
+                        <p>utilități {{ $factura['anexa_detaliu']['luna_utilitati'] ?? '—' }}</p>
+                    </div>
+                </div>
+
+                <table class="generated-annex-table">
+                    <thead>
+                        <tr>
+                            <th>Nr. crt</th>
+                            <th>Denumire serviciu</th>
+                            <th>Index vechi</th>
+                            <th>Index nou</th>
+                            <th>Facturat</th>
+                            <th>UM</th>
+                            <th>Preț unitar</th>
+                            <th>Valoare</th>
+                            <th>TVA</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @include('documents.partials.annex-table-body', [
+                            'linii' => $factura['anexa_detaliu']['linii'] ?? [],
+                            'moneyFormat' => true,
+                        ])
+                    </tbody>
+                </table>
+            </section>
+        @endif
+    </section>
 @endsection

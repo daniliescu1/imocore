@@ -7,68 +7,62 @@
 @endphp
 
 @section('content')
-    <div class="doc-header">
-        <table class="doc-header-row">
-            <tr>
-                <td style="width: 33%; vertical-align: top;">
-                    <h2>ANEXA nr.{{ $anexa['numar'] ?? '01' }}</h2>
-                    <p class="muted">din luna {{ DocumentFormatter::lunaText($anexa['luna'] ?? null) }}</p>
-                </td>
-                <td style="width: 34%; vertical-align: top; text-align: center;">
-                    <div class="meta-box" style="display: inline-block; text-align: center;">
-                        <span>Perioada citire contoare</span>
-                        <strong>{{ DocumentFormatter::display($anexa['perioada_citire'] ?? null) }}</strong>
-                    </div>
-                </td>
-                <td style="width: 33%;"></td>
-            </tr>
-        </table>
-    </div>
+    <section class="generated-annex">
+        <div class="generated-annex-header generated-annex-header-centered-meta">
+            <div>
+                <h2>ANEXA nr.{{ $anexa['numar'] ?? '01' }}</h2>
+                <p>din luna {{ DocumentFormatter::lunaText($anexa['luna'] ?? null) }}</p>
+            </div>
+            <div class="generated-annex-meta">
+                <span>Perioada citire contoare</span>
+                <strong>{{ DocumentFormatter::display($anexa['perioada_citire'] ?? null) }}</strong>
+            </div>
+            <div class="generated-annex-header-balance"></div>
+        </div>
 
-    <table class="annex-parties">
-        <tr>
-            <td>
+        <div class="generated-annex-parties">
+            <div>
                 <span>Imobil</span>
                 <strong>{{ DocumentFormatter::display($anexa['imobil']['nume'] ?? null) }}</strong>
                 <small>{{ trim(implode(', ', array_filter([$anexa['imobil']['adresa'] ?? null, $anexa['imobil']['localitate'] ?? null]))) ?: '—' }}</small>
-            </td>
-            <td>
+            </div>
+            <div>
                 <span>Nume locator</span>
                 <strong>{{ DocumentFormatter::display($anexa['spatiu']['locator'] ?? null) }}</strong>
-            </td>
-            <td>
+            </div>
+            <div>
                 <span>Nume locatar</span>
                 <strong>{{ DocumentFormatter::display($anexa['spatiu']['chirias'] ?? $anexa['contract']['chirias'] ?? null) }}</strong>
-            </td>
-            <td>
+            </div>
+            <div>
                 <span>ID spațiu</span>
                 <strong>{{ DocumentFormatter::display($anexa['spatiu']['identificator'] ?? null) }}</strong>
-            </td>
-            <td>
+            </div>
+            <div>
                 <span>Contract</span>
                 <strong>{{ DocumentFormatter::display($anexa['contract']['numar'] ?? null) }}</strong>
-            </td>
-        </tr>
-    </table>
+            </div>
+        </div>
 
-    <table class="data-table">
-        <thead>
-            <tr>
-                <th>Nr. crt</th>
-                <th>Denumire serviciu</th>
-                <th>Index vechi</th>
-                <th>Index nou</th>
-                <th>Facturat</th>
-                <th>UM</th>
-                <th>Preț unitar</th>
-                <th>Valoare</th>
-                <th>TVA</th>
-            </tr>
-        </thead>
-        <tbody>
-            @include('documents.partials.annex-table-body', [
-                'linii' => $anexa['linii'] ?? [],
-            ])
-        </tbody>
-    </table>
+        <table class="generated-annex-table">
+            <thead>
+                <tr>
+                    <th>Nr. crt</th>
+                    <th>Denumire serviciu</th>
+                    <th>Index vechi</th>
+                    <th>Index nou</th>
+                    <th>Facturat</th>
+                    <th>UM</th>
+                    <th>Preț unitar</th>
+                    <th>Valoare</th>
+                    <th>TVA</th>
+                </tr>
+            </thead>
+            <tbody>
+                @include('documents.partials.annex-table-body', [
+                    'linii' => $anexa['linii'] ?? [],
+                ])
+            </tbody>
+        </table>
+    </section>
 @endsection
