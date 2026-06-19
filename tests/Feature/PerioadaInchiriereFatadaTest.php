@@ -85,6 +85,30 @@ class PerioadaInchiriereFatadaTest extends TestCase
                 ->where('perioadeFatada.0.chirie_lunara', '1200.00'));
     }
 
+    public function test_perioada_fatada_inertia_store_returneaza_calendarul_actualizat(): void
+    {
+        $spatiu = $this->spatiuFatada();
+        $user = \App\Models\User::factory()->create();
+
+        $this->actingAs($user)
+            ->withHeaders([
+                'X-Inertia' => 'true',
+                'X-Requested-With' => 'XMLHttpRequest',
+            ])
+            ->post(route('spatii.perioade-fatada.store', $spatiu), [
+                'an' => 2026,
+                'data_start' => '2026-03-01',
+                'data_end' => '2026-04-15',
+                'chirias' => 'Banner SRL',
+                'chirie_lunara' => '1200.00',
+            ])
+            ->assertOk()
+            ->assertJsonPath('component', 'Spatii/Create')
+            ->assertJsonPath('props.perioadeFatada.0.chirias', 'Banner SRL')
+            ->assertJsonPath('props.perioadeFatada.0.data_start', '2026-03-01')
+            ->assertJsonPath('props.perioadeFatada.0.data_end', '2026-04-15');
+    }
+
     public function test_perioada_fatada_respinge_interval_mai_mic_de_30_zile(): void
     {
         $spatiu = $this->spatiuFatada();

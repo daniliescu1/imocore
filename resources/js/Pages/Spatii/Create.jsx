@@ -675,7 +675,7 @@ export default function Create({
             </form>
 
             {esteFatada && isEditing ? (
-                <FacadeRentalCalendar spatiuId={spatiu.id} />
+                <FacadeRentalCalendar spatiuId={spatiu.id} perioadeFatada={perioadeFatada} />
             ) : null}
 
             {esteFatada && !isEditing ? (

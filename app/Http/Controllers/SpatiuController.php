@@ -306,6 +306,14 @@ class SpatiuController extends Controller
 
     public function edit(Request $request, Spatiu $spatiu): Response
     {
+        return Inertia::render('Spatii/Create', $this->editPageProps($request, $spatiu));
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    public function editPageProps(Request $request, Spatiu $spatiu): array
+    {
         $contract = $spatiu->contracte()
             ->where('status', 'activ')
             ->orderByDesc('id')
@@ -314,7 +322,7 @@ class SpatiuController extends Controller
 
         $showDocumente = $this->showDocumenteForSpatiu($spatiu);
 
-        return Inertia::render('Spatii/Create', [
+        return [
             'imobile' => $this->imobileForSelect(),
             'locatori' => $this->locatoriForSelect(),
             'configurariAnexe' => $this->configurariAnexeForSelect(),
@@ -345,7 +353,7 @@ class SpatiuController extends Controller
                 'pret_lunar' => $spatiu->pret_lunar,
                 'indexare_2026' => $spatiu->indexare_2026,
                 'moneda' => $spatiu->moneda,
-            'moneda_label' => $spatiu->monedaLabel(),
+                'moneda_label' => $spatiu->monedaLabel(),
                 'locator_id' => $spatiu->locator_id,
                 'configurare_anexa_id' => $spatiu->configurare_anexa_id,
                 'chirias' => $spatiu->chirias,
@@ -355,22 +363,32 @@ class SpatiuController extends Controller
                 'marcat_galben' => (bool) $spatiu->marcat_galben,
                 'marcat_verde' => (bool) $spatiu->marcat_verde,
             ],
-            'perioadeFatada' => $spatiu->etaj === 'Fațadă'
-                ? $spatiu->perioadeInchiriereFatada()
-                    ->orderBy('data_start')
-                    ->get()
-                    ->map(fn (PerioadaInchiriereFatada $perioada): array => [
-                        'id' => $perioada->id,
-                        'data_start' => $perioada->data_start->format('Y-m-d'),
-                        'data_end' => $perioada->data_end->format('Y-m-d'),
-                        'chirias' => $perioada->chirias,
-                        'chirie_lunara' => $perioada->chirie_lunara,
-                        'moneda' => $perioada->moneda,
-                    ])
-                    ->values()
-                    ->all()
-                : [],
-        ]);
+            'perioadeFatada' => $this->perioadeFatadaForSpatiu($spatiu),
+        ];
+    }
+
+    /**
+     * @return list<array{id: int, data_start: string, data_end: string, chirias: string, chirie_lunara: string, moneda: string}>
+     */
+    public function perioadeFatadaForSpatiu(Spatiu $spatiu): array
+    {
+        if ($spatiu->etaj !== 'Fațadă') {
+            return [];
+        }
+
+        return $spatiu->perioadeInchiriereFatada()
+            ->orderBy('data_start')
+            ->get()
+            ->map(fn (PerioadaInchiriereFatada $perioada): array => [
+                'id' => $perioada->id,
+                'data_start' => $perioada->data_start->format('Y-m-d'),
+                'data_end' => $perioada->data_end->format('Y-m-d'),
+                'chirias' => $perioada->chirias,
+                'chirie_lunara' => $perioada->chirie_lunara,
+                'moneda' => $perioada->moneda,
+            ])
+            ->values()
+            ->all();
     }
 
     public function reorder(Request $request): RedirectResponse

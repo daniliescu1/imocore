@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { useForm, usePage } from '@inertiajs/react';
+import { useForm } from '@inertiajs/react';
 
 const MINIM_ZILE = 30;
 const LUNI = ['Ian', 'Feb', 'Mar', 'Apr', 'Mai', 'Iun', 'Iul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
@@ -23,6 +23,20 @@ function addDaysToIso(iso, days) {
     date.setDate(date.getDate() + days);
 
     return formatIso(date);
+}
+
+function yearEndIso(year) {
+    return `${year}-12-31`;
+}
+
+function endIsoForMinimumPeriod(startIso, year, minimumDays = MINIM_ZILE) {
+    const endIso = addDaysToIso(startIso, minimumDays - 1);
+
+    return endIso <= yearEndIso(year) ? endIso : null;
+}
+
+function isWithinYear(iso, year) {
+    return iso >= `${year}-01-01` && iso <= yearEndIso(year);
 }
 
 function daysInYear(year) {
@@ -112,13 +126,14 @@ function perioadeInAn(perioade, an) {
         .sort((left, right) => left.data_start.localeCompare(right.data_start));
 }
 
-export default function FacadeRentalCalendar({ spatiuId }) {
+export default function FacadeRentalCalendar({ spatiuId, perioadeFatada = [] }) {
     const currentYear = new Date().getFullYear();
     const [an, setAn] = useState(currentYear);
     const [selectStart, setSelectStart] = useState('');
     const [selectEnd, setSelectEnd] = useState('');
     const [editingId, setEditingId] = useState(null);
-    const perioade = usePage().props.perioadeFatada ?? [];
+    const [yearBoundaryWarning, setYearBoundaryWarning] = useState('');
+    const perioade = perioadeFatada;
 
     const { data, setData, post, put, processing, errors, reset, transform } = useForm({
         an: currentYear,
@@ -175,6 +190,7 @@ export default function FacadeRentalCalendar({ spatiuId }) {
         reset('data_start', 'data_end', 'chirias', 'chirie_lunara');
         setSelectStart('');
         setSelectEnd('');
+        setYearBoundaryWarning('');
     }
 
     function loadPeriodForEdit(perioada) {
@@ -197,8 +213,19 @@ export default function FacadeRentalCalendar({ spatiuId }) {
     }
 
     function applyStartDate(startIso) {
-        const endIso = addDaysToIso(startIso, 29);
+        if (!isWithinYear(startIso, an)) {
+            setYearBoundaryWarning(`Perioada trebuie să fie complet în anul ${an}.`);
+            return;
+        }
 
+        const endIso = endIsoForMinimumPeriod(startIso, an);
+
+        if (!endIso) {
+            setYearBoundaryWarning(`De la această dată nu încap 30 de zile până la 31.12.${an}.`);
+            return;
+        }
+
+        setYearBoundaryWarning('');
         setSelectStart(startIso);
         setSelectEnd(endIso);
         setData({
@@ -224,12 +251,18 @@ export default function FacadeRentalCalendar({ spatiuId }) {
 
         if (!selectStart || (selectStart && selectEnd)) {
             const startIso = iso;
-            const endIso = addDaysToIso(startIso, 29);
+            const endIso = endIsoForMinimumPeriod(startIso, an);
+
+            if (!endIso) {
+                setYearBoundaryWarning(`De la această dată nu încap 30 de zile până la 31.12.${an}.`);
+                return;
+            }
 
             if (rangeOverlapsPerioade(startIso, endIso, perioadeForOverlap)) {
                 return;
             }
 
+            setYearBoundaryWarning('');
             setSelectStart(startIso);
             setSelectEnd(endIso);
             setData({
@@ -247,10 +280,21 @@ export default function FacadeRentalCalendar({ spatiuId }) {
             [startIso, endIso] = [endIso, startIso];
         }
 
+        if (!isWithinYear(startIso, an) || !isWithinYear(endIso, an)) {
+            setYearBoundaryWarning(`Perioada trebuie să fie complet în anul ${an}.`);
+            return;
+        }
+
+        if (zileInPerioada(startIso, endIso) < MINIM_ZILE) {
+            setYearBoundaryWarning(`Perioada selectată are ${zileInPerioada(startIso, endIso)} zile. Minimul este de 30 de zile.`);
+            return;
+        }
+
         if (rangeOverlapsPerioade(startIso, endIso, perioadeForOverlap)) {
             return;
         }
 
+        setYearBoundaryWarning('');
         setSelectStart(startIso);
         setSelectEnd(endIso);
         setData({
@@ -305,6 +349,12 @@ export default function FacadeRentalCalendar({ spatiuId }) {
     }
 
     const zileSelectate = data.data_start && data.data_end ? zileInPerioada(data.data_start, data.data_end) : 0;
+    const canSubmit = zileSelectate >= MINIM_ZILE
+        && Boolean(data.chirias?.trim())
+        && data.chirie_lunara !== ''
+        && data.chirie_lunara !== null
+        && data.chirie_lunara !== undefined
+        && Number.isFinite(Number(data.chirie_lunara));
     const validationErrors = Object.entries(errors);
 
     return (
@@ -422,8 +472,27 @@ export default function FacadeRentalCalendar({ spatiuId }) {
                     <label className="form-field">
                         <span>Până la</span>
                         <input type="date" value={data.data_end} min={data.data_start || `${an}-01-01`} max={`${an}-12-31`} onChange={(event) => {
-                            setSelectEnd(event.target.value);
-                            setData('data_end', event.target.value);
+                            const nextEnd = event.target.value;
+
+                            if (!nextEnd) {
+                                setSelectEnd('');
+                                setData('data_end', '');
+                                return;
+                            }
+
+                            if (!data.data_start || !isWithinYear(nextEnd, an)) {
+                                setYearBoundaryWarning(`Perioada trebuie să fie complet în anul ${an}.`);
+                                return;
+                            }
+
+                            if (zileInPerioada(data.data_start, nextEnd) < MINIM_ZILE) {
+                                setYearBoundaryWarning(`Perioada selectată are ${zileInPerioada(data.data_start, nextEnd)} zile. Minimul este de 30 de zile.`);
+                                return;
+                            }
+
+                            setYearBoundaryWarning('');
+                            setSelectEnd(nextEnd);
+                            setData('data_end', nextEnd);
                         }} />
                         {errors.data_end ? <small>{errors.data_end}</small> : null}
                     </label>
@@ -452,6 +521,10 @@ export default function FacadeRentalCalendar({ spatiuId }) {
                     <p className="fatada-calendar-warning">Perioada selectată are {zileSelectate} zile. Minimul este de 30 de zile.</p>
                 ) : null}
 
+                {yearBoundaryWarning ? (
+                    <p className="fatada-calendar-warning">{yearBoundaryWarning}</p>
+                ) : null}
+
                 {(!data.data_start || !data.data_end) && !processing ? (
                     <p className="fatada-calendar-hint">Selectează o perioadă de cel puțin 30 de zile pe calendar sau din câmpurile de date.</p>
                 ) : null}
@@ -471,7 +544,7 @@ export default function FacadeRentalCalendar({ spatiuId }) {
                         className="primary-button"
                         type="button"
                         onClick={submit}
-                        disabled={processing || zileSelectate < MINIM_ZILE}
+                        disabled={processing || !canSubmit}
                     >
                         {processing
                             ? (editingId ? 'Se salvează...' : 'Se închiriază...')

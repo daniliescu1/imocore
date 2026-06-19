@@ -8,10 +8,12 @@ use Carbon\Carbon;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
+use Inertia\Inertia;
+use Inertia\Response;
 
 class PerioadaInchiriereFatadaController extends Controller
 {
-    public function store(Request $request, Spatiu $spatiu): RedirectResponse
+    public function store(Request $request, Spatiu $spatiu): Response|RedirectResponse
     {
         $this->ensureSpatiuFatada($spatiu);
 
@@ -40,12 +42,10 @@ class PerioadaInchiriereFatadaController extends Controller
 
         $this->syncChiriasCurent($spatiu);
 
-        return redirect()
-            ->route('spatii.edit', $spatiu)
-            ->with('success', 'Perioada de închiriere a fost blocată.');
+        return $this->editResponse($request, $spatiu, 'Perioada de închiriere a fost blocată.');
     }
 
-    public function update(Request $request, Spatiu $spatiu, PerioadaInchiriereFatada $perioada): RedirectResponse
+    public function update(Request $request, Spatiu $spatiu, PerioadaInchiriereFatada $perioada): Response|RedirectResponse
     {
         $this->ensureSpatiuFatada($spatiu);
         abort_unless($perioada->spatiu_id === $spatiu->id, 404);
@@ -73,21 +73,39 @@ class PerioadaInchiriereFatadaController extends Controller
 
         $this->syncChiriasCurent($spatiu);
 
+        return $this->editResponse($request, $spatiu, 'Perioada de închiriere a fost actualizată.');
+    }
+
+    private function editResponse(Request $request, Spatiu $spatiu, string $successMessage): Response|RedirectResponse
+    {
+        if ($request->header('X-Inertia')) {
+            $request->session()->flash('success', $successMessage);
+
+            return Inertia::render(
+                'Spatii/Create',
+                app(SpatiuController::class)->editPageProps($request, $spatiu->fresh()),
+            );
+        }
+
         return redirect()
             ->route('spatii.edit', $spatiu)
-            ->with('success', 'Perioada de închiriere a fost actualizată.');
+            ->with('success', $successMessage);
     }
 
     private function ensureSpatiuFatada(Spatiu $spatiu): void
     {
-        abort_unless($spatiu->etaj === 'Fațadă', 422, 'Calendarul este disponibil doar pentru spațiile de pe fațadă.');
+        if ($spatiu->etaj !== 'Fațadă') {
+            throw ValidationException::withMessages([
+                'data_start' => 'Calendarul este disponibil doar pentru spațiile de pe fațadă.',
+            ]);
+        }
     }
 
     private function validatePerioada(Spatiu $spatiu, Carbon $start, Carbon $end, int $an, ?int $exceptId = null): void
     {
         if ($start->year !== $an || $end->year !== $an) {
             throw ValidationException::withMessages([
-                'data_start' => 'Perioada trebuie să fie în anul selectat.',
+                'data_start' => 'Perioada trebuie să fie complet în anul selectat.',
             ]);
         }
 
