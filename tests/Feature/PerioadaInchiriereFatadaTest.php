@@ -34,6 +34,7 @@ class PerioadaInchiriereFatadaTest extends TestCase
         $this->assertSame('1200.00', $perioada->chirie_lunara);
         $this->assertSame(30, $perioada->zileInchiriate());
         $this->assertSame('Banner SRL', $spatiu->fresh()->chirias);
+        $this->assertSame('inchiriat', $spatiu->fresh()->status);
     }
 
     public function test_perioadele_fatada_nu_pot_sa_se_suprapuna(): void
@@ -57,7 +58,7 @@ class PerioadaInchiriereFatadaTest extends TestCase
                 'chirias' => 'Al doilea chiriaș',
                 'chirie_lunara' => '950.00',
             ])
-            ->assertSessionHasErrors('data_start');
+            ->assertSessionHasErrors('data_start', null, 'perioadeFatada');
 
         $this->assertSame(1, PerioadaInchiriereFatada::query()->count());
     }
@@ -85,7 +86,7 @@ class PerioadaInchiriereFatadaTest extends TestCase
                 ->where('perioadeFatada.0.chirie_lunara', '1200.00'));
     }
 
-    public function test_perioada_fatada_inertia_store_returneaza_calendarul_actualizat(): void
+    public function test_perioada_fatada_inertia_store_redirecteaza_la_editare(): void
     {
         $spatiu = $this->spatiuFatada();
         $user = \App\Models\User::factory()->create();
@@ -102,11 +103,10 @@ class PerioadaInchiriereFatadaTest extends TestCase
                 'chirias' => 'Banner SRL',
                 'chirie_lunara' => '1200.00',
             ])
-            ->assertOk()
-            ->assertJsonPath('component', 'Spatii/Create')
-            ->assertJsonPath('props.perioadeFatada.0.chirias', 'Banner SRL')
-            ->assertJsonPath('props.perioadeFatada.0.data_start', '2026-03-01')
-            ->assertJsonPath('props.perioadeFatada.0.data_end', '2026-04-15');
+            ->assertRedirect(route('spatii.edit', $spatiu));
+
+        $this->assertSame('inchiriat', $spatiu->fresh()->status);
+        $this->assertSame(1, PerioadaInchiriereFatada::query()->count());
     }
 
     public function test_perioada_fatada_respinge_interval_mai_mic_de_30_zile(): void
@@ -121,7 +121,7 @@ class PerioadaInchiriereFatadaTest extends TestCase
                 'chirias' => 'Prea scurt',
                 'chirie_lunara' => '500.00',
             ])
-            ->assertSessionHasErrors('data_end');
+            ->assertSessionHasErrors('data_end', null, 'perioadeFatada');
 
         $this->assertSame(0, PerioadaInchiriereFatada::query()->count());
     }
@@ -186,7 +186,7 @@ class PerioadaInchiriereFatadaTest extends TestCase
                 'chirias' => 'Suprapus',
                 'chirie_lunara' => '980.00',
             ])
-            ->assertSessionHasErrors('data_start');
+            ->assertSessionHasErrors('data_start', null, 'perioadeFatada');
 
         $this->assertSame('2026-06-01', $aDoua->fresh()->data_start->format('Y-m-d'));
         $this->assertSame('2026-04-01', $prima->fresh()->data_start->format('Y-m-d'));

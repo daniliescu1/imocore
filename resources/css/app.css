@@ -1719,6 +1719,14 @@ tr:last-child td {
     background: var(--green-hover);
 }
 
+.primary-button:disabled {
+    background: #b8c4be;
+    color: #f5f7f6;
+    cursor: not-allowed;
+    box-shadow: none;
+    opacity: 0.85;
+}
+
 .button-link {
     display: inline-flex;
     align-items: center;
@@ -2785,6 +2793,23 @@ tr:last-child td {
     margin: 0 0 12px;
     color: var(--danger);
     font-size: 13px;
+    font-weight: 700;
+}
+
+.fatada-calendar-errors {
+    margin: 0 0 14px;
+    padding: 12px 14px;
+    border: 1px solid #f3b6ab;
+    border-radius: 10px;
+    background: #fff5f3;
+}
+
+.fatada-calendar-errors p {
+    margin: 0;
+}
+
+.fatada-calendar-errors small {
+    color: var(--danger);
     font-weight: 700;
 }
 

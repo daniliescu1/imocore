@@ -7,23 +7,16 @@ use App\Models\Spatiu;
 use Carbon\Carbon;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\ValidationException;
-use Inertia\Inertia;
-use Inertia\Response;
 
 class PerioadaInchiriereFatadaController extends Controller
 {
-    public function store(Request $request, Spatiu $spatiu): Response|RedirectResponse
+    public function store(Request $request, Spatiu $spatiu): RedirectResponse
     {
         $this->ensureSpatiuFatada($spatiu);
 
-        $validated = $request->validate([
-            'an' => ['required', 'integer', 'min:2000', 'max:2100'],
-            'data_start' => ['required', 'date'],
-            'data_end' => ['required', 'date', 'after_or_equal:data_start'],
-            'chirias' => ['required', 'string', 'max:255'],
-            'chirie_lunara' => ['required', 'numeric', 'min:0'],
-        ]);
+        $validated = $this->validatedData($request);
 
         $start = Carbon::parse($validated['data_start'])->startOfDay();
         $end = Carbon::parse($validated['data_end'])->startOfDay();
@@ -40,23 +33,19 @@ class PerioadaInchiriereFatadaController extends Controller
             'moneda' => 'EUR',
         ]);
 
-        $this->syncChiriasCurent($spatiu);
+        $this->syncSpatiuDupaPerioada($spatiu, $validated['chirias'], $validated['chirie_lunara']);
 
-        return $this->editResponse($request, $spatiu, 'Perioada de închiriere a fost blocată.');
+        return redirect()
+            ->route('spatii.edit', $spatiu)
+            ->with('success', 'Perioada de închiriere a fost blocată.');
     }
 
-    public function update(Request $request, Spatiu $spatiu, PerioadaInchiriereFatada $perioada): Response|RedirectResponse
+    public function update(Request $request, Spatiu $spatiu, PerioadaInchiriereFatada $perioada): RedirectResponse
     {
         $this->ensureSpatiuFatada($spatiu);
         abort_unless($perioada->spatiu_id === $spatiu->id, 404);
 
-        $validated = $request->validate([
-            'an' => ['required', 'integer', 'min:2000', 'max:2100'],
-            'data_start' => ['required', 'date'],
-            'data_end' => ['required', 'date', 'after_or_equal:data_start'],
-            'chirias' => ['required', 'string', 'max:255'],
-            'chirie_lunara' => ['required', 'numeric', 'min:0'],
-        ]);
+        $validated = $this->validatedData($request);
 
         $start = Carbon::parse($validated['data_start'])->startOfDay();
         $end = Carbon::parse($validated['data_end'])->startOfDay();
@@ -71,25 +60,25 @@ class PerioadaInchiriereFatadaController extends Controller
             'chirie_lunara' => $validated['chirie_lunara'],
         ]);
 
-        $this->syncChiriasCurent($spatiu);
-
-        return $this->editResponse($request, $spatiu, 'Perioada de închiriere a fost actualizată.');
-    }
-
-    private function editResponse(Request $request, Spatiu $spatiu, string $successMessage): Response|RedirectResponse
-    {
-        if ($request->header('X-Inertia')) {
-            $request->session()->flash('success', $successMessage);
-
-            return Inertia::render(
-                'Spatii/Create',
-                app(SpatiuController::class)->editPageProps($request, $spatiu->fresh()),
-            );
-        }
+        $this->syncSpatiuDupaPerioada($spatiu, $validated['chirias'], $validated['chirie_lunara']);
 
         return redirect()
             ->route('spatii.edit', $spatiu)
-            ->with('success', $successMessage);
+            ->with('success', 'Perioada de închiriere a fost actualizată.');
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function validatedData(Request $request): array
+    {
+        return Validator::make($request->all(), [
+            'an' => ['required', 'integer', 'min:2000', 'max:2100'],
+            'data_start' => ['required', 'date'],
+            'data_end' => ['required', 'date', 'after_or_equal:data_start'],
+            'chirias' => ['required', 'string', 'max:255'],
+            'chirie_lunara' => ['required', 'numeric', 'min:0'],
+        ])->validateWithBag('perioadeFatada');
     }
 
     private function ensureSpatiuFatada(Spatiu $spatiu): void
@@ -97,7 +86,7 @@ class PerioadaInchiriereFatadaController extends Controller
         if ($spatiu->etaj !== 'Fațadă') {
             throw ValidationException::withMessages([
                 'data_start' => 'Calendarul este disponibil doar pentru spațiile de pe fațadă.',
-            ]);
+            ])->errorBag('perioadeFatada');
         }
     }
 
@@ -106,7 +95,7 @@ class PerioadaInchiriereFatadaController extends Controller
         if ($start->year !== $an || $end->year !== $an) {
             throw ValidationException::withMessages([
                 'data_start' => 'Perioada trebuie să fie complet în anul selectat.',
-            ]);
+            ])->errorBag('perioadeFatada');
         }
 
         $zile = (int) $start->diffInDays($end) + 1;
@@ -114,28 +103,24 @@ class PerioadaInchiriereFatadaController extends Controller
         if ($zile < PerioadaInchiriereFatada::MINIM_ZILE) {
             throw ValidationException::withMessages([
                 'data_end' => 'Perioada minimă de închiriere este de 30 de zile.',
-            ]);
+            ])->errorBag('perioadeFatada');
         }
 
         if (PerioadaInchiriereFatada::seSuprapune($spatiu->id, $start, $end, $exceptId)) {
             throw ValidationException::withMessages([
                 'data_start' => 'Perioada se suprapune cu o închiriere existentă.',
-            ]);
+            ])->errorBag('perioadeFatada');
         }
     }
 
-    private function syncChiriasCurent(Spatiu $spatiu): void
+    private function syncSpatiuDupaPerioada(Spatiu $spatiu, string $chirias, float|string $chirieLunara): void
     {
-        $perioadaCurenta = PerioadaInchiriereFatada::query()
-            ->where('spatiu_id', $spatiu->id)
-            ->whereDate('data_start', '<=', now())
-            ->whereDate('data_end', '>=', now())
-            ->orderBy('data_start')
-            ->first();
-
         $spatiu->update([
-            'chirias' => $perioadaCurenta?->chirias,
-            'pret_lunar' => $perioadaCurenta?->chirie_lunara,
+            'status' => 'inchiriat',
+            'chirias' => $chirias,
+            'pret_lunar' => $chirieLunara,
         ]);
+
+        $spatiu->imobil->recalculeazaSpatii();
     }
 }

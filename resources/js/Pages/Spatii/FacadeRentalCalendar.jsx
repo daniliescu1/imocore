@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { useForm } from '@inertiajs/react';
+import { router, useForm } from '@inertiajs/react';
 
 const MINIM_ZILE = 30;
 const LUNI = ['Ian', 'Feb', 'Mar', 'Apr', 'Mai', 'Iun', 'Iul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
@@ -126,7 +126,7 @@ function perioadeInAn(perioade, an) {
         .sort((left, right) => left.data_start.localeCompare(right.data_start));
 }
 
-export default function FacadeRentalCalendar({ spatiuId, perioadeFatada = [] }) {
+export default function FacadeRentalCalendar({ spatiuId, perioadeFatada = [], pretLunar = '' }) {
     const currentYear = new Date().getFullYear();
     const [an, setAn] = useState(currentYear);
     const [selectStart, setSelectStart] = useState('');
@@ -140,7 +140,9 @@ export default function FacadeRentalCalendar({ spatiuId, perioadeFatada = [] }) 
         data_start: '',
         data_end: '',
         chirias: '',
-        chirie_lunara: '',
+        chirie_lunara: pretLunar !== '' && pretLunar !== null && pretLunar !== undefined ? String(pretLunar) : '',
+    }, {
+        errorBag: 'perioadeFatada',
     });
 
     transform((formData) => ({
@@ -337,6 +339,7 @@ export default function FacadeRentalCalendar({ spatiuId, perioadeFatada = [] }) 
             preserveState: false,
             onSuccess: () => {
                 clearEditState();
+                router.reload({ preserveScroll: true, preserveState: false });
             },
         };
 
@@ -355,6 +358,20 @@ export default function FacadeRentalCalendar({ spatiuId, perioadeFatada = [] }) 
         && data.chirie_lunara !== null
         && data.chirie_lunara !== undefined
         && Number.isFinite(Number(data.chirie_lunara));
+    const missingFields = [];
+
+    if (zileSelectate < MINIM_ZILE) {
+        missingFields.push('o perioadă de cel puțin 30 de zile');
+    }
+
+    if (!data.chirias?.trim()) {
+        missingFields.push('chiriașul');
+    }
+
+    if (!Number.isFinite(Number(data.chirie_lunara))) {
+        missingFields.push('chiria lunară');
+    }
+
     const validationErrors = Object.entries(errors);
 
     return (
@@ -527,6 +544,10 @@ export default function FacadeRentalCalendar({ spatiuId, perioadeFatada = [] }) 
 
                 {(!data.data_start || !data.data_end) && !processing ? (
                     <p className="fatada-calendar-hint">Selectează o perioadă de cel puțin 30 de zile pe calendar sau din câmpurile de date.</p>
+                ) : null}
+
+                {missingFields.length && !processing && !canSubmit ? (
+                    <p className="fatada-calendar-warning">Completează {missingFields.join(', ')} pentru a putea închiria perioada.</p>
                 ) : null}
 
                 <div className="form-actions">
