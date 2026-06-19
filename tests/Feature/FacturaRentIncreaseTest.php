@@ -194,15 +194,83 @@ class FacturaRentIncreaseTest extends TestCase
                 ->where('factura.locatar.telefon', '0721000000')
                 ->where('factura.locatar.email', 'office@chirias.ro')
                 ->where('factura.linii.1.nr_crt', 2)
-                ->where('factura.linii.1.denumire', 'Utilități 21% TVA mai')
+                ->where('factura.linii.1.denumire', 'Utilități 21% TVA mai 2026')
                 ->where('factura.linii.1.valoare', 100)
                 ->where('factura.linii.1.tva', 21)
                 ->where('factura.linii.2.nr_crt', 3)
-                ->where('factura.linii.2.denumire', 'Utilități 11% TVA mai')
+                ->where('factura.linii.2.denumire', 'Utilități 11% TVA mai 2026')
                 ->where('factura.linii.2.valoare', 233.76)
                 ->where('factura.linii.2.tva', 25.71)
                 ->where('factura.linii.3.nr_crt', 4)
                 ->where('factura.linii.3.denumire', 'Penalități')
+            );
+    }
+
+    public function test_factura_nu_afiseaza_utilitati_cu_valoare_zero(): void
+    {
+        $imobil = Imobil::query()->create([
+            'nume' => 'Imobil utilitati zero',
+            'strada' => 'Strada Zero',
+            'numar' => '1',
+            'localitate' => 'Timișoara',
+        ]);
+
+        $spatiu = Spatiu::query()->create([
+            'imobil_id' => $imobil->id,
+            'identificator' => 'F-ZERO',
+            'status' => 'inchiriat',
+            'moneda' => 'EUR',
+        ]);
+
+        $contract = Contract::query()->create([
+            'spatiu_id' => $spatiu->id,
+            'numar_contract' => 'C-ZERO',
+            'chirias' => 'Chiriaș zero',
+            'chirie' => 1000,
+            'moneda' => 'EUR',
+            'status' => 'activ',
+        ]);
+
+        $anexa = Anexa::query()->create([
+            'contract_id' => $contract->id,
+            'luna' => '2026-05',
+            'total' => 100,
+        ]);
+
+        $anexa->linii()->create([
+            'denumire' => 'Energie electrica',
+            'tip_linie' => 'serviciu',
+            'valoare' => 100,
+            'tva_21' => 21,
+            'ordine' => 1,
+        ]);
+
+        $anexa->linii()->create([
+            'denumire' => 'Serviciu fara consum',
+            'tip_linie' => 'serviciu',
+            'valoare' => 0,
+            'tva_21' => 0,
+            'ordine' => 2,
+        ]);
+
+        $factura = Factura::query()->create([
+            'anexa_id' => $anexa->id,
+            'numar_factura' => 'FACT-ZERO',
+            'curs_eur' => 5,
+            'chirie_eur' => 1000,
+            'chirie_lei' => 5000,
+            'total' => 5121,
+            'penalitati' => 0,
+            'status' => 'draft',
+        ]);
+
+        $this->get(route('facturare.show', $factura))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('factura.linii.0.denumire', 'Chirie spațiu iunie 2026')
+                ->where('factura.linii.1.denumire', 'Utilități 21% TVA mai 2026')
+                ->where('factura.linii.2.denumire', 'Penalități')
+                ->has('factura.linii', 3)
             );
     }
 
@@ -261,7 +329,7 @@ class FacturaRentIncreaseTest extends TestCase
         $this->get(route('facturare.show', $factura))
             ->assertOk()
             ->assertInertia(fn (Assert $page) => $page
-                ->where('factura.linii.0.denumire', 'Chirie spațiu iunie')
+                ->where('factura.linii.0.denumire', 'Chirie spațiu iunie 2026')
                 ->where('factura.linii.0.valoare', '12511.57')
                 ->where('factura.linii.0.tva', 2627.43)
                 ->where('factura.sumar.tva_21', 2627.43)

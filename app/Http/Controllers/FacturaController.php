@@ -180,6 +180,8 @@ class FacturaController extends Controller
         $imobil = $spatiu?->imobil;
         $lunaUtilitati = $this->numeLuna($anexa?->luna);
         $lunaChirie = $this->numeLunaUrmatoare($anexa?->luna);
+        $anUtilitati = $this->anulDinLuna($anexa?->luna);
+        $anChirie = $this->anulLunaUrmatoare($anexa?->luna);
         $anexaLinii = $anexa?->linii->values() ?? collect();
         $anexaLiniiServiciu = $anexaLinii->filter(fn ($linie): bool => ($linie->tip_linie ?: 'serviciu') !== 'header');
         $anexaSubtotal = $anexaLiniiServiciu->sum(fn ($linie): float => (float) $linie->valoare);
@@ -189,7 +191,7 @@ class FacturaController extends Controller
         $liniiFactura = [
             [
                 'nr_crt' => 1,
-                'denumire' => trim('Chirie spațiu '.$lunaChirie),
+                'denumire' => trim('Chirie spațiu '.$lunaChirie.($anChirie !== '' ? ' '.$anChirie : '')),
                 'cantitate' => 1,
                 'um' => 'LUNĂ',
                 'pret_unitar' => $factura->chirie_lei,
@@ -199,9 +201,13 @@ class FacturaController extends Controller
         ];
 
         foreach ($this->grupeazaUtilitatiPeTva($anexaLiniiServiciu) as $grupTva) {
+            if ((float) $grupTva['valoare'] <= 0) {
+                continue;
+            }
+
             $liniiFactura[] = [
                 'nr_crt' => count($liniiFactura) + 1,
-                'denumire' => trim("Utilități {$grupTva['procent']}% TVA {$lunaUtilitati}"),
+                'denumire' => trim("Utilități {$grupTva['procent']}% TVA {$lunaUtilitati}".($anUtilitati !== '' ? ' '.$anUtilitati : '')),
                 'cantitate' => 1,
                 'um' => 'LUNĂ',
                 'pret_unitar' => $grupTva['valoare'],
@@ -523,6 +529,27 @@ class FacturaController extends Controller
         $numarLunaUrmatoare = $numarLuna === 12 ? 1 : $numarLuna + 1;
 
         return $this->numeLuna(str_pad((string) $numarLunaUrmatoare, 2, '0', STR_PAD_LEFT));
+    }
+
+    private function anulDinLuna(?string $luna): string
+    {
+        if (! $luna || strlen($luna) < 4) {
+            return '';
+        }
+
+        return substr($luna, 0, 4);
+    }
+
+    private function anulLunaUrmatoare(?string $luna): string
+    {
+        if (! $luna || strlen($luna) < 7) {
+            return '';
+        }
+
+        $an = (int) substr($luna, 0, 4);
+        $numarLuna = (int) substr($luna, -2);
+
+        return (string) ($numarLuna === 12 ? $an + 1 : $an);
     }
 
     private function cursEurBt(): array
