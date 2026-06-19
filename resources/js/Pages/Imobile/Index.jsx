@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { Link, router } from '@inertiajs/react';
 import { GripVertical, Trash2 } from 'lucide-react';
 import AppLayout from '../../Layouts/AppLayout';
+import { useDebouncedSearch } from '../../lib/useDebouncedSearch';
 
 function reorderImobile(items, draggedId, targetId) {
     if (!draggedId || draggedId === targetId) {
@@ -105,6 +106,10 @@ export default function Index({ imobile, localitati, filters }) {
         }, { preserveState: true, preserveScroll: true });
     }
 
+    const [searchDraft, handleSearchChange] = useDebouncedSearch(filters.search, (value) => {
+        updateFilters({ search: value });
+    });
+
     function openImobil(imobil) {
         router.visit(`/imobile/${imobil.id}/editare`);
     }
@@ -168,9 +173,9 @@ export default function Index({ imobile, localitati, filters }) {
             <input
                 className="filter-input topbar-search"
                 type="search"
-                value={filters.search || ''}
+                value={searchDraft}
                 placeholder="Caută în imobile..."
-                onChange={(event) => updateFilters({ search: event.target.value })}
+                onChange={(event) => handleSearchChange(event.target.value)}
             />
             <Link className="primary-button button-link topbar-primary-button" href="/imobile/adauga">+ Imobil nou</Link>
         </>

@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Link, router } from '@inertiajs/react';
 import { GripVertical } from 'lucide-react';
 import AppLayout from '../../Layouts/AppLayout';
+import { useDebouncedSearch } from '../../lib/useDebouncedSearch';
 
 const STATUS_LABELS = {
     liber: 'Liber',
@@ -247,6 +248,17 @@ export default function Index({ imobile = [], imobil = null, spatii = [], locali
         router.get('/spatii', buildFilters(filters, overrides), { preserveState: true, preserveScroll: true });
     }
 
+    const [searchDraft, handleSearchChange] = useDebouncedSearch(filters.search, (value) => {
+        updateFilters({
+            search: value,
+            imobil_id: isInsideImobil ? imobil.id : '',
+            status: isSpatiiListView ? (filters.status || '') : '',
+            documente: isInsideImobil ? (filters.documente || '') : '',
+            etaj: isGlobalStatusView ? (filters.etaj || '') : '',
+            localitate: isGlobalStatusView ? (filters.localitate || '') : (filters.localitate || ''),
+        });
+    });
+
     function openImobil(row) {
         router.get('/spatii', buildFilters(filters, { imobil_id: row.id, search: '', status: '', documente: '', etaj: '', global: '' }), { preserveState: true });
     }
@@ -421,16 +433,9 @@ export default function Index({ imobile = [], imobil = null, spatii = [], locali
                 <input
                     className="filter-input topbar-search"
                     type="search"
-                    value={filters.search || ''}
+                    value={searchDraft}
                     placeholder={isSpatiiListView ? 'Caută spațiu...' : 'Caută imobil...'}
-                    onChange={(event) => updateFilters({
-                        search: event.target.value,
-                        imobil_id: isInsideImobil ? imobil.id : '',
-                        status: isSpatiiListView ? (filters.status || '') : '',
-                        documente: isInsideImobil ? (filters.documente || '') : '',
-                        etaj: isGlobalStatusView ? (filters.etaj || '') : '',
-                        localitate: isGlobalStatusView ? (filters.localitate || '') : (filters.localitate || ''),
-                    })}
+                    onChange={(event) => handleSearchChange(event.target.value)}
                 />
             </div>
             <Link
