@@ -206,6 +206,115 @@ class FacturaRentIncreaseTest extends TestCase
             );
     }
 
+    public function test_factura_afiseaza_tva_21_pe_chirie_pentru_locator_cu_tva(): void
+    {
+        $imobil = Imobil::query()->create([
+            'nume' => 'Imobil CIT Grup',
+            'strada' => 'Calea Aradului',
+            'numar' => '48/A',
+            'localitate' => 'Timișoara',
+        ]);
+
+        $locator = Locator::query()->create([
+            'nume' => 'CIT Grup',
+            'cui_are_ro' => true,
+            'cui' => '14965516',
+            'chirie_cu_tva' => true,
+        ]);
+
+        $spatiu = Spatiu::query()->create([
+            'imobil_id' => $imobil->id,
+            'identificator' => 'CIT-01',
+            'status' => 'inchiriat',
+            'moneda' => 'EUR',
+            'locator_id' => $locator->id,
+        ]);
+
+        $contract = Contract::query()->create([
+            'spatiu_id' => $spatiu->id,
+            'numar_contract' => 'C-CIT',
+            'chirias' => 'FOOD FROM HOME SRL',
+            'chirie' => 2500,
+            'moneda' => 'EUR',
+            'status' => 'activ',
+        ]);
+
+        $anexa = Anexa::query()->create([
+            'contract_id' => $contract->id,
+            'luna' => '2026-05',
+            'total' => 4172.84,
+        ]);
+
+        $factura = Factura::query()->create([
+            'anexa_id' => $anexa->id,
+            'numar_factura' => 'FACT-CIT',
+            'data_emitere' => '2026-06-18',
+            'data_scadenta' => '2026-06-23',
+            'curs_eur' => 5.0046,
+            'chirie_eur' => 2500,
+            'chirie_lei' => 12511.57,
+            'penalitati' => 0,
+            'total' => 12511.57 + round(12511.57 * 0.21, 2),
+            'status' => 'draft',
+        ]);
+
+        $this->get(route('facturare.show', $factura))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('factura.linii.0.denumire', 'Chirie spațiu iunie')
+                ->where('factura.linii.0.valoare', '12511.57')
+                ->where('factura.linii.0.tva', 2627.43)
+                ->where('factura.sumar.tva_21', 2627.43)
+                ->where('factura.sumar.total', 15139));
+    }
+
+    public function test_generarea_facturii_include_tva_21_pe_chirie_pentru_locator_cu_tva(): void
+    {
+        $imobil = Imobil::query()->create([
+            'nume' => 'Imobil generare TVA chirie',
+            'strada' => 'Strada TVA',
+            'numar' => '1',
+            'localitate' => 'Timișoara',
+        ]);
+
+        $locator = Locator::query()->create([
+            'nume' => 'CIT Grup',
+            'chirie_cu_tva' => true,
+        ]);
+
+        $spatiu = Spatiu::query()->create([
+            'imobil_id' => $imobil->id,
+            'identificator' => 'CIT-GEN',
+            'status' => 'inchiriat',
+            'moneda' => 'EUR',
+            'locator_id' => $locator->id,
+        ]);
+
+        $contract = Contract::query()->create([
+            'spatiu_id' => $spatiu->id,
+            'numar_contract' => 'C-GEN-TVA',
+            'chirias' => 'Chiriaș TVA',
+            'chirie' => 1000,
+            'moneda' => 'EUR',
+            'status' => 'activ',
+        ]);
+
+        Anexa::query()->create([
+            'contract_id' => $contract->id,
+            'luna' => '2026-05',
+            'total' => 100,
+        ]);
+
+        $this->post(route('facturare.generate'), [
+            'curs_eur' => 5,
+        ])->assertRedirect(route('facturare.index'));
+
+        $factura = Factura::query()->firstOrFail();
+
+        $this->assertSame('5000.00', $factura->chirie_lei);
+        $this->assertSame('6150.00', $factura->total);
+    }
+
     public function test_pagina_facturare_imobil_afiseaza_doar_facturile_imobilului(): void
     {
         $imobilSelectat = Imobil::query()->create([

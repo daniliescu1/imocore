@@ -69,6 +69,7 @@ Route::get('/anexe', [AnexaController::class, 'index'])->name('anexe.index');
 Route::post('/anexe/generare', [AnexaController::class, 'generate'])->name('anexe.generate');
 Route::get('/anexe/imobil/{imobil}', [AnexaController::class, 'imobil'])->name('anexe.imobil');
 Route::get('/anexe/{anexa}', [AnexaController::class, 'show'])->name('anexe.show');
+Route::get('/anexe/{anexa}/descarcare', [AnexaController::class, 'download'])->name('anexe.download');
 Route::delete('/anexe/{anexa}', [AnexaController::class, 'destroy'])->name('anexe.destroy');
 Route::get('/contracte', [ContractController::class, 'index'])->name('contracte.index');
 Route::get('/contracte/adauga', [ContractController::class, 'create'])->name('contracte.create');
@@ -80,6 +81,7 @@ Route::get('/facturare/imobil/{imobil}', [FacturaController::class, 'imobil'])->
 Route::put('/facturare/curs', [FacturaController::class, 'updateCurs'])->name('facturare.curs.update');
 Route::post('/facturare/generare', [FacturaController::class, 'generate'])->name('facturare.generate');
 Route::get('/facturare/{factura}', [FacturaController::class, 'show'])->name('facturare.show');
+Route::get('/facturare/{factura}/descarcare', [FacturaController::class, 'download'])->name('facturare.download');
 Route::delete('/facturare/{factura}', [FacturaController::class, 'destroy'])->name('facturare.destroy');
 Route::get('/reguli-imobile', [ReguliImobilController::class, 'index'])->name('reguli-imobile.index');
 Route::put('/reguli-imobile/{imobil}', [ReguliImobilController::class, 'update'])->name('reguli-imobile.update');

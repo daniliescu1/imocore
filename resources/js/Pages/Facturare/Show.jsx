@@ -66,8 +66,13 @@ function InvoiceLocatarCard({ locatar }) {
     );
 }
 
-export default function Show({ factura }) {
-    const topbarActions = <Link className="secondary-button button-link" href="/facturare">Înapoi la facturi</Link>;
+export default function Show({ factura, downloadUrl }) {
+    const topbarActions = (
+        <>
+            <a className="secondary-button button-link" href={downloadUrl}>Descarcă PDF</a>
+            <Link className="secondary-button button-link" href="/facturare">Înapoi la facturi</Link>
+        </>
+    );
     const sumar = factura.sumar || {
         total_fara_tva: factura.linii.reduce((sum, linie) => sum + Number(linie.valoare || 0), 0),
         tva_21: 0,

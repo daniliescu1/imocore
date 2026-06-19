@@ -9,13 +9,18 @@ use App\Models\Imobil;
 use App\Models\Locator;
 use App\Models\SetareAplicatie;
 use App\Models\Spatiu;
+use App\Support\DocumentFormatter;
+use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
+use Symfony\Component\HttpFoundation\Response as HttpResponse;
 
 class FacturaController extends Controller
 {
+    private const TVA_CHIRIE_PROCENT = 21;
+
     public function index(): Response
     {
         $anexeFacturate = Anexa::query()
@@ -81,7 +86,7 @@ class FacturaController extends Controller
             ? ['facturare.imobil', ['imobil' => $imobilId]]
             : ['facturare.index', []];
         $anexe = Anexa::query()
-            ->with('contract')
+            ->with(['contract.spatiu.locatorEntitate'])
             ->whereDoesntHave('factura')
             ->when($imobilId, fn ($query) => $query->whereHas(
                 'contract.spatiu',
@@ -108,6 +113,8 @@ class FacturaController extends Controller
                 $chirieLei = round($chirieEur * $cursEur, 2);
             }
 
+            $locator = $anexa->contract?->spatiu?->locatorEntitate;
+            $chirieTva = $this->tvaChirieLei($chirieLei, $locator);
             $dataEmitere = now()->toDateString();
 
             Factura::query()->create([
@@ -119,7 +126,7 @@ class FacturaController extends Controller
                 'chirie_eur' => $chirieEur,
                 'chirie_lei' => $chirieLei,
                 'penalitati' => $penalitati,
-                'total' => $chirieLei + (float) $anexa->total + $penalitati,
+                'total' => $chirieLei + $chirieTva + (float) $anexa->total + $penalitati,
                 'status' => 'draft',
                 'email_chirias' => null,
             ]);
@@ -142,6 +149,31 @@ class FacturaController extends Controller
 
     public function show(Factura $factura): Response
     {
+        $payload = $this->buildFacturaPayload($factura);
+
+        return Inertia::render('Facturare/Show', [
+            'factura' => $payload,
+            'downloadUrl' => route('facturare.download', $factura),
+        ]);
+    }
+
+    public function download(Factura $factura): HttpResponse
+    {
+        $payload = $this->buildFacturaPayload($factura);
+        $filename = DocumentFormatter::safeFilename(
+            $payload['numar_factura'] ?: 'factura',
+            'factura-'.$factura->id,
+            'pdf',
+        );
+
+        return Pdf::loadView('documents.factura', ['factura' => $payload])->download($filename);
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function buildFacturaPayload(Factura $factura): array
+    {
         $factura->load(['anexa.linii', 'anexa.contract.spatiu.imobil', 'anexa.contract.spatiu.locatorEntitate']);
         $anexa = $factura->anexa;
         $contract = $anexa?->contract;
@@ -153,6 +185,8 @@ class FacturaController extends Controller
         $anexaLiniiServiciu = $anexaLinii->filter(fn ($linie): bool => ($linie->tip_linie ?: 'serviciu') !== 'header');
         $anexaSubtotal = $anexaLiniiServiciu->sum(fn ($linie): float => (float) $linie->valoare);
         $anexaTotalTva = $anexaLiniiServiciu->sum(fn ($linie): float => (float) ($linie->tva_21 ?? 0));
+        $locator = $spatiu?->locatorEntitate;
+        $chirieTva = $this->tvaChirieLei((float) $factura->chirie_lei, $locator);
         $liniiFactura = [
             [
                 'nr_crt' => 1,
@@ -161,7 +195,7 @@ class FacturaController extends Controller
                 'um' => 'LUNĂ',
                 'pret_unitar' => $factura->chirie_lei,
                 'valoare' => $factura->chirie_lei,
-                'tva' => null,
+                'tva' => $chirieTva > 0 ? $chirieTva : null,
             ],
         ];
 
@@ -187,67 +221,60 @@ class FacturaController extends Controller
             'tva' => null,
         ];
 
-        $sumarFactura = $this->sumarFactura($factura, $anexaLiniiServiciu);
-        $dateFactura = $this->dateFactura($factura);
-        $locatorParty = $this->mapLocatorParty($spatiu?->locatorEntitate);
-        $locatarParty = $this->mapLocatarParty($contract);
-
-        return Inertia::render('Facturare/Show', [
-            'factura' => [
-                'id' => $factura->id,
-                'numar_factura' => $factura->numar_factura,
-                'data_emitere' => $dateFactura['data_emitere'],
-                'data_scadenta' => $dateFactura['data_scadenta'],
-                'curs_eur' => $factura->curs_eur,
-                'chirie_eur' => $factura->chirie_eur,
-                'chirie_lei' => $factura->chirie_lei,
-                'penalitati' => $factura->penalitati,
-                'total' => $factura->total,
-                'status' => $factura->status,
-                'email_chirias' => $factura->email_chirias,
+        return [
+            'id' => $factura->id,
+            'numar_factura' => $factura->numar_factura,
+            'data_emitere' => $this->dateFactura($factura)['data_emitere'],
+            'data_scadenta' => $this->dateFactura($factura)['data_scadenta'],
+            'curs_eur' => $factura->curs_eur,
+            'chirie_eur' => $factura->chirie_eur,
+            'chirie_lei' => $factura->chirie_lei,
+            'penalitati' => $factura->penalitati,
+            'total' => $factura->total,
+            'status' => $factura->status,
+            'email_chirias' => $factura->email_chirias,
+            'luna' => $anexa?->luna,
+            'luna_utilitati' => $lunaUtilitati,
+            'luna_chirie' => $lunaChirie,
+            'contract' => [
+                'numar' => $contract?->numar_contract,
+                'chirias' => $contract?->chirias,
+            ],
+            'locator' => $this->mapLocatorParty($spatiu?->locatorEntitate),
+            'locatar' => $this->mapLocatarParty($contract),
+            'spatiu' => [
+                'identificator' => $spatiu?->identificator,
+            ],
+            'imobil' => [
+                'nume' => $imobil?->nume,
+                'adresa' => trim(implode(' ', array_filter([$imobil?->strada, $imobil?->numar]))),
+                'localitate' => $imobil?->localitate,
+            ],
+            'linii' => $liniiFactura,
+            'sumar' => $this->sumarFactura($factura, $anexaLiniiServiciu, $locator),
+            'anexa_detaliu' => [
+                'numar' => '01',
                 'luna' => $anexa?->luna,
                 'luna_utilitati' => $lunaUtilitati,
-                'luna_chirie' => $lunaChirie,
-                'contract' => [
-                    'numar' => $contract?->numar_contract,
-                    'chirias' => $contract?->chirias,
-                ],
-                'locator' => $locatorParty,
-                'locatar' => $locatarParty,
-                'spatiu' => [
-                    'identificator' => $spatiu?->identificator,
-                ],
-                'imobil' => [
-                    'nume' => $imobil?->nume,
-                    'adresa' => trim(implode(' ', array_filter([$imobil?->strada, $imobil?->numar]))),
-                    'localitate' => $imobil?->localitate,
-                ],
-                'linii' => $liniiFactura,
-                'sumar' => $sumarFactura,
-                'anexa_detaliu' => [
-                    'numar' => '01',
-                    'luna' => $anexa?->luna,
-                    'luna_utilitati' => $lunaUtilitati,
-                    'subtotal' => $anexaSubtotal,
-                    'total_tva' => $anexaTotalTva,
-                    'total' => $anexa?->total,
-                    'linii' => $anexaLinii->map(fn ($linie): array => [
-                        'tip_linie' => $linie->tip_linie ?: 'serviciu',
-                        'nr_crt' => $linie->nr_crt,
-                        'denumire' => $linie->denumire,
-                        'tip_calcul' => $linie->tip_calcul,
-                        'coeficient' => $linie->coeficient,
-                        'index_vechi' => $linie->index_vechi,
-                        'index_nou' => $linie->index_nou,
-                        'cantitate' => $linie->cantitate,
-                        'um' => $linie->um,
-                        'pret_unitar' => $linie->pret_unitar,
-                        'valoare' => $linie->valoare,
-                        'tva_21' => $linie->tva_21,
-                    ])->all(),
-                ],
+                'subtotal' => $anexaSubtotal,
+                'total_tva' => $anexaTotalTva,
+                'total' => $anexa?->total,
+                'linii' => $anexaLinii->map(fn ($linie): array => [
+                    'tip_linie' => $linie->tip_linie ?: 'serviciu',
+                    'nr_crt' => $linie->nr_crt,
+                    'denumire' => $linie->denumire,
+                    'tip_calcul' => $linie->tip_calcul,
+                    'coeficient' => $linie->coeficient,
+                    'index_vechi' => $linie->index_vechi,
+                    'index_nou' => $linie->index_nou,
+                    'cantitate' => $linie->cantitate,
+                    'um' => $linie->um,
+                    'pret_unitar' => $linie->pret_unitar,
+                    'valoare' => $linie->valoare,
+                    'tva_21' => $linie->tva_21,
+                ])->all(),
             ],
-        ]);
+        ];
     }
 
     public function destroy(Factura $factura): RedirectResponse
@@ -362,12 +389,15 @@ class FacturaController extends Controller
      * @param  \Illuminate\Support\Collection<int, \App\Models\AnexaLinie>  $anexaLiniiServiciu
      * @return array{total_fara_tva: float, tva_21: float, tva_11: float, total: float}
      */
-    private function sumarFactura(Factura $factura, $anexaLiniiServiciu): array
+    private function sumarFactura(Factura $factura, $anexaLiniiServiciu, ?Locator $locator = null): array
     {
         $grupuriTva = $this->grupeazaUtilitatiPeTva($anexaLiniiServiciu);
         $tvaByProcent = collect($grupuriTva)->keyBy('procent');
         $utilitatiFaraTva = round(collect($grupuriTva)->sum('valoare'), 2);
-        $tva21 = round((float) ($tvaByProcent->get(21)['tva'] ?? 0), 2);
+        $tva21 = round(
+            (float) ($tvaByProcent->get(21)['tva'] ?? 0) + $this->tvaChirieLei((float) $factura->chirie_lei, $locator),
+            2
+        );
         $tva11 = round((float) ($tvaByProcent->get(11)['tva'] ?? 0), 2);
         $totalFaraTva = round((float) $factura->chirie_lei + $utilitatiFaraTva + (float) $factura->penalitati, 2);
 
@@ -375,8 +405,17 @@ class FacturaController extends Controller
             'total_fara_tva' => $totalFaraTva,
             'tva_21' => $tva21,
             'tva_11' => $tva11,
-            'total' => round((float) $factura->total, 2),
+            'total' => round($totalFaraTva + $tva21 + $tva11, 2),
         ];
+    }
+
+    private function tvaChirieLei(float $chirieLei, ?Locator $locator): float
+    {
+        if (! ($locator?->chirie_cu_tva ?? false) || $chirieLei <= 0) {
+            return 0.0;
+        }
+
+        return round($chirieLei * self::TVA_CHIRIE_PROCENT / 100, 2);
     }
 
     /**

@@ -1,7 +1,8 @@
 import React from 'react';
-import { Link, usePage } from '@inertiajs/react';
+import { usePage } from '@inertiajs/react';
 import { Building2, DoorOpen, UsersRound } from 'lucide-react';
 import AppLayout from '../Layouts/AppLayout';
+import { navigateTo } from '../navigation';
 
 function StatCard({ tone, icon: Icon, label, value, href, children }) {
     const card = (
@@ -20,9 +21,16 @@ function StatCard({ tone, icon: Icon, label, value, href, children }) {
     }
 
     return (
-        <Link href={href} className="stat-card-link" prefetch="hover">
+        <a
+            href={href}
+            className="stat-card-link"
+            onClick={(event) => {
+                event.preventDefault();
+                navigateTo(href);
+            }}
+        >
             {card}
-        </Link>
+        </a>
     );
 }
 
@@ -32,7 +40,16 @@ function TableCard({ title, action = 'Vezi toate', actionHref = null, children }
             <div className="section-heading">
                 <h2>{title}</h2>
                 {actionHref ? (
-                    <Link href={actionHref} prefetch="hover">{action} <span>→</span></Link>
+                    <a
+                        href={actionHref}
+                        className="section-heading-action"
+                        onClick={(event) => {
+                            event.preventDefault();
+                            navigateTo(actionHref);
+                        }}
+                    >
+                        {action} <span>→</span>
+                    </a>
                 ) : (
                     <span>{action}</span>
                 )}

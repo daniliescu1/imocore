@@ -30,23 +30,26 @@ function lunaText(luna) {
     return `${month} ${luni[month] || ''} ${year}`;
 }
 
-export default function Show({ anexa }) {
-    const topbarActions = <Link className="secondary-button button-link" href="/anexe">Înapoi la anexe</Link>;
-    const luna = String(anexa.luna || '').slice(5, 7);
-    const an = String(anexa.luna || '').slice(0, 4);
-
+export default function Show({ anexa, downloadUrl }) {
+    const topbarActions = (
+        <>
+            <a className="secondary-button button-link" href={downloadUrl}>Descarcă PDF</a>
+            <Link className="secondary-button button-link" href="/anexe">Înapoi la anexe</Link>
+        </>
+    );
     return (
         <AppLayout title={`Anexa nr.${anexa.numar}`} subtitle="Previzualizare anexă generată" showGlobalSearch={false} topbarActions={topbarActions}>
             <section className="generated-annex">
-                <div className="generated-annex-header">
+                <div className="generated-annex-header generated-annex-header-centered-meta">
                     <div>
                         <h2>ANEXA nr.{anexa.numar}</h2>
                         <p>din luna {lunaText(anexa.luna)}</p>
                     </div>
                     <div className="generated-annex-meta">
                         <span>Perioada citire contoare</span>
-                        <strong>20.{luna}.{an} - 25.{luna}.{an}</strong>
+                        <strong>{anexa.perioada_citire || '—'}</strong>
                     </div>
+                    <div className="generated-annex-header-balance" aria-hidden="true" />
                 </div>
 
                 <div className="generated-annex-parties">
