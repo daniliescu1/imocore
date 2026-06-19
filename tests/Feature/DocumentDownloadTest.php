@@ -8,6 +8,7 @@ use App\Models\Contract;
 use App\Models\Factura;
 use App\Models\Imobil;
 use App\Models\Spatiu;
+use App\Support\DocumentFormatter;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -55,6 +56,82 @@ class DocumentDownloadTest extends TestCase
             ->assertInertia(fn ($page) => $page
                 ->component('Anexe/Show')
                 ->where('downloadUrl', route('anexe.download', $anexa)));
+    }
+
+    public function test_factura_pdf_has_invoice_on_first_page_and_annex_on_second(): void
+    {
+        $factura = $this->createFactura();
+
+        $response = $this->get(route('facturare.download', $factura));
+        $pdf = $response->getContent();
+
+        $response->assertOk();
+        $this->assertSame(2, $this->pdfPageCount($pdf));
+    }
+
+    public function test_factura_pdf_stays_two_pages_with_typical_invoice_lines(): void
+    {
+        $anexa = $this->createAnexa();
+
+        $anexa->linii()->create([
+            'denumire' => 'Apa pluviala',
+            'tip_linie' => 'serviciu',
+            'valoare' => 604.27,
+            'tva_21' => 66.46,
+            'ordine' => 2,
+        ]);
+
+        $anexa->linii()->create([
+            'denumire' => 'Salubritate',
+            'tip_linie' => 'serviciu',
+            'valoare' => 0,
+            'tva_21' => 0,
+            'ordine' => 3,
+        ]);
+
+        $factura = Factura::query()->create([
+            'anexa_id' => $anexa->id,
+            'numar_factura' => 'FACT-FULL',
+            'data_emitere' => '2026-06-18',
+            'data_scadenta' => '2026-06-23',
+            'curs_eur' => 5.0046,
+            'chirie_eur' => 2500,
+            'chirie_lei' => 12511.57,
+            'penalitati' => 0,
+            'total' => 20127.47,
+            'status' => 'draft',
+        ]);
+
+        $response = $this->get(route('facturare.download', $factura));
+        $pdf = $response->getContent();
+
+        $response->assertOk();
+        $this->assertSame(2, $this->pdfPageCount($pdf));
+    }
+
+    public function test_anexa_pdf_is_single_page_for_simple_annex(): void
+    {
+        $anexa = $this->createAnexa();
+
+        $response = $this->get(route('anexe.download', $anexa));
+        $pdf = $response->getContent();
+
+        $response->assertOk();
+        $this->assertSame(1, $this->pdfPageCount($pdf));
+    }
+
+    public function test_pdf_text_strips_romanian_diacritics(): void
+    {
+        $this->assertSame(
+            'Chirie spatiu iunie 2026',
+            DocumentFormatter::pdfText('Chirie spațiu iunie 2026'),
+        );
+        $this->assertSame(
+            'Utilitati 21% TVA mai 2026',
+            DocumentFormatter::pdfText('Utilități 21% TVA mai 2026'),
+        );
+        $this->assertSame('LUNA', DocumentFormatter::pdfText('LUNĂ'));
+        $this->assertSame('Pret unitar', DocumentFormatter::pdfText('Preț unitar'));
     }
 
     private function createFactura(): Factura
@@ -121,5 +198,12 @@ class DocumentDownloadTest extends TestCase
         ]);
 
         return $anexa;
+    }
+
+    private function pdfPageCount(string $pdfBinary): int
+    {
+        preg_match_all('/\/Type\s*\/Page[^s]/', $pdfBinary, $matches);
+
+        return count($matches[0]);
     }
 }

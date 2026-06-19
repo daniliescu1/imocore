@@ -51,6 +51,31 @@ class DocumentFormatter
         return (string) $value;
     }
 
+    public static function faraDiacritice(?string $text): string
+    {
+        if ($text === null || $text === '') {
+            return '';
+        }
+
+        $map = [
+            'ă' => 'a', 'â' => 'a', 'î' => 'i', 'ș' => 's', 'ş' => 's', 'ț' => 't', 'ţ' => 't',
+            'Ă' => 'A', 'Â' => 'A', 'Î' => 'I', 'Ș' => 'S', 'Ş' => 'S', 'Ț' => 'T', 'Ţ' => 'T',
+        ];
+
+        return strtr($text, $map);
+    }
+
+    public static function pdfText(mixed $value): string
+    {
+        $display = self::display($value);
+
+        if ($display === '—') {
+            return $display;
+        }
+
+        return self::faraDiacritice($display);
+    }
+
     public static function lunaText(?string $luna): string
     {
         $luni = [

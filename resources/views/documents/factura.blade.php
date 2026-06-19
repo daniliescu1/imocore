@@ -11,24 +11,26 @@
         'tva_11' => 0,
         'total' => $factura['total'] ?? null,
     ];
+    $hasAttachedAnnex = ! empty($factura['anexa_detaliu']);
 @endphp
 
 @section('content')
-    <section class="generated-annex">
+    <section class="generated-annex pdf-invoice-document{{ $hasAttachedAnnex ? ' pdf-invoice-with-annex' : '' }}">
+        <div class="pdf-invoice-page">
         <div class="generated-annex-header invoice-document-header">
             <div>
                 <h2>FACTURA</h2>
-                <p class="invoice-number">{{ DocumentFormatter::display($factura['numar_factura'] ?? null) }}</p>
-                <p class="invoice-period-note">pentru anexa din luna {{ $factura['luna'] ?? '—' }}</p>
+                <p class="invoice-number">{{ DocumentFormatter::pdfText($factura['numar_factura'] ?? null) }}</p>
+                <p class="invoice-period-note">pentru anexa din luna {{ DocumentFormatter::pdfText($factura['luna'] ?? null) }}</p>
             </div>
             <div class="generated-annex-meta invoice-dates-meta">
                 <div class="invoice-date-row">
                     <span>Data emitere:</span>
-                    <strong>{{ DocumentFormatter::display($factura['data_emitere'] ?? null) }}</strong>
+                    <strong>{{ DocumentFormatter::pdfText($factura['data_emitere'] ?? null) }}</strong>
                 </div>
                 <div class="invoice-date-row">
                     <span>Data scadenta:</span>
-                    <strong>{{ DocumentFormatter::display($factura['data_scadenta'] ?? null) }}</strong>
+                    <strong>{{ DocumentFormatter::pdfText($factura['data_scadenta'] ?? null) }}</strong>
                 </div>
             </div>
             <div class="invoice-document-header-balance"></div>
@@ -37,24 +39,24 @@
         <div class="invoice-parties-grid">
             <div class="invoice-party-card">
                 <span class="invoice-party-heading">Locator</span>
-                <strong class="invoice-party-name">{{ DocumentFormatter::display($factura['locator']['nume'] ?? null) }}</strong>
-                <p class="invoice-party-detail"><span>CUI</span> {{ DocumentFormatter::display($factura['locator']['cui'] ?? null) }}</p>
-                <p class="invoice-party-detail"><span>Reg. Com.</span> {{ DocumentFormatter::display($factura['locator']['reg_com'] ?? null) }}</p>
-                <p class="invoice-party-detail"><span>Adresă</span> {{ DocumentFormatter::display($factura['locator']['adresa'] ?? null) }}</p>
-                <p class="invoice-party-detail"><span>Bancă</span> {{ DocumentFormatter::display($factura['locator']['banca'] ?? null) }}</p>
-                <p class="invoice-party-detail"><span>Cont</span> {{ DocumentFormatter::display($factura['locator']['cont_bancar'] ?? null) }}</p>
-                <p class="invoice-party-detail"><span>Email</span> {{ DocumentFormatter::display($factura['locator']['email'] ?? null) }}</p>
+                <strong class="invoice-party-name">{{ DocumentFormatter::pdfText($factura['locator']['nume'] ?? null) }}</strong>
+                <p class="invoice-party-detail"><span>CUI</span> {{ DocumentFormatter::pdfText($factura['locator']['cui'] ?? null) }}</p>
+                <p class="invoice-party-detail"><span>Reg. Com.</span> {{ DocumentFormatter::pdfText($factura['locator']['reg_com'] ?? null) }}</p>
+                <p class="invoice-party-detail"><span>Adresa</span> {{ DocumentFormatter::pdfText($factura['locator']['adresa'] ?? null) }}</p>
+                <p class="invoice-party-detail"><span>Banca</span> {{ DocumentFormatter::pdfText($factura['locator']['banca'] ?? null) }}</p>
+                <p class="invoice-party-detail"><span>Cont</span> {{ DocumentFormatter::pdfText($factura['locator']['cont_bancar'] ?? null) }}</p>
+                <p class="invoice-party-detail"><span>Email</span> {{ DocumentFormatter::pdfText($factura['locator']['email'] ?? null) }}</p>
             </div>
             <div class="invoice-party-card">
                 <span class="invoice-party-heading">Locatar</span>
-                <strong class="invoice-party-name">{{ DocumentFormatter::display($factura['locatar']['nume'] ?? null) }}</strong>
-                <p class="invoice-party-detail"><span>{{ $factura['locatar']['identificator_label'] ?? 'CUI' }}</span> {{ DocumentFormatter::display($factura['locatar']['identificator'] ?? null) }}</p>
+                <strong class="invoice-party-name">{{ DocumentFormatter::pdfText($factura['locatar']['nume'] ?? null) }}</strong>
+                <p class="invoice-party-detail"><span>{{ DocumentFormatter::pdfText($factura['locatar']['identificator_label'] ?? 'CUI') }}</span> {{ DocumentFormatter::pdfText($factura['locatar']['identificator'] ?? null) }}</p>
                 @if (($factura['locatar']['tip'] ?? null) === 'pf')
-                    <p class="invoice-party-detail"><span>CI</span> {{ DocumentFormatter::display($factura['locatar']['ci'] ?? null) }}</p>
+                    <p class="invoice-party-detail"><span>CI</span> {{ DocumentFormatter::pdfText($factura['locatar']['ci'] ?? null) }}</p>
                 @endif
-                <p class="invoice-party-detail"><span>Adresă</span> {{ DocumentFormatter::display($factura['locatar']['adresa'] ?? null) }}</p>
-                <p class="invoice-party-detail"><span>Telefon</span> {{ DocumentFormatter::display($factura['locatar']['telefon'] ?? null) }}</p>
-                <p class="invoice-party-detail"><span>Email</span> {{ DocumentFormatter::display($factura['locatar']['email'] ?? null) }}</p>
+                <p class="invoice-party-detail"><span>Adresa</span> {{ DocumentFormatter::pdfText($factura['locatar']['adresa'] ?? null) }}</p>
+                <p class="invoice-party-detail"><span>Telefon</span> {{ DocumentFormatter::pdfText($factura['locatar']['telefon'] ?? null) }}</p>
+                <p class="invoice-party-detail"><span>Email</span> {{ DocumentFormatter::pdfText($factura['locatar']['email'] ?? null) }}</p>
             </div>
         </div>
 
@@ -65,7 +67,7 @@
                     <th>Denumire serviciu</th>
                     <th>Cantitate</th>
                     <th>UM</th>
-                    <th>Preț unitar</th>
+                    <th>Pret unitar</th>
                     <th>Valoare</th>
                     <th>TVA</th>
                 </tr>
@@ -74,9 +76,9 @@
                 @foreach ($factura['linii'] as $index => $linie)
                     <tr>
                         <td>{{ $linie['nr_crt'] ?? ($index + 1) }}</td>
-                        <td>{{ $linie['denumire'] ?? '—' }}</td>
+                        <td>{{ DocumentFormatter::pdfText($linie['denumire'] ?? null) }}</td>
                         <td>{{ DocumentFormatter::decimal($linie['cantitate'] ?? null) }}</td>
-                        <td>{{ $linie['um'] ?? '—' }}</td>
+                        <td>{{ DocumentFormatter::pdfText($linie['um'] ?? null) }}</td>
                         <td>{{ DocumentFormatter::moneyValue($linie['pret_unitar'] ?? null) }}</td>
                         <td>{{ DocumentFormatter::money($linie['valoare'] ?? null) }}</td>
                         <td>{{ DocumentFormatter::money($linie['tva'] ?? null) }}</td>
@@ -87,7 +89,7 @@
 
         <div class="invoice-totals-summary">
             <div class="invoice-totals-row">
-                <span>Total fără TVA:</span>
+                <span>Total fara TVA:</span>
                 <strong>{{ DocumentFormatter::amount($sumar['total_fara_tva'] ?? null) }}</strong>
             </div>
             <div class="invoice-totals-row">
@@ -107,8 +109,8 @@
         <section class="invoice-payment-footer">
             <div class="invoice-payment-instructions">
                 <strong>Instructiuni de plata</strong>
-                <p>Banca: {{ DocumentFormatter::display($factura['locator']['banca'] ?? null) }}</p>
-                <p>Cont: {{ DocumentFormatter::display($factura['locator']['cont_bancar'] ?? null) }}</p>
+                <p>Banca: {{ DocumentFormatter::pdfText($factura['locator']['banca'] ?? null) }}</p>
+                <p>Cont: {{ DocumentFormatter::pdfText($factura['locator']['cont_bancar'] ?? null) }}</p>
             </div>
 
             <div class="invoice-legal-notes">
@@ -128,16 +130,17 @@
             </div>
 
             <p class="invoice-payment-summary">
-                {{ DocumentFormatter::display($factura['numar_factura'] ?? null) }} {{ DocumentFormatter::amount($sumar['total'] ?? null) }} Lei scadenta la {{ DocumentFormatter::display($factura['data_scadenta'] ?? null) }}
+                {{ DocumentFormatter::pdfText($factura['numar_factura'] ?? null) }} {{ DocumentFormatter::amount($sumar['total'] ?? null) }} Lei scadenta la {{ DocumentFormatter::pdfText($factura['data_scadenta'] ?? null) }}
             </p>
         </section>
+        </div>
 
-        @if (! empty($factura['anexa_detaliu']))
-            <section class="invoice-attached-annex">
+        @if ($hasAttachedAnnex)
+            <section class="invoice-attached-annex pdf-annex-page">
                 <div class="generated-annex-header compact-annex-header">
                     <div>
                         <h2>ANEXA nr.{{ $factura['anexa_detaliu']['numar'] ?? '01' }}</h2>
-                        <p>utilități {{ $factura['anexa_detaliu']['luna_utilitati'] ?? '—' }}</p>
+                        <p>utilitati {{ DocumentFormatter::pdfText($factura['anexa_detaliu']['luna_utilitati'] ?? null) }}</p>
                     </div>
                 </div>
 
@@ -150,7 +153,7 @@
                             <th>Index nou</th>
                             <th>Facturat</th>
                             <th>UM</th>
-                            <th>Preț unitar</th>
+                            <th>Pret unitar</th>
                             <th>Valoare</th>
                             <th>TVA</th>
                         </tr>

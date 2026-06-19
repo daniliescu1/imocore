@@ -22,7 +22,7 @@
             <th>Index nou</th>
             <th>Facturat</th>
             <th>UM</th>
-            <th>Preț unitar</th>
+            <th>Pret unitar</th>
             <th>Valoare</th>
             <th>TVA</th>
         </tr>
@@ -37,11 +37,11 @@
     @endphp
     <tr>
         <td>{{ $linie['nr_crt'] ?? ($index + 1) }}</td>
-        <td>{{ $linie['denumire'] ?? '—' }}</td>
+        <td>{{ DocumentFormatter::pdfText($linie['denumire'] ?? null) }}</td>
         <td>{{ DocumentFormatter::decimal($linie['index_vechi'] ?? null) }}</td>
         <td>{{ DocumentFormatter::decimal($linie['index_nou'] ?? null) }}</td>
         <td>{{ DocumentFormatter::decimal($linie['cantitate'] ?? null) }}</td>
-        <td>{{ $linie['um'] ?? '—' }}</td>
+        <td>{{ DocumentFormatter::pdfText($linie['um'] ?? null) }}</td>
         <td>{{ DocumentFormatter::decimal($linie['pret_unitar'] ?? null) }}</td>
         <td>{{ $moneyFormat ? DocumentFormatter::moneyValue($linie['valoare'] ?? null) : DocumentFormatter::decimal($linie['valoare'] ?? null) }}</td>
         <td>{{ $moneyFormat ? DocumentFormatter::moneyValue($linie['tva_21'] ?? null) : DocumentFormatter::decimal($linie['tva_21'] ?? null) }}</td>

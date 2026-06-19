@@ -4,7 +4,10 @@
     <meta charset="utf-8">
     <title>@yield('title')</title>
     <style>
-        @page { margin: 14mm 12mm; }
+        @page {
+            margin: 10mm 10mm;
+            size: A4 portrait;
+        }
 
         * { box-sizing: border-box; }
 
@@ -409,9 +412,156 @@
         }
 
         .invoice-attached-annex {
-            margin-top: 34px;
-            padding-top: 24px;
-            border-top: 1px dashed #e9e2d8;
+            margin-top: 0;
+            padding-top: 0;
+            border-top: 0;
+        }
+
+        .pdf-invoice-document {
+            padding: 12px 14px;
+            border: 0;
+            border-radius: 0;
+        }
+
+        .pdf-invoice-with-annex .pdf-annex-page {
+            page-break-before: always;
+        }
+
+        .pdf-invoice-page .generated-annex-header {
+            padding-bottom: 8px;
+            margin-bottom: 8px;
+        }
+
+        .pdf-invoice-page .generated-annex-header h2 {
+            font-size: 20px;
+        }
+
+        .pdf-invoice-page .invoice-number {
+            margin-top: 2px;
+            font-size: 18px;
+        }
+
+        .pdf-invoice-page .invoice-period-note {
+            margin-top: 2px;
+            font-size: 10px;
+        }
+
+        .pdf-invoice-page .generated-annex-meta {
+            padding: 8px 10px;
+        }
+
+        .pdf-invoice-page .invoice-dates-meta {
+            min-width: 210px;
+        }
+
+        .pdf-invoice-page .invoice-date-row {
+            margin-bottom: 2px;
+            font-size: 10px;
+        }
+
+        .pdf-invoice-page .invoice-date-row span {
+            font-size: 9px;
+        }
+
+        .pdf-invoice-page .invoice-date-row strong {
+            font-size: 10px;
+        }
+
+        .pdf-invoice-page .invoice-parties-grid {
+            margin-bottom: 8px;
+        }
+
+        .pdf-invoice-page .invoice-party-card {
+            padding: 8px 10px;
+        }
+
+        .pdf-invoice-page .invoice-party-heading {
+            font-size: 10px;
+        }
+
+        .pdf-invoice-page .invoice-party-name {
+            margin: 0 0 2px;
+            font-size: 13px;
+        }
+
+        .pdf-invoice-page .invoice-party-detail {
+            margin-bottom: 1px;
+            font-size: 9px;
+            line-height: 1.25;
+        }
+
+        .pdf-invoice-page .invoice-party-detail span {
+            min-width: 52px;
+            margin-right: 4px;
+            font-size: 9px;
+        }
+
+        .pdf-invoice-page .generated-annex-table th,
+        .pdf-invoice-page .generated-annex-table td {
+            padding: 4px 4px;
+            font-size: 8.5px;
+        }
+
+        .pdf-invoice-page .generated-annex-table th {
+            font-size: 8.5px;
+        }
+
+        .pdf-invoice-page .invoice-totals-summary {
+            margin-top: 6px;
+            width: 260px;
+        }
+
+        .pdf-invoice-page .invoice-totals-row {
+            margin-bottom: 2px;
+            font-size: 10px;
+        }
+
+        .pdf-invoice-page .invoice-totals-row strong {
+            font-size: 10px;
+        }
+
+        .pdf-invoice-page .invoice-totals-grand-total {
+            padding: 6px 10px;
+            font-size: 11px;
+        }
+
+        .pdf-invoice-page .invoice-totals-grand-total strong {
+            font-size: 11px;
+        }
+
+        .pdf-invoice-page .invoice-payment-footer {
+            margin-top: 6px;
+            padding-top: 6px;
+        }
+
+        .pdf-invoice-page .invoice-payment-instructions {
+            margin-bottom: 4px;
+        }
+
+        .pdf-invoice-page .invoice-payment-instructions strong {
+            margin-bottom: 2px;
+            font-size: 10px;
+        }
+
+        .pdf-invoice-page .invoice-payment-instructions p {
+            font-size: 9px;
+            line-height: 1.25;
+        }
+
+        .pdf-invoice-page .invoice-legal-notes p {
+            margin-bottom: 2px;
+            font-size: 7.5px;
+            line-height: 1.25;
+        }
+
+        .pdf-invoice-page .invoice-payment-summary {
+            margin-top: 4px;
+            padding-top: 4px;
+            font-size: 8px;
+        }
+
+        .pdf-annex-page {
+            padding-top: 12px;
         }
 
         .compact-annex-header {
