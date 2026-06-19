@@ -42,12 +42,12 @@ function triggerLabel(trigger) {
         return 'Manual';
     }
 
-    return '—';
+    return 'Automat zilnic';
 }
 
 function DownloadLink({ href, icon: Icon, label, size }) {
     if (!href) {
-        return <span>—</span>;
+        return null;
     }
 
     return (
@@ -61,36 +61,47 @@ function DownloadLink({ href, icon: Icon, label, size }) {
     );
 }
 
+function BackupDownloads({ backup }) {
+    return (
+        <>
+            <td>
+                {backup.database_url ? (
+                    <DownloadLink
+                        href={backup.database_url}
+                        icon={HardDriveDownload}
+                        label={backup.database_format === 'sqlite' ? 'Descarcă DB SQLite' : 'Descarcă DB'}
+                        size={backup.database_size}
+                    />
+                ) : (
+                    <span>—</span>
+                )}
+            </td>
+            <td>
+                <div className="backup-spatii-downloads">
+                    <DownloadLink href={backup.imobile_csv_url} icon={Download} label="Imobile" size={backup.imobile_csv_size} />
+                    <DownloadLink href={backup.spatii_toate_csv_url} icon={Download} label="Spații toate" size={backup.spatii_toate_csv_size} />
+                    <DownloadLink href={backup.chiriasi_csv_url} icon={Download} label="Chiriași" size={backup.chiriasi_csv_size} />
+                    <DownloadLink href={backup.contracte_csv_url} icon={Download} label="Contracte" size={backup.contracte_csv_size} />
+                    <DownloadLink href={backup.locatori_csv_url} icon={Download} label="Locatari" size={backup.locatori_csv_size} />
+                </div>
+            </td>
+        </>
+    );
+}
+
 export default function BackupIndex({
     backups = [],
+    manualBackup = null,
     retentionDays = 7,
     latestBackupAt = null,
     nextScheduledAt = null,
     allSpatiiDownloadUrl = null,
-    marcateSpatiiDownloadUrl = null,
-    faraAnexaSpatiiDownloadUrl = null,
-    faraContractActivSpatiiDownloadUrl = null,
 }) {
     const topbarActions = (
         <>
             {allSpatiiDownloadUrl ? (
                 <a className="secondary-button button-link" href={allSpatiiDownloadUrl}>
                     Descarcă toate spațiile
-                </a>
-            ) : null}
-            {marcateSpatiiDownloadUrl ? (
-                <a className="secondary-button button-link" href={marcateSpatiiDownloadUrl}>
-                    Descarcă spații marcate
-                </a>
-            ) : null}
-            {faraAnexaSpatiiDownloadUrl ? (
-                <a className="secondary-button button-link" href={faraAnexaSpatiiDownloadUrl}>
-                    Descarcă spații fără anexă
-                </a>
-            ) : null}
-            {faraContractActivSpatiiDownloadUrl ? (
-                <a className="secondary-button button-link" href={faraContractActivSpatiiDownloadUrl}>
-                    Descarcă spații fără contract activ
                 </a>
             ) : null}
             <button
@@ -106,7 +117,7 @@ export default function BackupIndex({
     return (
         <AppLayout
             title="Backup"
-            subtitle="Backup zilnic al bazei de date și export CSV imobile, spații, chiriași"
+            subtitle="Backup automat zilnic al bazei de date și export CSV"
             showGlobalSearch={false}
             topbarActions={topbarActions}
         >
@@ -129,14 +140,44 @@ export default function BackupIndex({
                     </div>
                 </div>
                 <p className="backup-help-text">
-                    Backup-ul manual de sus se actualizează când apeși <strong>Backup acum</strong>.
-                    Mai jos apar backup-urile automate zilnice din ultimele {retentionDays} zile — câte un rând pe zi.
+                    În fiecare noapte la 03:00 se creează automat un backup zilnic. Mai jos apar ultimele {retentionDays} zile —
+                    câte un rând pe zi. Butonul <strong>Backup acum</strong> creează un snapshot manual imediat, afișat separat mai jos.
                 </p>
             </section>
 
+            {manualBackup ? (
+                <section className="table-card">
+                    <div className="section-heading">
+                        <h2>Backup manual curent</h2>
+                    </div>
+                    <div className="responsive-table">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Data și ora</th>
+                                    <th>Tip</th>
+                                    <th>Bază de date</th>
+                                    <th>Exporturi CSV</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td>{formatDateTime(manualBackup.created_at)}</td>
+                                    <td>{triggerLabel(manualBackup.trigger)}</td>
+                                    <BackupDownloads backup={manualBackup} />
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <p className="backup-help-text">
+                        Acesta este ultimul snapshot creat cu <strong>Backup acum</strong>. Următorul click înlocuiește fișierele de mai sus.
+                    </p>
+                </section>
+            ) : null}
+
             <section className="table-card">
                 <div className="section-heading">
-                    <h2>Istoric backup-uri ({backups.length})</h2>
+                    <h2>Backup-uri automate ({backups.length})</h2>
                 </div>
                 <div className="responsive-table">
                     <table>
@@ -145,57 +186,21 @@ export default function BackupIndex({
                                 <th>Data și ora</th>
                                 <th>Tip</th>
                                 <th>Bază de date</th>
-                                <th>CSV spații</th>
+                                <th>Exporturi CSV</th>
                             </tr>
                         </thead>
                         <tbody>
                             {backups.map((backup) => (
-                                <tr key={`${backup.date}-${backup.trigger}-${backup.created_at}`}>
+                                <tr key={`${backup.date}-${backup.created_at}`}>
                                     <td>{formatDateTime(backup.created_at || `${backup.date}T03:00:00`)}</td>
                                     <td>{triggerLabel(backup.trigger)}</td>
-                                    <td>
-                                        <DownloadLink
-                                            href={backup.database_url}
-                                            icon={HardDriveDownload}
-                                            label={backup.database_format === 'sqlite' ? 'Descarcă DB SQLite' : 'Descarcă DB'}
-                                            size={backup.database_size}
-                                        />
-                                    </td>
-                                    <td>
-                                        <div className="backup-spatii-downloads">
-                                            <DownloadLink
-                                                href={backup.spatii_toate_csv_url}
-                                                icon={Download}
-                                                label="Descarcă toate spațiile"
-                                                size={backup.spatii_toate_csv_size}
-                                            />
-                                            <DownloadLink
-                                                href={backup.spatii_marcate_csv_url}
-                                                icon={Download}
-                                                label="Descarcă spații marcate"
-                                                size={backup.spatii_marcate_csv_size}
-                                            />
-                                            <DownloadLink
-                                                href={backup.spatii_fara_anexa_csv_url}
-                                                icon={Download}
-                                                label="Descarcă spații fără anexă"
-                                                size={backup.spatii_fara_anexa_csv_size}
-                                            />
-                                            <DownloadLink
-                                                href={backup.spatii_fara_contract_activ_csv_url}
-                                                icon={Download}
-                                                label="Descarcă spații fără contract activ"
-                                                size={backup.spatii_fara_contract_activ_csv_size}
-                                            />
-                                        </div>
-                                    </td>
+                                    <BackupDownloads backup={backup} />
                                 </tr>
                             ))}
                             {backups.length === 0 ? (
                                 <tr>
                                     <td colSpan="4">
-                                        Nu există backup-uri încă. Apasă <strong>Backup acum</strong> ca să creezi primul fișier,
-                                        apoi îl vei putea descărca direct din tabel.
+                                        Nu există încă backup-uri automate. Primul backup zilnic apare după rularea programată de noaptea aceasta.
                                     </td>
                                 </tr>
                             ) : null}

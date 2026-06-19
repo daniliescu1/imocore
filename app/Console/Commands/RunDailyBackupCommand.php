@@ -20,6 +20,8 @@ class RunDailyBackupCommand extends Command
         $this->line('Spatii CSV files: '.count($result['spatii_files']));
         $this->line('Imobile CSV: '.$result['imobile_csv']);
         $this->line('Chiriasi CSV: '.$result['chiriasi_csv']);
+        $this->line('Contracte CSV: '.$result['contracte_csv']);
+        $this->line('Locatori CSV: '.$result['locatori_csv']);
 
         return self::SUCCESS;
     }

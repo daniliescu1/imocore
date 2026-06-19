@@ -2,7 +2,9 @@
 
 namespace App\Services;
 
+use App\Models\Contract;
 use App\Models\Imobil;
+use App\Models\Locator;
 use App\Models\Spatiu;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Artisan;
@@ -18,6 +20,10 @@ class BackupService
     public const MANUAL_BACKUP_ID = 'manual';
 
     public const ALL_SPATII_CSV_FILENAME = 'spatii-toate.csv';
+
+    public const CONTRACTE_CSV_FILENAME = 'contracte.csv';
+
+    public const LOCATORI_CSV_FILENAME = 'locatori.csv';
 
     public const MARCATE_SPATII_CSV_FILENAME = 'spatii-marcate.csv';
 
@@ -76,9 +82,8 @@ class BackupService
             'chiriasi_csv' => basename($csvExport['chiriasi']),
             'imobile_csv' => basename($csvExport['imobile']),
             'spatii_toate_csv' => basename($csvExport['spatii_toate']),
-            'spatii_marcate_csv' => basename($csvExport['spatii_marcate']),
-            'spatii_fara_anexa_csv' => basename($csvExport['spatii_fara_anexa']),
-            'spatii_fara_contract_activ_csv' => basename($csvExport['spatii_fara_contract_activ']),
+            'contracte_csv' => basename($csvExport['contracte']),
+            'locatori_csv' => basename($csvExport['locatori']),
         ], JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
 
         $this->pruneOldBackups();
@@ -91,9 +96,8 @@ class BackupService
             'chiriasi_csv' => $csvExport['chiriasi'],
             'imobile_csv' => $csvExport['imobile'],
             'spatii_toate' => $csvExport['spatii_toate'],
-            'spatii_marcate' => $csvExport['spatii_marcate'],
-            'spatii_fara_anexa' => $csvExport['spatii_fara_anexa'],
-            'spatii_fara_contract_activ' => $csvExport['spatii_fara_contract_activ'],
+            'contracte_csv' => $csvExport['contracte'],
+            'locatori_csv' => $csvExport['locatori'],
             'created_at' => $createdAt->toIso8601String(),
             'trigger' => $trigger,
         ];
@@ -128,23 +132,17 @@ class BackupService
             return [];
         }
 
-        $backups = [];
+        $cutoff = now()->subDays(self::RETENTION_DAYS - 1)->startOfDay();
 
-        $manualDirectory = $this->backupRoot().DIRECTORY_SEPARATOR.self::MANUAL_BACKUP_ID;
-
-        if (File::isDirectory($manualDirectory) && $this->findDatabaseFile($manualDirectory)) {
-            $manualBackup = $this->buildBackupEntry($manualDirectory, self::MANUAL_BACKUP_ID);
-
-            if ($manualBackup !== null) {
-                $backups[] = $manualBackup;
-            }
-        }
-
-        $dailyBackups = collect(File::directories($this->backupRoot()))
-            ->map(function (string $directory): ?array {
+        return collect(File::directories($this->backupRoot()))
+            ->map(function (string $directory) use ($cutoff): ?array {
                 $date = basename($directory);
 
                 if (! preg_match('/^\d{4}-\d{2}-\d{2}$/', $date)) {
+                    return null;
+                }
+
+                if (Carbon::parse($date)->lt($cutoff)) {
                     return null;
                 }
 
@@ -154,8 +152,53 @@ class BackupService
             ->sortByDesc(fn (array $backup): string => $backup['created_at'] ?? ($backup['date'].'T00:00:00'))
             ->values()
             ->all();
+    }
 
-        return [...$backups, ...$dailyBackups];
+    public function latestBackupCreatedAt(): ?string
+    {
+        $timestamps = collect($this->listBackups())
+            ->pluck('created_at')
+            ->filter()
+            ->all();
+
+        $manualDirectory = $this->backupRoot().DIRECTORY_SEPARATOR.self::MANUAL_BACKUP_ID;
+
+        if (File::isDirectory($manualDirectory)) {
+            $manualCreatedAt = $this->readManifest($manualDirectory)['created_at'] ?? null;
+
+            if (is_string($manualCreatedAt) && $manualCreatedAt !== '') {
+                $timestamps[] = $manualCreatedAt;
+            }
+        }
+
+        if ($timestamps === []) {
+            return null;
+        }
+
+        return collect($timestamps)->sort()->last();
+    }
+
+    /**
+     * @return array{date: string, created_at: string|null, trigger: string|null, database_url: string|null, database_format: string, imobile_csv_url: string|null, spatii_files: list<array{imobil_id: int|null, imobil: string, filename: string, url: string, size: int}>, spatii_toate_csv_url: string|null, contracte_csv_url: string|null, locatori_csv_url: string|null, chiriasi_csv_url: string|null, database_size: int|null, imobile_csv_size: int|null, spatii_toate_csv_size: int|null, contracte_csv_size: int|null, locatori_csv_size: int|null, chiriasi_csv_size: int|null}|null
+     */
+    public function manualBackup(): ?array
+    {
+        $manualDirectory = $this->backupRoot().DIRECTORY_SEPARATOR.self::MANUAL_BACKUP_ID;
+
+        if (! File::isDirectory($manualDirectory) || $this->findDatabaseFile($manualDirectory) === null) {
+            return null;
+        }
+
+        $entry = $this->buildBackupEntry($manualDirectory, self::MANUAL_BACKUP_ID);
+
+        if ($entry === null) {
+            return null;
+        }
+
+        return [
+            ...$entry,
+            'trigger' => 'manual',
+        ];
     }
 
     /**
@@ -168,9 +211,8 @@ class BackupService
         $chiriasiCsvFile = $directory.DIRECTORY_SEPARATOR.'chiriasi.csv';
         $imobileCsvFile = $directory.DIRECTORY_SEPARATOR.'imobile.csv';
         $spatiiToateCsvFile = $directory.DIRECTORY_SEPARATOR.self::ALL_SPATII_CSV_FILENAME;
-        $spatiiMarcateCsvFile = $directory.DIRECTORY_SEPARATOR.self::MARCATE_SPATII_CSV_FILENAME;
-        $spatiiFaraAnexaCsvFile = $directory.DIRECTORY_SEPARATOR.self::FARA_ANEXA_SPATII_CSV_FILENAME;
-        $spatiiFaraContractActivCsvFile = $directory.DIRECTORY_SEPARATOR.self::FARA_CONTRACT_ACTIV_SPATII_CSV_FILENAME;
+        $contracteCsvFile = $directory.DIRECTORY_SEPARATOR.self::CONTRACTE_CSV_FILENAME;
+        $locatoriCsvFile = $directory.DIRECTORY_SEPARATOR.self::LOCATORI_CSV_FILENAME;
 
         if ($databaseFile === null) {
             return null;
@@ -187,22 +229,18 @@ class BackupService
             'spatii_toate_csv_url' => File::exists($spatiiToateCsvFile)
                 ? route('backup.download', ['date' => $dateKey, 'type' => 'spatii-toate'])
                 : null,
-            'spatii_marcate_csv_url' => File::exists($spatiiMarcateCsvFile)
-                ? route('backup.download', ['date' => $dateKey, 'type' => 'spatii-marcate'])
+            'contracte_csv_url' => File::exists($contracteCsvFile)
+                ? route('backup.download', ['date' => $dateKey, 'type' => 'contracte'])
                 : null,
-            'spatii_fara_anexa_csv_url' => File::exists($spatiiFaraAnexaCsvFile)
-                ? route('backup.download', ['date' => $dateKey, 'type' => 'spatii-fara-anexa'])
-                : null,
-            'spatii_fara_contract_activ_csv_url' => File::exists($spatiiFaraContractActivCsvFile)
-                ? route('backup.download', ['date' => $dateKey, 'type' => 'spatii-fara-contract-activ'])
+            'locatori_csv_url' => File::exists($locatoriCsvFile)
+                ? route('backup.download', ['date' => $dateKey, 'type' => 'locatori'])
                 : null,
             'chiriasi_csv_url' => File::exists($chiriasiCsvFile) ? route('backup.download', ['date' => $dateKey, 'type' => 'chiriasi']) : null,
             'database_size' => File::size($databaseFile),
             'imobile_csv_size' => File::exists($imobileCsvFile) ? File::size($imobileCsvFile) : null,
             'spatii_toate_csv_size' => File::exists($spatiiToateCsvFile) ? File::size($spatiiToateCsvFile) : null,
-            'spatii_marcate_csv_size' => File::exists($spatiiMarcateCsvFile) ? File::size($spatiiMarcateCsvFile) : null,
-            'spatii_fara_anexa_csv_size' => File::exists($spatiiFaraAnexaCsvFile) ? File::size($spatiiFaraAnexaCsvFile) : null,
-            'spatii_fara_contract_activ_csv_size' => File::exists($spatiiFaraContractActivCsvFile) ? File::size($spatiiFaraContractActivCsvFile) : null,
+            'contracte_csv_size' => File::exists($contracteCsvFile) ? File::size($contracteCsvFile) : null,
+            'locatori_csv_size' => File::exists($locatoriCsvFile) ? File::size($locatoriCsvFile) : null,
             'chiriasi_csv_size' => File::exists($chiriasiCsvFile) ? File::size($chiriasiCsvFile) : null,
         ];
     }
@@ -230,14 +268,11 @@ class BackupService
             'spatii-toate' => File::exists($directory.DIRECTORY_SEPARATOR.self::ALL_SPATII_CSV_FILENAME)
                 ? $directory.DIRECTORY_SEPARATOR.self::ALL_SPATII_CSV_FILENAME
                 : abort(404),
-            'spatii-marcate' => File::exists($directory.DIRECTORY_SEPARATOR.self::MARCATE_SPATII_CSV_FILENAME)
-                ? $directory.DIRECTORY_SEPARATOR.self::MARCATE_SPATII_CSV_FILENAME
+            'contracte' => File::exists($directory.DIRECTORY_SEPARATOR.self::CONTRACTE_CSV_FILENAME)
+                ? $directory.DIRECTORY_SEPARATOR.self::CONTRACTE_CSV_FILENAME
                 : abort(404),
-            'spatii-fara-anexa' => File::exists($directory.DIRECTORY_SEPARATOR.self::FARA_ANEXA_SPATII_CSV_FILENAME)
-                ? $directory.DIRECTORY_SEPARATOR.self::FARA_ANEXA_SPATII_CSV_FILENAME
-                : abort(404),
-            'spatii-fara-contract-activ' => File::exists($directory.DIRECTORY_SEPARATOR.self::FARA_CONTRACT_ACTIV_SPATII_CSV_FILENAME)
-                ? $directory.DIRECTORY_SEPARATOR.self::FARA_CONTRACT_ACTIV_SPATII_CSV_FILENAME
+            'locatori' => File::exists($directory.DIRECTORY_SEPARATOR.self::LOCATORI_CSV_FILENAME)
+                ? $directory.DIRECTORY_SEPARATOR.self::LOCATORI_CSV_FILENAME
                 : abort(404),
             default => abort(404),
         };
@@ -278,9 +313,8 @@ class BackupService
             'imobile' => "imocore-imobile-{$dateLabel}.csv",
             'chiriasi' => "imocore-chiriasi-{$dateLabel}.csv",
             'spatii-toate' => "imocore-spatii-toate-{$dateLabel}.csv",
-            'spatii-marcate' => "imocore-spatii-marcate-{$dateLabel}.csv",
-            'spatii-fara-anexa' => "imocore-spatii-fara-anexa-{$dateLabel}.csv",
-            'spatii-fara-contract-activ' => "imocore-spatii-fara-contract-activ-{$dateLabel}.csv",
+            'contracte' => "imocore-contracte-{$dateLabel}.csv",
+            'locatori' => "imocore-locatori-{$dateLabel}.csv",
             default => abort(404),
         };
     }
@@ -496,7 +530,7 @@ class BackupService
     }
 
     /**
-     * @return array{spatii_files: list<array{imobil_id: int, imobil: string, filename: string, path: string}>, chiriasi: string, imobile: string, spatii_toate: string, spatii_marcate: string, spatii_fara_anexa: string, spatii_fara_contract_activ: string}
+     * @return array{spatii_files: list<array{imobil_id: int, imobil: string, filename: string, path: string}>, chiriasi: string, imobile: string, spatii_toate: string, contracte: string, locatori: string}
      */
     private function exportCsvFiles(string $directory, string $exportDate): array
     {
@@ -504,20 +538,18 @@ class BackupService
         $chiriasiPath = $directory.DIRECTORY_SEPARATOR.'chiriasi.csv';
         $imobilePath = $directory.DIRECTORY_SEPARATOR.'imobile.csv';
         $spatiiToatePath = $directory.DIRECTORY_SEPARATOR.self::ALL_SPATII_CSV_FILENAME;
-        $spatiiMarcatePath = $directory.DIRECTORY_SEPARATOR.self::MARCATE_SPATII_CSV_FILENAME;
-        $spatiiFaraAnexaPath = $directory.DIRECTORY_SEPARATOR.self::FARA_ANEXA_SPATII_CSV_FILENAME;
-        $spatiiFaraContractActivPath = $directory.DIRECTORY_SEPARATOR.self::FARA_CONTRACT_ACTIV_SPATII_CSV_FILENAME;
+        $contractePath = $directory.DIRECTORY_SEPARATOR.self::CONTRACTE_CSV_FILENAME;
+        $locatoriPath = $directory.DIRECTORY_SEPARATOR.self::LOCATORI_CSV_FILENAME;
         $spatiiFiles = [];
         $imobile = $this->imobileWithOrderedSpatii();
         $columnFieldsUnion = $this->editableFieldsUnionFromImobile($imobile);
 
         $this->exportImobileCsv($imobilePath, $exportDate);
+        $this->exportContracteCsv($contractePath, $exportDate);
+        $this->exportLocatoriCsv($locatoriPath, $exportDate);
 
         $chiriasiHandle = $this->openCsvWriter($chiriasiPath);
         $allSpatiiHandle = $this->openCsvWriter($spatiiToatePath);
-        $marcateSpatiiHandle = $this->openCsvWriter($spatiiMarcatePath);
-        $faraAnexaSpatiiHandle = $this->openCsvWriter($spatiiFaraAnexaPath);
-        $faraContractActivSpatiiHandle = $this->openCsvWriter($spatiiFaraContractActivPath);
 
         $this->writeCsvRow($chiriasiHandle, [
             'Imobil',
@@ -534,11 +566,8 @@ class BackupService
         ]);
 
         $this->writeCsvRow($allSpatiiHandle, $this->allSpatiiCsvHeaders($columnFieldsUnion));
-        $this->writeCsvRow($marcateSpatiiHandle, $this->filteredAllSpatiiCsvHeaders($columnFieldsUnion));
-        $this->writeCsvRow($faraAnexaSpatiiHandle, $this->filteredAllSpatiiCsvHeaders($columnFieldsUnion));
-        $this->writeCsvRow($faraContractActivSpatiiHandle, $this->filteredAllSpatiiCsvHeaders($columnFieldsUnion));
 
-        $imobile->each(function (Imobil $imobil) use ($spatiiDirectory, $chiriasiHandle, $allSpatiiHandle, $marcateSpatiiHandle, $faraAnexaSpatiiHandle, $faraContractActivSpatiiHandle, $exportDate, $columnFieldsUnion, &$spatiiFiles): void {
+        $imobile->each(function (Imobil $imobil) use ($spatiiDirectory, $chiriasiHandle, $allSpatiiHandle, $exportDate, $columnFieldsUnion, &$spatiiFiles): void {
                 if ($imobil->spatii->isEmpty()) {
                     return;
                 }
@@ -561,29 +590,6 @@ class BackupService
                         $this->buildSpatiuCsvRow($spatiu, $imobil, $columnFieldsUnion, $editableFields, $exportDate, true)
                     );
 
-                    $marcajLabel = $this->marcajExportLabel($spatiu);
-
-                    if ($marcajLabel !== null) {
-                        $this->writeCsvRow(
-                            $marcateSpatiiHandle,
-                            $this->buildSpatiuCsvRow($spatiu, $imobil, $columnFieldsUnion, $editableFields, $exportDate, true, $marcajLabel)
-                        );
-                    }
-
-                    if ($this->isSpatiuFaraAnexaInchiriat($spatiu)) {
-                        $this->writeCsvRow(
-                            $faraAnexaSpatiiHandle,
-                            $this->buildSpatiuCsvRow($spatiu, $imobil, $columnFieldsUnion, $editableFields, $exportDate, true, 'Fara anexa')
-                        );
-                    }
-
-                    if ($this->isSpatiuFaraContractActiv($spatiu)) {
-                        $this->writeCsvRow(
-                            $faraContractActivSpatiiHandle,
-                            $this->buildSpatiuCsvRow($spatiu, $imobil, $columnFieldsUnion, $editableFields, $exportDate, true, 'Fara contract activ')
-                        );
-                    }
-
                     $this->writeChiriasRow($chiriasiHandle, $spatiu, $imobil, $exportDate);
                 }
 
@@ -599,19 +605,125 @@ class BackupService
 
         fclose($chiriasiHandle);
         fclose($allSpatiiHandle);
-        fclose($marcateSpatiiHandle);
-        fclose($faraAnexaSpatiiHandle);
-        fclose($faraContractActivSpatiiHandle);
 
         return [
             'spatii_files' => $spatiiFiles,
             'chiriasi' => $chiriasiPath,
             'imobile' => $imobilePath,
             'spatii_toate' => $spatiiToatePath,
-            'spatii_marcate' => $spatiiMarcatePath,
-            'spatii_fara_anexa' => $spatiiFaraAnexaPath,
-            'spatii_fara_contract_activ' => $spatiiFaraContractActivPath,
+            'contracte' => $contractePath,
+            'locatori' => $locatoriPath,
         ];
+    }
+
+    private function exportContracteCsv(string $targetPath, string $exportDate): void
+    {
+        $handle = $this->openCsvWriter($targetPath);
+
+        $this->writeCsvRow($handle, [
+            'Imobil',
+            'Localitate',
+            'Identificator spatiu',
+            'Numar contract',
+            'Chirias',
+            'Tip chirias',
+            'Data start',
+            'Data end',
+            'Chirie',
+            'Crestere chirie la',
+            'Data crestere chirie',
+            'Moneda',
+            'Status',
+            'Observatii',
+            'Data export',
+        ]);
+
+        Contract::query()
+            ->with(['spatiu.imobil'])
+            ->orderBy('id')
+            ->get()
+            ->each(function (Contract $contract) use ($handle, $exportDate): void {
+                $spatiu = $contract->spatiu;
+                $imobil = $spatiu?->imobil;
+
+                $this->writeCsvRow($handle, [
+                    $imobil?->nume ?? '',
+                    $imobil?->localitate ?? '',
+                    $spatiu?->identificator ?? '',
+                    $contract->numar_contract ?? '',
+                    $contract->chirias ?? '',
+                    $contract->chirias_tip ?? '',
+                    optional($contract->data_start)->format('Y-m-d') ?? '',
+                    optional($contract->data_end)->format('Y-m-d') ?? '',
+                    $contract->chirie ?? '',
+                    $contract->crestere_chirie_la ?? '',
+                    optional($contract->data_crestere_chirie)->format('Y-m-d') ?? '',
+                    $contract->moneda ?? '',
+                    $this->contractStatusLabel($contract->status),
+                    $contract->observatii ?? '',
+                    $exportDate,
+                ]);
+            });
+
+        fclose($handle);
+    }
+
+    private function exportLocatoriCsv(string $targetPath, string $exportDate): void
+    {
+        $handle = $this->openCsvWriter($targetPath);
+
+        $this->writeCsvRow($handle, [
+            'Imobil',
+            'Nume locator',
+            'CUI cu RO',
+            'CUI',
+            'Registrul comertului',
+            'Adresa',
+            'Banca',
+            'Cont bancar',
+            'Email',
+            'Chirie cu TVA',
+            'Spatii alocate',
+            'Data export',
+        ]);
+
+        Locator::query()
+            ->with(['imobil', 'spatii.imobil'])
+            ->orderBy('nume')
+            ->get()
+            ->each(function (Locator $locator) use ($handle, $exportDate): void {
+                $spatii = $locator->spatii
+                    ->map(fn (Spatiu $spatiu): string => trim(($spatiu->identificator ?? '').' - '.($spatiu->imobil?->nume ?? '')))
+                    ->filter()
+                    ->implode(' | ');
+
+                $this->writeCsvRow($handle, [
+                    $locator->imobil?->nume ?? 'Global',
+                    $locator->nume ?? '',
+                    $locator->cui_are_ro ? 'Da' : 'Nu',
+                    $locator->cui ?? '',
+                    $locator->registrul_comertului ?? '',
+                    $locator->adresa ?? '',
+                    $locator->banca ?? '',
+                    $locator->cont_bancar ?? '',
+                    $locator->email ?? '',
+                    $locator->chirie_cu_tva ? 'Cu TVA' : 'Fara TVA',
+                    $spatii,
+                    $exportDate,
+                ]);
+            });
+
+        fclose($handle);
+    }
+
+    private function contractStatusLabel(?string $status): string
+    {
+        return match ($status) {
+            'activ' => 'Activ',
+            'incomplet' => 'Incomplet',
+            'expirat' => 'Expirat',
+            default => $status ?? '',
+        };
     }
 
     public function exportAllSpatiiCsv(string $targetPath, string $exportDate): void

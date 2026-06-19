@@ -50,7 +50,7 @@ class BackupCompletenessTest extends TestCase
         $this->assertImobileCsvComplete($dataset['imobil']);
         $this->assertSpatiiCsvComplete($dataset['imobil'], $dataset['spatiu']);
         $this->assertAllSpatiiCsvComplete($dataset['imobil'], $dataset['spatiu']);
-        $this->assertFaraContractActivCsvExists();
+        $this->assertContracteAndLocatoriCsvExist();
         $this->assertChiriasiCsvComplete($dataset['imobil'], $dataset['spatiu']);
         $this->assertDatabaseBackupComplete();
         $this->assertAllCsvFilesHaveNoDiacritics();
@@ -152,17 +152,16 @@ class BackupCompletenessTest extends TestCase
         }
     }
 
-    private function assertFaraContractActivCsvExists(): void
+    private function assertContracteAndLocatoriCsvExist(): void
     {
-        $path = $this->backupDirectory.'/'.BackupService::FARA_CONTRACT_ACTIV_SPATII_CSV_FILENAME;
+        $this->assertFileExists($this->backupDirectory.'/'.BackupService::CONTRACTE_CSV_FILENAME);
+        $this->assertFileExists($this->backupDirectory.'/'.BackupService::LOCATORI_CSV_FILENAME);
 
-        $this->assertFileExists($path);
+        $contracteCsv = BackupExportValidator::parseCsvFile($this->backupDirectory.'/'.BackupService::CONTRACTE_CSV_FILENAME);
+        $locatoriCsv = BackupExportValidator::parseCsvFile($this->backupDirectory.'/'.BackupService::LOCATORI_CSV_FILENAME);
 
-        $csv = BackupExportValidator::parseCsvFile($path);
-        $this->assertSame(
-            BackupExportValidator::expectedFilteredAllSpatiiHeaders(BackupExportValidator::allSpatiiEditableFieldsUnion()),
-            $csv['headers']
-        );
+        $this->assertSame('Numar contract', $contracteCsv['headers'][3]);
+        $this->assertSame('Nume locator', $locatoriCsv['headers'][1]);
     }
 
     private function assertDatabaseBackupComplete(): void
@@ -191,7 +190,8 @@ class BackupCompletenessTest extends TestCase
                 $this->backupDirectory.'/imobile.csv',
                 $this->backupDirectory.'/chiriasi.csv',
                 $this->backupDirectory.'/'.BackupService::ALL_SPATII_CSV_FILENAME,
-                $this->backupDirectory.'/'.BackupService::FARA_CONTRACT_ACTIV_SPATII_CSV_FILENAME,
+                $this->backupDirectory.'/'.BackupService::CONTRACTE_CSV_FILENAME,
+                $this->backupDirectory.'/'.BackupService::LOCATORI_CSV_FILENAME,
             ],
             collect(File::files($this->backupDirectory.'/spatii'))
                 ->map(fn (\SplFileInfo $file): string => $file->getPathname())
