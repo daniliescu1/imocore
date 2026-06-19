@@ -1,7 +1,7 @@
 import React from 'react';
 import { Link } from '@inertiajs/react';
 import AppLayout from '../../Layouts/AppLayout';
-import { AnnexTableBodyRows } from '../../Components/AnnexTableRows';
+import AnnexDocumentPreview from '../../Components/AnnexDocumentPreview';
 
 function formatDecimal(value) {
     if (value === null || value === undefined || value === '') return '—';
@@ -184,33 +184,7 @@ export default function Show({ factura, downloadUrl }) {
 
                 {factura.anexa_detaliu ? (
                     <section className="invoice-attached-annex">
-                        <div className="generated-annex-header compact-annex-header">
-                            <div>
-                                <h2>ANEXA nr.{factura.anexa_detaliu.numar}</h2>
-                                <p>utilități {factura.anexa_detaliu.luna_utilitati}</p>
-                            </div>
-                        </div>
-
-                        <div className="responsive-table generated-annex-table-wrap">
-                            <table className="generated-annex-table">
-                                <thead>
-                                    <tr>
-                                        <th>Nr. crt</th>
-                                        <th>Denumire serviciu</th>
-                                        <th>Index vechi</th>
-                                        <th>Index nou</th>
-                                        <th>Facturat</th>
-                                        <th>UM</th>
-                                        <th>Preț unitar</th>
-                                        <th>Valoare</th>
-                                        <th>TVA</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <AnnexTableBodyRows linii={factura.anexa_detaliu.linii} formatDecimal={formatDecimal} formatMoney={formatMoneyValue} />
-                                </tbody>
-                            </table>
-                        </div>
+                        <AnnexDocumentPreview anexa={factura.anexa_detaliu} />
                     </section>
                 ) : null}
             </section>

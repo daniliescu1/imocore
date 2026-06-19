@@ -9,6 +9,7 @@ use App\Models\Imobil;
 use App\Models\Locator;
 use App\Models\SetareAplicatie;
 use App\Models\Spatiu;
+use App\Support\AnexaDocumentPayload;
 use App\Support\DocumentFormatter;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\RedirectResponse;
@@ -184,8 +185,6 @@ class FacturaController extends Controller
         $anChirie = $this->anulLunaUrmatoare($anexa?->luna);
         $anexaLinii = $anexa?->linii->values() ?? collect();
         $anexaLiniiServiciu = $anexaLinii->filter(fn ($linie): bool => ($linie->tip_linie ?: 'serviciu') !== 'header');
-        $anexaSubtotal = $anexaLiniiServiciu->sum(fn ($linie): float => (float) $linie->valoare);
-        $anexaTotalTva = $anexaLiniiServiciu->sum(fn ($linie): float => (float) ($linie->tva_21 ?? 0));
         $locator = $spatiu?->locatorEntitate;
         $chirieTva = $this->tvaChirieLei((float) $factura->chirie_lei, $locator);
         $liniiFactura = [
@@ -257,28 +256,7 @@ class FacturaController extends Controller
             ],
             'linii' => $liniiFactura,
             'sumar' => $this->sumarFactura($factura, $anexaLiniiServiciu, $locator),
-            'anexa_detaliu' => [
-                'numar' => '01',
-                'luna' => $anexa?->luna,
-                'luna_utilitati' => $lunaUtilitati,
-                'subtotal' => $anexaSubtotal,
-                'total_tva' => $anexaTotalTva,
-                'total' => $anexa?->total,
-                'linii' => $anexaLinii->map(fn ($linie): array => [
-                    'tip_linie' => $linie->tip_linie ?: 'serviciu',
-                    'nr_crt' => $linie->nr_crt,
-                    'denumire' => $linie->denumire,
-                    'tip_calcul' => $linie->tip_calcul,
-                    'coeficient' => $linie->coeficient,
-                    'index_vechi' => $linie->index_vechi,
-                    'index_nou' => $linie->index_nou,
-                    'cantitate' => $linie->cantitate,
-                    'um' => $linie->um,
-                    'pret_unitar' => $linie->pret_unitar,
-                    'valoare' => $linie->valoare,
-                    'tva_21' => $linie->tva_21,
-                ])->all(),
-            ],
+            'anexa_detaliu' => $anexa ? AnexaDocumentPayload::fromModel($anexa) : null,
         ];
     }
 

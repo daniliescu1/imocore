@@ -459,151 +459,317 @@
             border-top: 0;
         }
 
+        .generated-annex-parties-table {
+            width: 100%;
+            margin-bottom: 12px;
+            border-collapse: separate;
+            border-spacing: 10px 0;
+        }
+
+        .generated-annex-parties-table td {
+            width: 20%;
+            padding: 10px 12px;
+            border: 1px solid #e9e2d8;
+            border-radius: 10px;
+            background: #fffdf8;
+            vertical-align: top;
+            height: auto;
+        }
+
+        .generated-annex-parties-table span {
+            display: block;
+            color: #6f6f6f;
+            font-size: 9px;
+            font-weight: 800;
+            letter-spacing: 0.04em;
+            text-transform: uppercase;
+        }
+
+        .generated-annex-parties-table strong {
+            display: block;
+            margin-top: 4px;
+            color: #1f2a2e;
+            font-size: 11px;
+            font-weight: 800;
+        }
+
+        .generated-annex-parties-table small {
+            display: block;
+            margin-top: 3px;
+            color: #6f6f6f;
+            font-size: 9px;
+            font-weight: 600;
+            line-height: 1.3;
+        }
+
+        .pdf-annex-page .generated-annex-header-centered-meta {
+            margin-bottom: 10px;
+            padding-bottom: 8px;
+        }
+
+        .pdf-annex-page .generated-annex-header h2 {
+            font-size: 20px;
+        }
+
         .pdf-invoice-document {
-            padding: 12px 14px;
+            padding: 0;
             border: 0;
             border-radius: 0;
+            background: #fff;
+        }
+
+        .pdf-invoice-pro {
+            border-top: 4px solid #00553f;
         }
 
         .pdf-invoice-with-annex .pdf-annex-page {
             page-break-before: always;
         }
 
+        .pdf-invoice-page {
+            padding: 14px 16px 12px;
+        }
+
+        .pdf-invoice-kicker {
+            margin: 0 0 4px;
+            color: #6f6f6f;
+            font-size: 8px;
+            font-weight: 800;
+            letter-spacing: 0.12em;
+            text-transform: uppercase;
+        }
+
         .pdf-invoice-page .generated-annex-header {
-            padding-bottom: 8px;
-            margin-bottom: 8px;
+            padding-bottom: 10px;
+            margin-bottom: 12px;
         }
 
         .pdf-invoice-page .generated-annex-header h2 {
-            font-size: 20px;
+            font-size: 24px;
+            letter-spacing: 0.06em;
         }
 
         .pdf-invoice-page .invoice-number {
-            margin-top: 2px;
-            font-size: 18px;
+            margin-top: 4px;
+            font-size: 20px;
         }
 
         .pdf-invoice-page .invoice-period-note {
-            margin-top: 2px;
+            margin-top: 4px;
             font-size: 10px;
         }
 
         .pdf-invoice-page .generated-annex-meta {
-            padding: 8px 10px;
+            padding: 10px 12px;
+            border-radius: 10px;
+            background: #fffdf8;
         }
 
         .pdf-invoice-page .invoice-dates-meta {
-            min-width: 210px;
+            min-width: 220px;
         }
 
         .pdf-invoice-page .invoice-date-label {
-            padding-right: 10px;
+            padding-right: 12px;
             font-size: 9px;
         }
 
         .pdf-invoice-page .invoice-date-value {
-            font-size: 10px;
+            font-size: 11px;
         }
 
         .pdf-invoice-page .invoice-dates-table td {
-            padding-bottom: 2px;
+            padding-bottom: 4px;
         }
 
-        .pdf-invoice-page .invoice-parties-grid {
-            margin-bottom: 8px;
+        .invoice-parties-table {
+            width: 100%;
+            margin-bottom: 12px;
+            border-collapse: separate;
+            border-spacing: 12px 0;
+        }
+
+        .invoice-parties-table td {
+            border: 0;
+            padding: 0;
+            background: transparent;
+            height: auto;
+            vertical-align: top;
         }
 
         .pdf-invoice-page .invoice-party-card {
-            padding: 8px 10px;
+            padding: 10px 12px;
+            border: 1px solid #e9e2d8;
+            border-radius: 10px;
+            background: #fffdf8;
         }
 
         .pdf-invoice-page .invoice-party-heading {
-            font-size: 10px;
+            margin-bottom: 4px;
+            font-size: 9px;
+            letter-spacing: 0.08em;
         }
 
         .pdf-invoice-page .invoice-party-name {
-            margin: 0 0 2px;
-            font-size: 13px;
+            margin: 0 0 6px;
+            font-size: 14px;
         }
 
         .pdf-invoice-page .invoice-party-detail {
-            margin-bottom: 1px;
-            font-size: 9px;
-            line-height: 1.25;
+            margin-bottom: 2px;
+            font-size: 9.5px;
+            line-height: 1.3;
         }
 
         .pdf-invoice-page .invoice-party-detail span {
-            min-width: 52px;
-            margin-right: 4px;
+            min-width: 56px;
+            margin-right: 6px;
             font-size: 9px;
+        }
+
+        .col-numeric {
+            text-align: right;
+            white-space: nowrap;
+        }
+
+        .pdf-invoice-lines-table {
+            margin-top: 2px;
+        }
+
+        .pdf-invoice-lines-table thead th {
+            background: #edf8f2;
+            color: #00553f;
+            border-bottom: 2px solid #00553f;
+            font-size: 9px;
+            letter-spacing: 0.03em;
+            text-transform: uppercase;
         }
 
         .pdf-invoice-page .generated-annex-table th,
         .pdf-invoice-page .generated-annex-table td {
-            padding: 4px 4px;
-            font-size: 8.5px;
+            padding: 6px 5px;
+            font-size: 9.5px;
         }
 
-        .pdf-invoice-page .generated-annex-table th {
-            font-size: 8.5px;
+        .pdf-invoice-page .generated-annex-table tbody tr:nth-child(even) td {
+            background: #fcfaf6;
         }
 
-        .pdf-invoice-page .invoice-totals-summary {
-            margin-top: 6px;
-            width: 260px;
+        .invoice-totals-panel {
+            width: 290px;
+            margin: 10px 0 0 auto;
+            border: 1px solid #e9e2d8;
+            border-radius: 10px;
+            border-collapse: separate;
+            border-spacing: 0;
+            overflow: hidden;
         }
 
-        .pdf-invoice-page .invoice-totals-row {
-            margin-bottom: 2px;
+        .invoice-totals-panel td {
+            border: 0;
+            border-bottom: 1px solid #ece6db;
+            padding: 7px 10px;
+            background: #fff;
+            height: auto;
             font-size: 10px;
+            font-weight: 700;
+            vertical-align: middle;
         }
 
-        .pdf-invoice-page .invoice-totals-row strong {
-            font-size: 10px;
+        .invoice-totals-panel tr:last-child td {
+            border-bottom: 0;
         }
 
-        .pdf-invoice-page .invoice-totals-grand-total {
-            padding: 6px 10px;
+        .invoice-totals-grand-row td {
+            background: #1e88e5;
+            color: #fff;
             font-size: 11px;
-        }
-
-        .pdf-invoice-page .invoice-totals-grand-total strong {
-            font-size: 11px;
+            font-weight: 800;
         }
 
         .pdf-invoice-page .invoice-payment-footer {
-            margin-top: 6px;
-            padding-top: 6px;
+            margin-top: 10px;
+            padding-top: 0;
+            border-top: 0;
         }
 
-        .pdf-invoice-page .invoice-payment-instructions {
+        .invoice-footer-grid {
+            width: 100%;
+            margin-bottom: 8px;
+            border-collapse: separate;
+            border-spacing: 10px 0;
+        }
+
+        .invoice-footer-grid td {
+            border: 0;
+            padding: 0;
+            background: transparent;
+            height: auto;
+            vertical-align: top;
+        }
+
+        .invoice-payment-panel,
+        .invoice-payment-summary-panel {
+            padding: 10px 12px;
+            border: 1px solid #e9e2d8;
+            border-radius: 10px;
+            background: #fffdf8;
+        }
+
+        .invoice-payment-panel strong,
+        .invoice-payment-summary-panel strong {
+            display: block;
             margin-bottom: 4px;
-        }
-
-        .pdf-invoice-page .invoice-payment-instructions strong {
-            margin-bottom: 2px;
+            color: #00553f;
             font-size: 10px;
+            letter-spacing: 0.06em;
+            text-transform: uppercase;
         }
 
-        .pdf-invoice-page .invoice-payment-instructions p {
-            font-size: 9px;
-            line-height: 1.25;
+        .invoice-payment-panel p,
+        .invoice-payment-summary-panel p {
+            margin: 0 0 2px;
+            font-size: 9.5px;
+            line-height: 1.35;
+            font-weight: 700;
         }
 
-        .pdf-invoice-page .invoice-legal-notes p {
-            margin-bottom: 2px;
-            font-size: 7.5px;
-            line-height: 1.25;
+        .invoice-payment-summary-panel {
+            background: #edf8f2;
+            border-color: #cfe7db;
         }
 
-        .pdf-invoice-page .invoice-payment-summary {
-            margin-top: 4px;
-            padding-top: 4px;
-            font-size: 8px;
+        .invoice-legal-panel {
+            padding: 8px 10px;
+            border: 1px solid #ece6db;
+            border-radius: 8px;
+            background: #faf8f4;
+        }
+
+        .invoice-legal-panel p {
+            margin: 0 0 4px;
+            color: #6f6f6f;
+            font-size: 7.8px;
+            line-height: 1.35;
+            font-weight: 600;
+        }
+
+        .invoice-legal-panel p:last-child {
+            margin-bottom: 0;
         }
 
         .pdf-annex-page {
-            padding-top: 12px;
+            padding: 14px 16px 12px;
+            border-top: 4px solid #00553f;
+        }
+
+        .pdf-annex-page .compact-annex-header {
+            margin-bottom: 10px;
+            padding-bottom: 8px;
+        }
+
+        .pdf-annex-page .compact-annex-header h2 {
+            font-size: 20px;
         }
 
         .compact-annex-header {

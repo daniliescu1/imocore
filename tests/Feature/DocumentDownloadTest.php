@@ -36,6 +36,20 @@ class DocumentDownloadTest extends TestCase
             ->assertDownload('Anexa-ZBOELECTRONICS-SRL-Mai-2026.pdf');
     }
 
+    public function test_factura_show_includes_full_anexa_detail(): void
+    {
+        $factura = $this->createFactura();
+
+        $this->get(route('facturare.show', $factura))
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page
+                ->where('factura.anexa_detaliu.numar', '01')
+                ->where('factura.anexa_detaliu.perioada_citire', '20.05.2026 - 25.05.2026')
+                ->where('factura.anexa_detaliu.imobil.nume', '700 Office')
+                ->where('factura.anexa_detaliu.spatiu.identificator', 'HQE 103')
+                ->has('factura.anexa_detaliu.linii', 1));
+    }
+
     public function test_factura_show_includes_download_url(): void
     {
         $factura = $this->createFactura();

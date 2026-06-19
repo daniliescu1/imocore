@@ -9,6 +9,7 @@ use App\Models\Contract;
 use App\Models\ConfigurareAnexaLinie;
 use App\Models\Imobil;
 use App\Models\Spatiu;
+use App\Support\AnexaDocumentPayload;
 use App\Support\DocumentFormatter;
 use App\Support\TipCalculAnexa;
 use Barryvdh\DomPDF\Facade\Pdf;
@@ -187,72 +188,18 @@ class AnexaController extends Controller
     public function show(Anexa $anexa): Response
     {
         return Inertia::render('Anexe/Show', [
-            'anexa' => $this->buildAnexaPayload($anexa),
+            'anexa' => AnexaDocumentPayload::fromModel($anexa),
             'downloadUrl' => route('anexe.download', $anexa),
         ]);
     }
 
     public function download(Anexa $anexa): HttpResponse
     {
-        $payload = $this->buildAnexaPayload($anexa);
+        $payload = AnexaDocumentPayload::fromModel($anexa);
         $numeFirma = (string) ($payload['spatiu']['chirias'] ?? $payload['contract']['chirias'] ?? '');
         $filename = DocumentFormatter::anexaDownloadFilename($numeFirma, $payload['luna'] ?? null);
 
         return Pdf::loadView('documents.anexa', ['anexa' => $payload])->download($filename);
-    }
-
-    /**
-     * @return array<string, mixed>
-     */
-    private function buildAnexaPayload(Anexa $anexa): array
-    {
-        $anexa->load(['linii', 'contract.spatiu.imobil', 'contract.spatiu.locatorEntitate']);
-        $contract = $anexa->contract;
-        $spatiu = $contract?->spatiu;
-        $imobil = $spatiu?->imobil;
-
-        $liniiServiciu = $anexa->linii->filter(fn (AnexaLinie $linie): bool => ($linie->tip_linie ?: 'serviciu') !== 'header');
-        $subtotal = $liniiServiciu->sum(fn (AnexaLinie $linie): float => (float) $linie->valoare);
-        $totalTva = $liniiServiciu->sum(fn (AnexaLinie $linie): float => (float) ($linie->tva_21 ?? 0));
-
-        return [
-            'id' => $anexa->id,
-            'numar' => '01',
-            'luna' => $anexa->luna,
-            'total' => $anexa->total,
-            'subtotal' => $subtotal,
-            'total_tva' => $totalTva,
-            'status' => $anexa->status,
-            'perioada_citire' => DocumentFormatter::perioadaCitireDefault($anexa->luna),
-            'contract' => [
-                'numar' => $contract?->numar_contract,
-                'chirias' => $contract?->chirias,
-            ],
-            'spatiu' => [
-                'identificator' => $spatiu?->identificator,
-                'locator' => $spatiu?->locatorEntitate?->nume ?: $spatiu?->getAttribute('locator'),
-                'chirias' => $spatiu?->chirias ?: $contract?->chirias,
-            ],
-            'imobil' => [
-                'nume' => $imobil?->nume,
-                'adresa' => trim(implode(' ', array_filter([$imobil?->strada, $imobil?->numar]))),
-                'localitate' => $imobil?->localitate,
-            ],
-            'linii' => $anexa->linii->values()->map(fn (AnexaLinie $linie): array => [
-                'tip_linie' => $linie->tip_linie ?: 'serviciu',
-                'nr_crt' => $linie->nr_crt,
-                'denumire' => $linie->denumire,
-                'tip_calcul' => $linie->tip_calcul,
-                'coeficient' => $linie->coeficient,
-                'index_vechi' => $linie->index_vechi,
-                'index_nou' => $linie->index_nou,
-                'cantitate' => $linie->cantitate,
-                'um' => $linie->um,
-                'pret_unitar' => $linie->pret_unitar,
-                'valoare' => $linie->valoare,
-                'tva_21' => $linie->tva_21,
-            ])->all(),
-        ];
     }
 
     public function destroy(Anexa $anexa): RedirectResponse
