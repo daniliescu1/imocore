@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
 import { Link, useForm } from '@inertiajs/react';
 import { ArrowDown, ArrowUp, Trash2 } from 'lucide-react';
 import AppLayout from '../../Layouts/AppLayout';
@@ -130,10 +130,14 @@ function applyStandardValuesToLine(line, serviciiStandard) {
     };
 }
 
-function buildFormState(anexa, selectedImobilId, serviciiStandard = {}) {
+function buildFormState(anexa, selectedImobilId, serviciiStandard = {}, personalizare = null) {
+    const denumire = String(anexa?.denumire || '').trim()
+        ? anexa.denumire
+        : (personalizare?.denumire_sugestie || '');
+
     return {
         imobil_id: anexa?.imobil_id || selectedImobilId || '',
-        denumire: anexa?.denumire || '',
+        denumire,
         implicit: Boolean(anexa?.implicit),
         activ: anexa?.activ === undefined ? true : Boolean(anexa?.activ),
         observatii: anexa?.observatii || '',
@@ -293,9 +297,20 @@ export default function Form({
     spatiuId = null,
     previewSpatiu = null,
     context = null,
+    personalizare = null,
 }) {
     const isEditing = Boolean(anexa);
-    const { data, setData, post, put, processing, errors, transform } = useForm(buildFormState(anexa, selectedImobilId, serviciiStandard));
+    const isPersonalizare = Boolean(personalizare?.activ);
+    const denumireInputRef = useRef(null);
+    const { data, setData, post, put, processing, errors, transform } = useForm(buildFormState(anexa, selectedImobilId, serviciiStandard, personalizare));
+
+    useEffect(() => {
+        if (!isPersonalizare || !denumireInputRef.current) {
+            return;
+        }
+
+        denumireInputRef.current.focus();
+    }, [isPersonalizare]);
 
     function normalizeLiniiForSave(linii) {
         return linii.map((linie) => {
@@ -337,6 +352,12 @@ export default function Form({
 
     function submit(event) {
         event.preventDefault();
+
+        if (!String(data.denumire || '').trim()) {
+            window.alert('Pune un nume pentru anexă înainte de salvare.');
+            denumireInputRef.current?.focus();
+            return;
+        }
 
         const missingDenumire = data.linii.some((linie) => (
             linie.tip_linie !== 'header'
@@ -491,10 +512,18 @@ export default function Form({
     const tipCalculOptions = serviciiStandard.tip_calcul || [];
 
     const topbarActions = <Link className="secondary-button button-link" href={returnUrl || '/configurare-anexa'}>Înapoi</Link>;
+    const pageTitle = isPersonalizare
+        ? 'Personalizează anexă'
+        : (isEditing ? `Editare ${anexa.denumire || 'anexă'}` : 'Adaugă anexă');
+    const denumirePlaceholder = isPersonalizare ? '' : 'Ex: Anexa utilități · D204';
 
     return (
-        <AppLayout title={isEditing ? `Editare ${anexa.denumire}` : 'Adaugă anexă'} showGlobalSearch={false} topbarActions={topbarActions}>
-            {context?.spatii_count > 1 ? (
+        <AppLayout title={pageTitle} showGlobalSearch={false} topbarActions={topbarActions}>
+            {isPersonalizare ? (
+                <div className="spatiu-context-banner spatiu-context-banner-compact">
+                    Personalizarea creează o anexă nouă doar pentru acest spațiu. Pune un nume, apoi ajustează liniile dacă e nevoie.
+                </div>
+            ) : context?.spatii_count > 1 ? (
                 <div className="spatiu-context-banner spatiu-context-banner-compact">
                     Această anexă e alocată la {context.spatii_count} spații. Modificările se aplică tuturor spațiilor care o folosesc.
                 </div>
@@ -510,8 +539,14 @@ export default function Form({
                         {errors.imobil_id ? <small>{errors.imobil_id}</small> : null}
                     </label>
                     <label className="form-field">
-                        <span>Denumire anexă</span>
-                        <input type="text" value={data.denumire} onChange={(event) => setData('denumire', event.target.value)} />
+                        <span>Denumire anexă *</span>
+                        <input
+                            ref={denumireInputRef}
+                            type="text"
+                            value={data.denumire}
+                            placeholder={denumirePlaceholder}
+                            onChange={(event) => setData('denumire', event.target.value)}
+                        />
                         {errors.denumire ? <small>{errors.denumire}</small> : null}
                     </label>
                     <label className="form-field checkbox-field">

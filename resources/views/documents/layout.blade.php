@@ -780,6 +780,90 @@
         .compact-annex-header h2 {
             font-size: 22px;
         }
+
+        .pdf-annex-standalone {
+            padding: 0;
+            border: 0;
+            border-radius: 0;
+            background: #fff;
+        }
+
+        .pdf-annex-page .generated-annex-header {
+            border-bottom: 2px solid #00553f;
+            padding-bottom: 10px;
+            margin-bottom: 12px;
+        }
+
+        .pdf-annex-page .generated-annex-header p {
+            margin-top: 4px;
+            font-size: 10px;
+        }
+
+        .pdf-annex-page .generated-annex-meta {
+            padding: 10px 12px;
+            border-radius: 10px;
+            background: #fffdf8;
+            border: 1px solid #e9e2d8;
+        }
+
+        .pdf-annex-page .generated-annex-meta span {
+            font-size: 9px;
+            letter-spacing: 0.08em;
+        }
+
+        .pdf-annex-page .generated-annex-meta strong {
+            margin-top: 4px;
+            font-size: 11px;
+        }
+
+        .pdf-annex-page .generated-annex-parties-table {
+            margin-bottom: 12px;
+            border-spacing: 8px 0;
+        }
+
+        .pdf-annex-page .generated-annex-parties-table td {
+            padding: 10px 11px;
+            border-radius: 10px;
+            background: #fffdf8;
+        }
+
+        .pdf-annex-page .generated-annex-table th,
+        .pdf-annex-page .generated-annex-table td {
+            padding: 6px 5px;
+            font-size: 9.5px;
+        }
+
+        .pdf-annex-page .generated-annex-table tbody tr:nth-child(even) td {
+            background: #fcfaf6;
+        }
+
+        .pdf-annex-page .generated-annex-section-header th {
+            background: #edf8f2;
+            color: #00553f;
+            border-bottom: 2px solid #00553f;
+            font-size: 9px;
+            letter-spacing: 0.03em;
+            text-transform: uppercase;
+        }
+
+        .pdf-annex-page .generated-annex-section-total td {
+            background: #f7fbf9;
+            font-size: 10px;
+        }
+
+        .pdf-annex-page .annex-totals-panel {
+            margin-top: 12px;
+        }
+
+        .pdf-annex-footer-note {
+            margin: 10px 0 0;
+            padding-top: 8px;
+            border-top: 1px solid #ece6db;
+            color: #6f6f6f;
+            font-size: 8px;
+            font-weight: 600;
+            text-align: right;
+        }
     </style>
 </head>
 <body>

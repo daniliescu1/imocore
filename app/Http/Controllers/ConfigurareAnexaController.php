@@ -12,6 +12,7 @@ use App\Support\InternalReturnUrl;
 use App\Support\SincronizareContoareDinAnexa;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -82,6 +83,7 @@ class ConfigurareAnexaController extends Controller
 
         $validated = $request->validate($this->validationRules(requireImobil: true));
         $imobil = Imobil::query()->findOrFail($validated['imobil_id']);
+        $this->assertDenumireUnicaPeImobil($validated['denumire'], $imobil->id);
         $configurare = $this->saveConfigurare($validated, $imobil);
 
         $returnUrl = InternalReturnUrl::normalize($request->input('return_url'));
@@ -114,6 +116,8 @@ class ConfigurareAnexaController extends Controller
         $returnUrl = InternalReturnUrl::normalize($request->string('return_url')->toString());
         $spatiiCount = Spatiu::query()->where('configurare_anexa_id', $configurare->id)->count();
         $spatiuId = $request->integer('spatiu_id') ?: null;
+        $denumireSugestie = trim($request->string('denumire_sugestie')->toString());
+        $isPersonalizare = $request->boolean('personalizare') || trim($configurare->denumire) === '';
 
         return Inertia::render('ConfigurareAnexa/Form', [
             'imobile' => $this->imobileForSelect(),
@@ -126,6 +130,10 @@ class ConfigurareAnexaController extends Controller
             'context' => [
                 'spatii_count' => $spatiiCount,
             ],
+            'personalizare' => [
+                'activ' => $isPersonalizare,
+                'denumire_sugestie' => $denumireSugestie !== '' ? $denumireSugestie : null,
+            ],
         ]);
     }
 
@@ -137,6 +145,7 @@ class ConfigurareAnexaController extends Controller
 
         $validated = $request->validate($this->validationRules(requireImobil: true));
         $imobil = Imobil::query()->findOrFail($validated['imobil_id']);
+        $this->assertDenumireUnicaPeImobil($validated['denumire'], $imobil->id, $configurare->id);
         $configurare = $this->saveConfigurare($validated, $imobil, $configurare);
         SincronizareContoareDinAnexa::syncForConfigurare($configurare);
 
@@ -232,7 +241,7 @@ class ConfigurareAnexaController extends Controller
     {
         return [
             'imobil_id' => [$requireImobil ? 'required' : 'nullable', 'exists:imobile,id'],
-            'denumire' => ['nullable', 'string', 'max:255'],
+            'denumire' => ['required', 'string', 'max:255'],
             'implicit' => ['nullable', 'boolean'],
             'activ' => ['nullable', 'boolean'],
             'observatii' => ['nullable', 'string', 'max:1000'],
@@ -263,7 +272,7 @@ class ConfigurareAnexaController extends Controller
         }
 
         $values = [
-            'denumire' => $this->denumireConfigurare($data),
+            'denumire' => trim((string) ($data['denumire'] ?? '')),
             'implicit' => (bool) ($data['implicit'] ?? false),
             'activ' => (bool) ($data['activ'] ?? true),
             'observatii' => $data['observatii'] ?? null,
@@ -420,11 +429,25 @@ class ConfigurareAnexaController extends Controller
         }, $linii);
     }
 
-    private function denumireConfigurare(array $configurare): string
+    private function assertDenumireUnicaPeImobil(string $denumire, int $imobilId, ?int $ignoreId = null): void
     {
-        $denumire = trim((string) ($configurare['denumire'] ?? ''));
+        $normalized = mb_strtolower(trim($denumire));
 
-        return $denumire !== '' ? $denumire : 'Anexă imobil';
+        if ($normalized === '') {
+            return;
+        }
+
+        $duplicate = ConfigurareAnexaImobil::query()
+            ->where('imobil_id', $imobilId)
+            ->when($ignoreId, fn ($query) => $query->whereKeyNot($ignoreId))
+            ->get()
+            ->first(fn (ConfigurareAnexaImobil $configurare): bool => mb_strtolower(trim($configurare->denumire)) === $normalized);
+
+        if ($duplicate) {
+            throw ValidationException::withMessages([
+                'denumire' => 'Există deja o anexă «'.trim($denumire).'». Alege alt nume.',
+            ]);
+        }
     }
 
     private function sanitizeLinieTemplateValues(array $lineValues, string $tipCalcul, string $tipLinie): array

@@ -473,11 +473,11 @@ class SpatiuController extends Controller
             ->with('linii')
             ->findOrFail($spatiu->configurare_anexa_id);
 
-        $denumire = trim($sursa->denumire.' · '.$spatiu->identificator);
+        $denumireSugestie = trim($sursa->denumire.' · '.$spatiu->identificator);
 
         $noua = ConfigurareAnexaImobil::query()->create([
             'imobil_id' => $spatiu->imobil_id,
-            'denumire' => $denumire,
+            'denumire' => $denumireSugestie,
             'implicit' => false,
             'activ' => true,
             'observatii' => $sursa->observatii,
@@ -497,8 +497,10 @@ class SpatiuController extends Controller
             ->route('configurare-anexa.edit', [
                 'configurare' => $noua,
                 'return_url' => $returnUrl,
+                'personalizare' => 1,
+                'denumire_sugestie' => $denumireSugestie,
             ])
-            ->with('success', 'Anexa individuală a fost creată pentru acest spațiu.');
+            ->with('success', 'Anexa a fost copiată. Pune un nume pentru varianta acestui spațiu.');
     }
 
     public function updateAnexa(Request $request, Spatiu $spatiu): RedirectResponse
@@ -838,9 +840,20 @@ class SpatiuController extends Controller
             ->map(fn ($configurari) => $configurari->map(fn (ConfigurareAnexaImobil $configurare) => [
                 'id' => $configurare->id,
                 'implicit' => $configurare->implicit,
-                'denumire' => $configurare->implicit ? "{$configurare->denumire} (implicită)" : $configurare->denumire,
+                'denumire' => $this->configurareAnexaLabelForSelect($configurare),
                 'linii_count' => $configurare->linii_count,
                 'spatii_count' => $configurare->spatii_count,
             ])->values());
+    }
+
+    private function configurareAnexaLabelForSelect(ConfigurareAnexaImobil $configurare): string
+    {
+        $label = trim($configurare->denumire);
+
+        if ($label === '') {
+            $label = '(fără nume — completează personalizarea)';
+        }
+
+        return $configurare->implicit ? "{$label} (implicită)" : $label;
     }
 }

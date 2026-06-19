@@ -2950,9 +2950,14 @@ tr:last-child td {
 }
 
 .spatiu-documente-meta,
-.spatiu-documente-empty {
+.spatiu-documente-empty,
+.spatiu-documente-hint {
     color: var(--text-muted);
     font-size: 13px;
+}
+
+.spatiu-documente-hint {
+    line-height: 1.45;
 }
 
 .spatiu-documente-actions {

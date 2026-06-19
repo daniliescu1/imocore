@@ -9,6 +9,9 @@
 
 <div class="generated-annex-header generated-annex-header-centered-meta{{ ! empty($compactHeader) ? ' compact-annex-header' : '' }}">
     <div>
+        @if (! empty($pdfMode))
+            <p class="pdf-invoice-kicker">Anexa utilitati</p>
+        @endif
         <h2>ANEXA nr.{{ $anexa['numar'] ?? '01' }}</h2>
         <p>din luna {{ DocumentFormatter::pdfText(DocumentFormatter::lunaText($anexa['luna'] ?? null)) }}</p>
     </div>
@@ -67,3 +70,24 @@
         ])
     </tbody>
 </table>
+
+@if (! empty($pdfMode))
+    <table class="invoice-totals-panel annex-totals-panel">
+        <tr>
+            <td>Total fara TVA:</td>
+            <td class="col-numeric">{{ DocumentFormatter::amount($anexa['subtotal'] ?? null) }}</td>
+        </tr>
+        <tr>
+            <td>TVA 21%:</td>
+            <td class="col-numeric">{{ DocumentFormatter::amount($anexa['total_tva'] ?? null) }}</td>
+        </tr>
+        <tr class="invoice-totals-grand-row">
+            <td>Total anexa</td>
+            <td class="col-numeric">{{ DocumentFormatter::amount($anexa['total'] ?? null) }} Lei</td>
+        </tr>
+    </table>
+
+    <p class="pdf-annex-footer-note">
+        Document generat din IMO Core. Valorile sunt exprimate in lei, fara diacritice in PDF.
+    </p>
+@endif

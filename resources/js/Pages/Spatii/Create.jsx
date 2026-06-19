@@ -288,6 +288,16 @@ export default function Create({
         });
     }
 
+    function personalizeAnexa() {
+        if (!spatiu?.id || !data.configurare_anexa_id) {
+            return;
+        }
+
+        router.post(`/spatii/${spatiu.id}/anexa-individuala`, {
+            return_url: spatiuEditUrl,
+        });
+    }
+
     function toggleMarcaj(field) {
         const activating = !data[field];
         const previous = {
@@ -667,7 +677,15 @@ export default function Create({
                                 ) : (
                                     <span className="spatiu-documente-empty">Nicio anexă alocată</span>
                                 )}
+                                <span className="spatiu-documente-hint">
+                                    Personalizarea creează o anexă nouă doar pentru acest spațiu. Template-urile imobilului le editezi din Configurare anexă.
+                                </span>
                                 {errors.configurare_anexa_id ? <small>{errors.configurare_anexa_id}</small> : null}
+                            </div>
+                            <div className="spatiu-documente-actions">
+                                {data.configurare_anexa_id ? (
+                                    <button type="button" className="secondary-button" onClick={personalizeAnexa}>Personalizează anexa</button>
+                                ) : null}
                             </div>
                         </div>
                     </div>
@@ -685,6 +703,7 @@ export default function Create({
             {esteFatada && !isEditing ? (
                 <p className="fatada-calendar-note">Salvează spațiul pentru a gestiona calendarul anual de închiriere pe fațadă.</p>
             ) : null}
+
         </AppLayout>
     );
 }

@@ -289,6 +289,90 @@ class SpatiuDocumenteTest extends TestCase
         $this->assertSame(1, $copie->linii()->count());
     }
 
+    public function test_personalizare_anexa_deschide_editorul_cu_sugestie_de_nume(): void
+    {
+        $imobil = Imobil::query()->create([
+            'nume' => '700 Office',
+            'strada' => 'Strada Test',
+            'numar' => '1',
+            'localitate' => 'Timișoara',
+        ]);
+
+        $configurare = ConfigurareAnexaImobil::query()->create([
+            'imobil_id' => $imobil->id,
+            'denumire' => 'Anexă utilități',
+            'implicit' => true,
+            'activ' => true,
+        ]);
+
+        $spatiu = Spatiu::query()->create([
+            'imobil_id' => $imobil->id,
+            'identificator' => 'D204',
+            'status' => 'inchiriat',
+            'configurare_anexa_id' => $configurare->id,
+            'ordine' => 1,
+        ]);
+
+        $response = $this->post(route('spatii.anexa-individuala', $spatiu));
+        $copie = ConfigurareAnexaImobil::query()->findOrFail($spatiu->fresh()->configurare_anexa_id);
+
+        $response->assertRedirect(route('configurare-anexa.edit', [
+            'configurare' => $copie,
+            'return_url' => route('spatii.edit', $spatiu),
+            'personalizare' => 1,
+            'denumire_sugestie' => 'Anexă utilități · D204',
+        ], absolute: false));
+
+        $this->get(route('configurare-anexa.edit', [
+            'configurare' => $copie,
+            'personalizare' => 1,
+            'denumire_sugestie' => 'Anexă utilități · D204',
+        ]))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('ConfigurareAnexa/Form')
+                ->where('personalizare.activ', true)
+                ->where('personalizare.denumire_sugestie', 'Anexă utilități · D204')
+                ->where('anexa.denumire', 'Anexă utilități · D204')
+            );
+    }
+
+    public function test_salvarea_anexei_respinge_denumire_duplicata_pe_acelasi_imobil(): void
+    {
+        $imobil = Imobil::query()->create([
+            'nume' => '700 Office',
+            'strada' => 'Strada Test',
+            'numar' => '1',
+            'localitate' => 'Timișoara',
+        ]);
+
+        $existenta = ConfigurareAnexaImobil::query()->create([
+            'imobil_id' => $imobil->id,
+            'denumire' => 'Anexă utilități',
+            'implicit' => true,
+            'activ' => true,
+        ]);
+
+        $copie = ConfigurareAnexaImobil::query()->create([
+            'imobil_id' => $imobil->id,
+            'denumire' => '',
+            'implicit' => false,
+            'activ' => true,
+        ]);
+
+        $this->from(route('configurare-anexa.edit', $copie))
+            ->put(route('configurare-anexa.update', $copie), [
+                'imobil_id' => $imobil->id,
+                'denumire' => 'Anexă utilități',
+                'implicit' => false,
+                'linii' => [],
+            ])
+            ->assertSessionHasErrors(['denumire']);
+
+        $this->assertSame('', $copie->fresh()->denumire);
+        $this->assertSame('Anexă utilități', $existenta->fresh()->denumire);
+    }
+
     public function test_contract_store_redirects_back_to_spatiu_when_return_url_is_set(): void
     {
         $imobil = Imobil::query()->create([
