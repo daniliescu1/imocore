@@ -10,7 +10,32 @@ class Spatiu extends Model
 {
     public const ETAJ_PARCARE = 'Parcare';
 
-    public const ETAJE_FARA_PERSOANE = ['Acoperiș', 'Fațadă', self::ETAJ_PARCARE];
+    public const ETAJ_CASUTA_POSTALA = 'Casuta postala';
+
+    public const ETAJ_SPATIU_DEPOZITARE = 'Spatiu depozitare';
+
+    public const ETAJ_OPTIONS = [
+        '-1',
+        'Parter',
+        '1',
+        '2',
+        '3',
+        '4',
+        '5',
+        'Acoperiș',
+        'Fațadă',
+        self::ETAJ_PARCARE,
+        self::ETAJ_CASUTA_POSTALA,
+        self::ETAJ_SPATIU_DEPOZITARE,
+    ];
+
+    public const ETAJE_FARA_PERSOANE = [
+        'Acoperiș',
+        'Fațadă',
+        self::ETAJ_PARCARE,
+        self::ETAJ_CASUTA_POSTALA,
+        self::ETAJ_SPATIU_DEPOZITARE,
+    ];
 
     protected $table = 'spatii';
 

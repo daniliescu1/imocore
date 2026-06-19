@@ -18,7 +18,7 @@ const DOCUMENTE_FILTER_LABELS = {
     cu_anexa: 'Cu anexă',
 };
 
-const ETAJ_OPTIONS = ['-1', 'Parter', '1', '2', '3', '4', '5', 'Acoperiș', 'Fațadă', 'Parcare'];
+const ETAJ_OPTIONS = ['-1', 'Parter', '1', '2', '3', '4', '5', 'Acoperiș', 'Fațadă', 'Parcare', 'Casuta postala', 'Spatiu depozitare'];
 
 function statusLabel(status) {
     return STATUS_LABELS[status] || status;

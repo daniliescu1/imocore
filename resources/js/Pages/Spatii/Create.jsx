@@ -4,8 +4,8 @@ import { Trash2 } from 'lucide-react';
 import AppLayout from '../../Layouts/AppLayout';
 import FacadeRentalCalendar from './FacadeRentalCalendar';
 
-const etajOptions = ['-1', 'Parter', '1', '2', '3', '4', '5', 'Acoperiș', 'Fațadă', 'Parcare'];
-const etajeFaraPersoane = ['Acoperiș', 'Fațadă', 'Parcare'];
+const etajOptions = ['-1', 'Parter', '1', '2', '3', '4', '5', 'Acoperiș', 'Fațadă', 'Parcare', 'Casuta postala', 'Spatiu depozitare'];
+const etajeFaraPersoane = ['Acoperiș', 'Fațadă', 'Parcare', 'Casuta postala', 'Spatiu depozitare'];
 
 function monedaLabel(moneda) {
     return moneda === 'RON' ? 'Lei' : 'EUR';
