@@ -121,6 +121,48 @@
             min-width: 240px;
         }
 
+        .invoice-dates-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .invoice-dates-table tr {
+            vertical-align: baseline;
+        }
+
+        .invoice-dates-table td {
+            border: 0;
+            padding: 0 0 6px;
+            background: transparent;
+            height: auto;
+            color: #1f2a2e;
+            font-weight: 700;
+            vertical-align: baseline;
+        }
+
+        .invoice-dates-table tr:last-child td {
+            padding-bottom: 0;
+        }
+
+        .invoice-date-label {
+            width: 1%;
+            white-space: nowrap;
+            padding-right: 16px;
+            color: #6f6f6f;
+            font-size: 12px;
+            font-weight: 800;
+            letter-spacing: 0.03em;
+            text-transform: uppercase;
+        }
+
+        .invoice-date-value {
+            width: 99%;
+            text-align: right;
+            white-space: nowrap;
+            font-size: 14px;
+            font-weight: 800;
+        }
+
         .invoice-date-row {
             display: table;
             width: 100%;
@@ -454,17 +496,17 @@
             min-width: 210px;
         }
 
-        .pdf-invoice-page .invoice-date-row {
-            margin-bottom: 2px;
-            font-size: 10px;
-        }
-
-        .pdf-invoice-page .invoice-date-row span {
+        .pdf-invoice-page .invoice-date-label {
+            padding-right: 10px;
             font-size: 9px;
         }
 
-        .pdf-invoice-page .invoice-date-row strong {
+        .pdf-invoice-page .invoice-date-value {
             font-size: 10px;
+        }
+
+        .pdf-invoice-page .invoice-dates-table td {
+            padding-bottom: 2px;
         }
 
         .pdf-invoice-page .invoice-parties-grid {

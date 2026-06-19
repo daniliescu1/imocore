@@ -24,14 +24,16 @@
                 <p class="invoice-period-note">pentru anexa din luna {{ DocumentFormatter::pdfText($factura['luna'] ?? null) }}</p>
             </div>
             <div class="generated-annex-meta invoice-dates-meta">
-                <div class="invoice-date-row">
-                    <span>Data emitere:</span>
-                    <strong>{{ DocumentFormatter::pdfText($factura['data_emitere'] ?? null) }}</strong>
-                </div>
-                <div class="invoice-date-row">
-                    <span>Data scadenta:</span>
-                    <strong>{{ DocumentFormatter::pdfText($factura['data_scadenta'] ?? null) }}</strong>
-                </div>
+                <table class="invoice-dates-table">
+                    <tr>
+                        <td class="invoice-date-label">Data emitere:</td>
+                        <td class="invoice-date-value">{{ DocumentFormatter::pdfText($factura['data_emitere'] ?? null) }}</td>
+                    </tr>
+                    <tr>
+                        <td class="invoice-date-label">Data scadenta:</td>
+                        <td class="invoice-date-value">{{ DocumentFormatter::pdfText($factura['data_scadenta'] ?? null) }}</td>
+                    </tr>
+                </table>
             </div>
             <div class="invoice-document-header-balance"></div>
         </div>
