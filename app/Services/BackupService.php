@@ -36,6 +36,8 @@ class BackupService
         'pret_mp_ultima_indexare',
     ];
 
+    private const BACKUP_TIMEZONE = 'Europe/Bucharest';
+
     public function backupRoot(): string
     {
         return storage_path('app/backups');
@@ -48,7 +50,7 @@ class BackupService
     {
         $date = $trigger === 'manual'
             ? self::MANUAL_BACKUP_ID
-            : now()->format('Y-m-d');
+            : now(self::BACKUP_TIMEZONE)->format('Y-m-d');
         $directory = $this->backupRoot().DIRECTORY_SEPARATOR.$date;
 
         if ($trigger === 'manual' && File::isDirectory($directory)) {
@@ -132,7 +134,7 @@ class BackupService
             return [];
         }
 
-        $cutoff = now()->subDays(self::RETENTION_DAYS - 1)->startOfDay();
+        $cutoff = now(self::BACKUP_TIMEZONE)->subDays(self::RETENTION_DAYS - 1)->startOfDay();
 
         return collect(File::directories($this->backupRoot()))
             ->map(function (string $directory) use ($cutoff): ?array {
@@ -199,6 +201,58 @@ class BackupService
             ...$entry,
             'trigger' => 'manual',
         ];
+    }
+
+    public function ensureAutomaticBackupForToday(): bool
+    {
+        $now = now(self::BACKUP_TIMEZONE);
+        $today = $now->format('Y-m-d');
+        $directory = $this->backupRoot().DIRECTORY_SEPARATOR.$today;
+
+        if ($this->findDatabaseFile($directory) !== null) {
+            return false;
+        }
+
+        if ($this->hasAnyAutomaticBackup() && $now->hour < 3) {
+            return false;
+        }
+
+        $this->runBackup('automatic');
+
+        return true;
+    }
+
+    private function hasAnyAutomaticBackup(): bool
+    {
+        if (! File::isDirectory($this->backupRoot())) {
+            return false;
+        }
+
+        foreach (File::directories($this->backupRoot()) as $directory) {
+            $date = basename($directory);
+
+            if (! preg_match('/^\d{4}-\d{2}-\d{2}$/', $date)) {
+                continue;
+            }
+
+            if ($this->findDatabaseFile($directory) !== null) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    public function nextAutomaticBackupAt(): string
+    {
+        $now = now(self::BACKUP_TIMEZONE);
+        $next = $now->copy()->startOfDay()->addHours(3);
+
+        if ($now->greaterThanOrEqualTo($next)) {
+            $next->addDay();
+        }
+
+        return $next->toIso8601String();
     }
 
     /**
@@ -349,7 +403,7 @@ class BackupService
             return;
         }
 
-        $cutoff = now()->subDays($days)->startOfDay();
+        $cutoff = now(self::BACKUP_TIMEZONE)->subDays($days)->startOfDay();
 
         foreach (File::directories($this->backupRoot()) as $directory) {
             $date = basename($directory);

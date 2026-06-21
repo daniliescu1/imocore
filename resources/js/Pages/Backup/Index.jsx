@@ -140,8 +140,9 @@ export default function BackupIndex({
                     </div>
                 </div>
                 <p className="backup-help-text">
-                    În fiecare noapte la 03:00 se creează automat un backup zilnic. Mai jos apar ultimele {retentionDays} zile —
-                    câte un rând pe zi. Butonul <strong>Backup acum</strong> creează un snapshot manual imediat, afișat separat mai jos.
+                    În fiecare noapte la 03:00 (ora României) se creează automat un backup zilnic. Mai jos apar ultimele {retentionDays} zile —
+                    câte un rând pe zi. Dacă lipsește backup-ul de azi, pagina îl creează automat la deschidere.
+                    Butonul <strong>Backup acum</strong> creează un snapshot manual imediat, afișat separat mai jos.
                 </p>
             </section>
 
@@ -200,7 +201,8 @@ export default function BackupIndex({
                             {backups.length === 0 ? (
                                 <tr>
                                     <td colSpan="4">
-                                        Nu există încă backup-uri automate. Primul backup zilnic apare după rularea programată de noaptea aceasta.
+                                        Nu există încă backup-uri automate. Reîncarcă pagina ca să generezi backup-ul de azi,
+                                        sau așteaptă rularea programată de la 03:00.
                                     </td>
                                 </tr>
                             ) : null}

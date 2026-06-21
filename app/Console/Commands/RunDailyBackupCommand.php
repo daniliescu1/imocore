@@ -13,7 +13,14 @@ class RunDailyBackupCommand extends Command
 
     public function handle(BackupService $backupService): int
     {
-        $result = $backupService->runBackup('automatic');
+        try {
+            $result = $backupService->runBackup('automatic');
+        } catch (\Throwable $exception) {
+            report($exception);
+            $this->error($exception->getMessage());
+
+            return self::FAILURE;
+        }
 
         $this->info("Backup created for {$result['date']}.");
         $this->line('Database: '.$result['database']);

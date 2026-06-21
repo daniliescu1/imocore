@@ -88,6 +88,7 @@ Route::put('/reguli-imobile/{imobil}', [ReguliImobilController::class, 'update']
 Route::get('/setari', [SetariController::class, 'index'])->name('setari.index');
 Route::get('/backup', [BackupController::class, 'index'])->name('backup.index');
 Route::post('/backup', [BackupController::class, 'store'])->name('backup.store');
+Route::get('/backup/cron', [BackupController::class, 'runScheduled'])->name('backup.cron');
 Route::get('/backup/spatii-toate', [BackupController::class, 'downloadAllSpatii'])->name('backup.download.spatii-toate');
 Route::get('/indexare-chirii', [IndexareChiriiController::class, 'index'])->name('indexare-chirii.index');
 Route::patch('/indexare-chirii/{spatiu}', [IndexareChiriiController::class, 'update'])->name('indexare-chirii.update');

@@ -33,6 +33,55 @@ class BackupTest extends TestCase
         parent::tearDown();
     }
 
+    public function test_backup_page_creates_missing_automatic_backup_for_today(): void
+    {
+        Carbon::setTestNow(Carbon::parse('2026-06-19 23:30:00', 'Europe/Bucharest'));
+
+        $this->seedSpatiu();
+
+        $this->get(route('backup.index'))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('Backup/Index')
+                ->has('backups', 1)
+                ->where('backups.0.date', '2026-06-19'));
+
+        $this->assertDirectoryExists(storage_path('app/backups/2026-06-19'));
+
+        Carbon::setTestNow();
+    }
+
+    public function test_backup_page_waits_until_three_am_when_automatic_history_already_exists(): void
+    {
+        Carbon::setTestNow(Carbon::parse('2026-06-19 10:00:00', 'Europe/Bucharest'));
+        $this->seedSpatiu();
+        app(BackupService::class)->runBackup('automatic');
+
+        Carbon::setTestNow(Carbon::parse('2026-06-20 02:00:00', 'Europe/Bucharest'));
+
+        $this->get(route('backup.index'))->assertOk();
+
+        $this->assertDirectoryDoesNotExist(storage_path('app/backups/2026-06-20'));
+
+        Carbon::setTestNow();
+    }
+
+    public function test_backup_cron_route_runs_with_valid_token(): void
+    {
+        config(['services.backup.cron_token' => 'secret-token']);
+
+        Carbon::setTestNow(Carbon::parse('2026-06-19 12:00:00', 'Europe/Bucharest'));
+        $this->seedSpatiu();
+
+        $this->get(route('backup.cron', ['token' => 'secret-token']))
+            ->assertOk()
+            ->assertSee('backup-created');
+
+        $this->assertDirectoryExists(storage_path('app/backups/2026-06-19'));
+
+        Carbon::setTestNow();
+    }
+
     public function test_backup_page_lists_automatic_backups(): void
     {
         $this->seedSpatiu();

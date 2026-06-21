@@ -31,4 +31,8 @@ return [
         ],
     ],
 
+    'backup' => [
+        'cron_token' => env('BACKUP_CRON_TOKEN'),
+    ],
+
 ];
