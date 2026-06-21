@@ -9,6 +9,7 @@ use App\Models\ServiciuStandardAnexa;
 use App\Models\SetareAplicatie;
 use App\Models\Spatiu;
 use App\Support\InternalReturnUrl;
+use App\Support\ContorConfigurabilSync;
 use App\Support\SincronizareContoareDinAnexa;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -100,10 +101,13 @@ class ConfigurareAnexaController extends Controller
                 SincronizareContoareDinAnexa::syncForSpatiu($spatiu);
             }
 
+            ContorConfigurabilSync::syncForConfigurare($configurare);
+
             return redirect($returnUrl)->with('success', 'Anexa a fost adăugată și alocată spațiului.');
         }
 
         SincronizareContoareDinAnexa::syncForConfigurare($configurare);
+        ContorConfigurabilSync::syncForConfigurare($configurare);
 
         return redirect()
             ->route('configurare-anexa.edit', $configurare)
@@ -148,6 +152,7 @@ class ConfigurareAnexaController extends Controller
         $this->assertDenumireUnicaPeImobil($validated['denumire'], $imobil->id, $configurare->id);
         $configurare = $this->saveConfigurare($validated, $imobil, $configurare);
         SincronizareContoareDinAnexa::syncForConfigurare($configurare);
+        ContorConfigurabilSync::syncForConfigurare($configurare);
 
         $returnUrl = InternalReturnUrl::normalize($request->input('return_url'));
 

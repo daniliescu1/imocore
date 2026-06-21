@@ -6,8 +6,22 @@ function isPausalTip(tipCalcul) {
     return String(tipCalcul || '').trim().toLowerCase() === 'pausal';
 }
 
+function isContorConfigurabilTip(tipCalcul) {
+    const normalized = String(tipCalcul || '').toLowerCase().replace(/[\s_*-]/g, '');
+
+    return normalized.includes('contor') && normalized.includes('configurabil');
+}
+
 function tipCitireLabel(tipCalcul) {
-    return isPausalTip(tipCalcul) ? 'Pausal' : 'Contor';
+    if (isPausalTip(tipCalcul)) {
+        return 'Pausal';
+    }
+
+    if (isContorConfigurabilTip(tipCalcul)) {
+        return 'Configurabil';
+    }
+
+    return 'Contor';
 }
 
 function calculatedConsum(indexVechi, indexNou) {
@@ -29,8 +43,8 @@ function formatDecimalForInput(value) {
     return normalized.replace(/(\.\d*?)0+$/, '$1').replace(/\.$/, '');
 }
 
-function flattenCitiri(spatii) {
-    return spatii.flatMap((spatiu) => (spatiu.liniiContor || []).map((linie) => {
+function flattenCitiri(spatii, contoareConfigurabile = []) {
+    const citiriSpatii = spatii.flatMap((spatiu) => (spatiu.liniiContor || []).map((linie) => {
         const base = {
             spatiu_id: spatiu.id,
             configurare_anexa_linie_id: linie.configurare_anexa_linie_id,
@@ -50,16 +64,26 @@ function flattenCitiri(spatii) {
             index_nou: formatDecimalForInput(linie.index_nou),
         };
     }));
+
+    const citiriConfigurabile = (contoareConfigurabile || []).map((linie) => ({
+        spatiu_id: null,
+        configurare_anexa_linie_id: linie.configurare_anexa_linie_id,
+        tip_calcul: linie.tip_calcul,
+        index_vechi: formatDecimalForInput(linie.index_vechi),
+        index_nou: formatDecimalForInput(linie.index_nou),
+    }));
+
+    return [...citiriConfigurabile, ...citiriSpatii];
 }
 
-function buildFormState({ imobilId, luna, dataCitire, spatii }) {
+function buildFormState({ imobilId, luna, dataCitire, spatii, contoareConfigurabile }) {
     const initialDataCitire = dataCitire || new Date().toISOString().slice(0, 16);
 
     return {
         imobil_id: imobilId || '',
         luna: luna || initialDataCitire.slice(0, 7),
         data_citire: initialDataCitire,
-        citiri: flattenCitiri(spatii),
+        citiri: flattenCitiri(spatii, contoareConfigurabile),
     };
 }
 
@@ -84,14 +108,15 @@ export default function Imobil({
     luniSelectabile = [],
     luniCitite = [],
     spatii = [],
+    contoareConfigurabile = [],
 }) {
     const serverStateKey = useMemo(() => JSON.stringify({
         imobilId: imobil?.id,
         luna,
         dataCitire,
         mode,
-        spatii: flattenCitiri(spatii),
-    }), [imobil?.id, luna, dataCitire, mode, spatii]);
+        spatii: flattenCitiri(spatii, contoareConfigurabile),
+    }), [imobil?.id, luna, dataCitire, mode, spatii, contoareConfigurabile]);
 
     const lastServerStateKey = useRef(serverStateKey);
     const { data, setData, post, processing, errors } = useForm(buildFormState({
@@ -99,6 +124,7 @@ export default function Imobil({
         luna,
         dataCitire,
         spatii,
+        contoareConfigurabile,
     }));
     const [inchidereProcessing, setInchidereProcessing] = React.useState(false);
 
@@ -108,8 +134,8 @@ export default function Imobil({
         }
 
         lastServerStateKey.current = serverStateKey;
-        setData(buildFormState({ imobilId: imobil?.id, luna, dataCitire, spatii }));
-    }, [serverStateKey, imobil?.id, luna, dataCitire, spatii, setData]);
+        setData(buildFormState({ imobilId: imobil?.id, luna, dataCitire, spatii, contoareConfigurabile }));
+    }, [serverStateKey, imobil?.id, luna, dataCitire, spatii, contoareConfigurabile, setData]);
 
     const luniCititeValues = useMemo(
         () => new Set(luniCitite.map((item) => item.luna)),
@@ -157,7 +183,9 @@ export default function Imobil({
 
     function citireIndexFor(spatiuId, linieId) {
         return data.citiri.findIndex((citire) => (
-            Number(citire.spatiu_id) === Number(spatiuId)
+            (citire.spatiu_id === null || citire.spatiu_id === undefined || citire.spatiu_id === ''
+                ? spatiuId === null || spatiuId === undefined || spatiuId === ''
+                : Number(citire.spatiu_id) === Number(spatiuId))
             && Number(citire.configurare_anexa_linie_id) === Number(linieId)
         ));
     }
@@ -190,8 +218,13 @@ export default function Imobil({
         spatiu,
         linie,
     })));
+    const randuriConfigurabile = (contoareConfigurabile || []).map((linie) => ({ linie }));
+    const totalRanduri = randuriCitiri.length + randuriConfigurabile.length;
     const isNewMode = mode === 'new';
-    const hasEditableLines = !lunaInchisa && randuriCitiri.some(({ linie }) => isLineEditable(linie));
+    const hasEditableLines = !lunaInchisa && (
+        randuriCitiri.some(({ linie }) => isLineEditable(linie))
+        || randuriConfigurabile.some(({ linie }) => isLineEditable(linie))
+    );
     const canCloseMonth = !lunaInchisa;
 
     const topbarActions = (
@@ -224,13 +257,92 @@ export default function Imobil({
             topbarActions={topbarActions}
         >
             <form className="form-card" onSubmit={submit}>
-                {randuriCitiri.length === 0 ? (
+                {totalRanduri === 0 ? (
                     <div className="readonly-info-card">
                         <h2>Nu există contoare de citit</h2>
-                        <p>Niciun spațiu din acest imobil nu are anexă cu linii de tip Contor sau Pausal. Alocă anexa pe spații și adaugă servicii cu tip calcul Contor sau Pausal.</p>
+                        <p>Niciun spațiu din acest imobil nu are anexă cu linii de tip Contor sau Pausal, iar nu există contoare configurabile. Alocă anexa pe spații și adaugă servicii cu tip calcul Contor, Pausal sau Contor configurabil.</p>
                     </div>
                 ) : (
                     <div className="meter-reading-groups">
+                        {randuriConfigurabile.length > 0 ? (
+                            <div className="contor-config-citiri-block">
+                                <h2 className="contor-config-citiri-title">Contoare configurabile (imobil)</h2>
+                                <p className="contor-config-citiri-help">Citire unică la nivel de imobil; cantitatea se repartizează pe spațiile alocate din Configurare contoare.</p>
+                                <div className="responsive-table">
+                                    <table className="citiri-contoare-table contor-config-citiri-table">
+                                        <thead>
+                                            <tr>
+                                                <th>Anexă</th>
+                                                <th>Serviciu</th>
+                                                <th>Tip</th>
+                                                <th>UM</th>
+                                                <th>Index vechi</th>
+                                                <th>Index nou</th>
+                                                <th>Cantitate</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {randuriConfigurabile.map(({ linie }) => {
+                                                const editable = isLineEditable(linie);
+                                                const citire = data.citiri[citireIndexFor(null, linie.configurare_anexa_linie_id)] || {
+                                                    index_vechi: formatDecimalForInput(linie.index_vechi),
+                                                    index_nou: formatDecimalForInput(linie.index_nou),
+                                                };
+                                                const indexVechiAfisat = citire.index_vechi ?? formatDecimalForInput(linie.index_vechi);
+
+                                                return (
+                                                    <tr key={`config-${linie.configurare_anexa_linie_id}`}>
+                                                        <td title={linie.anexa}>{linie.anexa || '—'}</td>
+                                                        <td title={linie.denumire}>{linie.denumire}</td>
+                                                        <td>{tipCitireLabel(linie.tip_calcul)}</td>
+                                                        <td>{linie.um || '—'}</td>
+                                                        <td>
+                                                            <input
+                                                                className="table-input"
+                                                                type="text"
+                                                                inputMode="decimal"
+                                                                value={indexVechiAfisat}
+                                                                readOnly={!editable}
+                                                                tabIndex={!editable ? -1 : undefined}
+                                                                aria-readonly={!editable ? 'true' : undefined}
+                                                                onChange={(event) => updateCitire(
+                                                                    null,
+                                                                    linie.configurare_anexa_linie_id,
+                                                                    'index_vechi',
+                                                                    event.target.value,
+                                                                    linie.tip_calcul,
+                                                                )}
+                                                            />
+                                                        </td>
+                                                        <td>
+                                                            <input
+                                                                className="table-input"
+                                                                type="text"
+                                                                inputMode="decimal"
+                                                                value={citire.index_nou ?? ''}
+                                                                readOnly={!editable}
+                                                                tabIndex={!editable ? -1 : undefined}
+                                                                aria-readonly={!editable ? 'true' : undefined}
+                                                                onChange={(event) => updateCitire(
+                                                                    null,
+                                                                    linie.configurare_anexa_linie_id,
+                                                                    'index_nou',
+                                                                    event.target.value,
+                                                                    linie.tip_calcul,
+                                                                )}
+                                                            />
+                                                        </td>
+                                                        <td>{calculatedConsum(citire.index_vechi ?? indexVechiAfisat, citire.index_nou) || '—'}</td>
+                                                    </tr>
+                                                );
+                                            })}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        ) : null}
+
+                        {randuriCitiri.length > 0 ? (
                         <div className="responsive-table">
                             <table className="citiri-contoare-table">
                                 <thead>
@@ -337,13 +449,14 @@ export default function Imobil({
                                 </tbody>
                             </table>
                         </div>
+                        ) : null}
                     </div>
                 )}
 
                 {errors.imobil_id ? <small>{errors.imobil_id}</small> : null}
                 {errors.data_citire ? <small>{errors.data_citire}</small> : null}
 
-                {!lunaInchisa && randuriCitiri.length > 0 ? (
+                {!lunaInchisa && totalRanduri > 0 ? (
                     <div className="form-footer-actions">
                         <label className="form-field">
                             <span>Data citire</span>

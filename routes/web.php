@@ -4,6 +4,7 @@ use App\Http\Controllers\BackupController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\AnexaController;
 use App\Http\Controllers\CitireContorController;
+use App\Http\Controllers\ConfigurareContoareController;
 use App\Http\Controllers\ConfigurareAnexaController;
 use App\Http\Controllers\ContractController;
 use App\Http\Controllers\ServiciuStandardAnexaController;
@@ -65,6 +66,10 @@ Route::get('/citiri-contoare', [CitireContorController::class, 'index'])->name('
 Route::get('/citiri-contoare/imobil/{imobil}', [CitireContorController::class, 'imobil'])->name('citiri-contoare.imobil');
 Route::post('/citiri-contoare', [CitireContorController::class, 'store'])->name('citiri-contoare.store');
 Route::post('/citiri-contoare/inchide', [CitireContorController::class, 'inchide'])->name('citiri-contoare.inchide');
+Route::get('/configurare-contoare', [ConfigurareContoareController::class, 'index'])->name('configurare-contoare.index');
+Route::get('/configurare-contoare/imobil/{imobil}', [ConfigurareContoareController::class, 'imobil'])->name('configurare-contoare.imobil');
+Route::get('/configurare-contoare/imobil/{imobil}/contor/{contorConfigurabil}', [ConfigurareContoareController::class, 'contor'])->name('configurare-contoare.contor');
+Route::put('/configurare-contoare/{contorConfigurabil}', [ConfigurareContoareController::class, 'update'])->name('configurare-contoare.update');
 Route::get('/anexe', [AnexaController::class, 'index'])->name('anexe.index');
 Route::post('/anexe/generare', [AnexaController::class, 'generate'])->name('anexe.generate');
 Route::get('/anexe/imobil/{imobil}', [AnexaController::class, 'imobil'])->name('anexe.imobil');

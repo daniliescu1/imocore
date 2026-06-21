@@ -59,8 +59,15 @@ function isPausalValue(value) {
     return String(value || '').trim().toLowerCase() === 'pausal';
 }
 
+function isContorConfigurabilValue(value) {
+    const normalized = String(value || '').toLowerCase().replace(/[\s_*×-]/g, '');
+
+    return normalized.includes('contor') && normalized.includes('configurabil');
+}
+
 function templateFaraCantitati(tipCalcul) {
     return tipCalcul === 'contor'
+        || isContorConfigurabilValue(tipCalcul)
         || isPausalValue(tipCalcul)
         || ['mp', 'pe_mp'].includes(tipCalcul)
         || tipCalcul === 'persoane'

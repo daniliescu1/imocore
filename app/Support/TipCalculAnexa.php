@@ -13,6 +13,10 @@ class TipCalculAnexa
             return 'mp_coeficient';
         }
 
+        if (str_contains($normalized, 'contor') && str_contains($normalized, 'configurabil')) {
+            return 'contor_configurabil';
+        }
+
         if ($normalized === 'contor') {
             return 'contor';
         }
@@ -42,9 +46,16 @@ class TipCalculAnexa
         return self::normalize($tipCalcul) === 'pausal';
     }
 
+    public static function isContorConfigurabil(?string $tipCalcul): bool
+    {
+        return self::normalize($tipCalcul) === 'contor_configurabil';
+    }
+
     public static function isCitire(?string $tipCalcul): bool
     {
-        return self::isContor($tipCalcul) || self::isPausal($tipCalcul);
+        return self::isContor($tipCalcul)
+            || self::isPausal($tipCalcul)
+            || self::isContorConfigurabil($tipCalcul);
     }
 
     public static function applyLiniiContorScope($query)
@@ -52,7 +63,35 @@ class TipCalculAnexa
         return $query
             ->where(function ($query): void {
                 $query->whereRaw('lower(trim(tip_calcul)) = ?', ['contor'])
+                    ->orWhereRaw('lower(trim(tip_calcul)) = ?', ['pausal'])
+                    ->orWhereRaw('lower(trim(tip_calcul)) = ?', ['contor configurabil']);
+            })
+            ->where(function ($query): void {
+                $query->whereNull('tip_linie')
+                    ->orWhere('tip_linie', '!=', 'header');
+            })
+            ->where('activ', true);
+    }
+
+    public static function applyLiniiContorSpatiuScope($query)
+    {
+        return $query
+            ->where(function ($query): void {
+                $query->whereRaw('lower(trim(tip_calcul)) = ?', ['contor'])
                     ->orWhereRaw('lower(trim(tip_calcul)) = ?', ['pausal']);
+            })
+            ->where(function ($query): void {
+                $query->whereNull('tip_linie')
+                    ->orWhere('tip_linie', '!=', 'header');
+            })
+            ->where('activ', true);
+    }
+
+    public static function applyLiniiContorConfigurabilScope($query)
+    {
+        return $query
+            ->where(function ($query): void {
+                $query->whereRaw('lower(trim(tip_calcul)) = ?', ['contor configurabil']);
             })
             ->where(function ($query): void {
                 $query->whereNull('tip_linie')

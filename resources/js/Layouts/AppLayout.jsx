@@ -23,6 +23,7 @@ const navigation = [
     { label: 'Imobile', icon: Building2, href: '/imobile' },
     { label: 'Spații', icon: BarChart3, href: '/spatii' },
     { label: 'Configurare anexă', icon: ReceiptText, href: '/configurare-anexa' },
+    { label: 'Configurare contoare', icon: Settings, href: '/configurare-contoare' },
     { label: 'Locatori', icon: Users, href: '/locatori' },
     { label: 'Contracte', icon: FileText, href: '/contracte' },
     { label: 'Indexare chirii', icon: BarChart3, href: '/indexare-chirii' },

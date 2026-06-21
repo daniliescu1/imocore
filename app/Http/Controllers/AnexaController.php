@@ -11,6 +11,8 @@ use App\Models\Imobil;
 use App\Models\Spatiu;
 use App\Support\AnexaDocumentPayload;
 use App\Support\DocumentFormatter;
+use App\Models\ContorConfigurabil;
+use App\Support\ContorConfigurabilCalculator;
 use App\Support\TipCalculAnexa;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\Carbon;
@@ -247,6 +249,22 @@ class AnexaController extends Controller
             $indexVechi = null;
             $indexNou = null;
             $cantitate = $persoane;
+        } elseif (TipCalculAnexa::isContorConfigurabil($tipCalcul)) {
+            $regula = ContorConfigurabil::query()
+                ->where('configurare_anexa_linie_id', $linieConfigurata->id)
+                ->first();
+
+            if ($regula) {
+                $calcul = ContorConfigurabilCalculator::cantitatePentruSpatiu(
+                    $regula,
+                    $spatiuId,
+                    $lunaUtilitati,
+                    $lunaFacturare,
+                );
+                $indexVechi = $calcul['index_vechi'];
+                $indexNou = $calcul['index_nou'];
+                $cantitate = $calcul['cantitate'];
+            }
         } elseif ($tipCalcul === 'contor') {
             $citire = $this->citirePentruAnexa($spatiuId, $linieConfigurata->id, $lunaUtilitati, $lunaFacturare);
 

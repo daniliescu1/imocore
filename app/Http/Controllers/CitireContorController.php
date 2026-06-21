@@ -5,8 +5,10 @@ namespace App\Http\Controllers;
 use App\Models\CitireContor;
 use App\Models\CitireContorLunaInchisa;
 use App\Models\ConfigurareAnexaLinie;
+use App\Models\ContorConfigurabil;
 use App\Models\Imobil;
 use App\Models\Spatiu;
+use App\Support\ContorConfigurabilSync;
 use App\Support\TipCalculAnexa;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -51,7 +53,9 @@ class CitireContorController extends Controller
         $dataCitire = $request->string('data_citire')->toString()
             ?: ($mode === 'history' ? ($this->dataCitirePentruLuna($imobil, $luna) ?: "{$luna}-20T".now()->format('H:i')) : "{$luna}-20T".now()->format('H:i'));
         $lunaInchisa = $this->lunaInchisa($imobil->id, $luna);
+        ContorConfigurabilSync::syncForImobil($imobil->id);
         $spatii = $this->spatiiCuCitiriPentruImobil($imobil, $luna, $lunaInchisa);
+        $contoareConfigurabile = $this->contoareConfigurabilePentruImobil($imobil, $luna, $lunaInchisa);
 
         return Inertia::render('CitiriContoare/Imobil', [
             'imobil' => [
@@ -68,6 +72,7 @@ class CitireContorController extends Controller
             'luniCitite' => $luniCitite,
             'luniSelectabile' => $this->luniSelectabile(),
             'spatii' => $spatii,
+            'contoareConfigurabile' => $contoareConfigurabile,
         ]);
     }
 
@@ -151,7 +156,7 @@ class CitireContorController extends Controller
             'luna' => ['required', 'string', 'size:7'],
             'data_citire' => ['required', 'date'],
             'citiri' => ['nullable', 'array'],
-            'citiri.*.spatiu_id' => ['required', 'exists:spatii,id'],
+            'citiri.*.spatiu_id' => ['nullable', 'exists:spatii,id'],
             'citiri.*.configurare_anexa_linie_id' => ['required', 'exists:configurare_anexa_linii,id'],
             'citiri.*.index_nou' => ['nullable', 'numeric', 'min:0'],
             'citiri.*.index_vechi' => ['nullable', 'numeric', 'min:0'],
@@ -189,14 +194,19 @@ class CitireContorController extends Controller
 
         return collect($validated['citiri'] ?? [])
             ->filter(function (array $citireData) use ($validated): bool {
-                $spatiuId = (int) ($citireData['spatiu_id'] ?? 0);
                 $linieId = (int) ($citireData['configurare_anexa_linie_id'] ?? 0);
 
-                if ($spatiuId === 0 || $linieId === 0) {
+                if ($linieId === 0) {
                     return false;
                 }
 
-                return ! $this->linieAreCitireLunaUlterioara($spatiuId, $linieId, $validated['luna']);
+                $spatiuId = $citireData['spatiu_id'] ?? null;
+
+                if ($spatiuId === null || $spatiuId === '') {
+                    return ! $this->linieAreCitireLunaUlterioaraImobil($linieId, $validated['luna']);
+                }
+
+                return ! $this->linieAreCitireLunaUlterioara((int) $spatiuId, $linieId, $validated['luna']);
             })
             ->values()
             ->all();
@@ -209,32 +219,71 @@ class CitireContorController extends Controller
     {
         $spatii = Spatiu::query()
             ->where('imobil_id', $imobilId)
-            ->whereIn('id', collect($citiri)->pluck('spatiu_id'))
+            ->whereIn('id', collect($citiri)->pluck('spatiu_id')->filter())
             ->get(['id', 'configurare_anexa_id'])
             ->keyBy('id');
 
         $linii = ConfigurareAnexaLinie::query()
             ->whereIn('id', collect($citiri)->pluck('configurare_anexa_linie_id'))
+            ->whereHas('configurare', fn ($query) => $query->where('imobil_id', $imobilId))
             ->get(['id', 'configurare_anexa_id', 'tip_calcul'])
             ->filter(fn (ConfigurareAnexaLinie $linie): bool => TipCalculAnexa::isCitire($linie->tip_calcul))
             ->keyBy('id');
 
         foreach ($citiri as $citireData) {
-            $spatiu = $spatii->get((int) $citireData['spatiu_id']);
             $linie = $linii->get((int) $citireData['configurare_anexa_linie_id']);
 
-            if (! $spatiu || ! $linie || (int) $spatiu->configurare_anexa_id !== (int) $linie->configurare_anexa_id) {
+            if (! $linie) {
+                continue;
+            }
+
+            $spatiuId = $citireData['spatiu_id'] ?? null;
+            $esteConfigurabilImobil = ($spatiuId === null || $spatiuId === '')
+                && TipCalculAnexa::isContorConfigurabil($linie->tip_calcul);
+
+            if ($esteConfigurabilImobil) {
+                if ($this->linieAreCitireLunaUlterioaraImobil((int) $linie->id, $luna)) {
+                    continue;
+                }
+
+                $indexVechi = array_key_exists('index_vechi', $citireData) && $citireData['index_vechi'] !== null && $citireData['index_vechi'] !== ''
+                    ? (float) $citireData['index_vechi']
+                    : $this->ultimulIndexNouImobil((int) $linie->id, $luna);
+                $indexNou = (float) ($citireData['index_nou'] ?? 0);
+
+                CitireContor::query()->updateOrCreate(
+                    [
+                        'spatiu_id' => null,
+                        'configurare_anexa_linie_id' => $linie->id,
+                        'luna' => $luna,
+                    ],
+                    [
+                        'contor_id' => null,
+                        'spatiu_id' => null,
+                        'data_citire' => $dataCitire,
+                        'index_vechi' => $indexVechi,
+                        'index_nou' => $indexNou,
+                        'consum' => max(0, $indexNou - $indexVechi),
+                    ]
+                );
+
+                continue;
+            }
+
+            $spatiu = $spatii->get((int) $spatiuId);
+
+            if (! $spatiu || (int) $spatiu->configurare_anexa_id !== (int) $linie->configurare_anexa_id) {
                 continue;
             }
 
             $existingCitire = CitireContor::query()
-                ->where('spatiu_id', $citireData['spatiu_id'])
+                ->where('spatiu_id', $spatiuId)
                 ->where('configurare_anexa_linie_id', $citireData['configurare_anexa_linie_id'])
                 ->where('luna', $luna)
                 ->first();
 
             if ($existingCitire !== null && $this->linieAreCitireLunaUlterioara(
-                (int) $citireData['spatiu_id'],
+                (int) $spatiuId,
                 (int) $citireData['configurare_anexa_linie_id'],
                 $luna
             )) {
@@ -246,13 +295,13 @@ class CitireContorController extends Controller
 
                 CitireContor::query()->updateOrCreate(
                     [
-                        'spatiu_id' => $citireData['spatiu_id'],
+                        'spatiu_id' => $spatiuId,
                         'configurare_anexa_linie_id' => $citireData['configurare_anexa_linie_id'],
                         'luna' => $luna,
                     ],
                     [
                         'contor_id' => null,
-                        'spatiu_id' => $citireData['spatiu_id'],
+                        'spatiu_id' => $spatiuId,
                         'data_citire' => $dataCitire,
                         'index_vechi' => 0,
                         'index_nou' => 0,
@@ -266,7 +315,7 @@ class CitireContorController extends Controller
             $indexVechi = array_key_exists('index_vechi', $citireData) && $citireData['index_vechi'] !== null && $citireData['index_vechi'] !== ''
                 ? (float) $citireData['index_vechi']
                 : $this->ultimulIndexNou(
-                    (int) $citireData['spatiu_id'],
+                    (int) $spatiuId,
                     (int) $citireData['configurare_anexa_linie_id'],
                     $luna
                 );
@@ -274,13 +323,13 @@ class CitireContorController extends Controller
 
             CitireContor::query()->updateOrCreate(
                 [
-                    'spatiu_id' => $citireData['spatiu_id'],
+                    'spatiu_id' => $spatiuId,
                     'configurare_anexa_linie_id' => $citireData['configurare_anexa_linie_id'],
                     'luna' => $luna,
                 ],
                 [
                     'contor_id' => null,
-                    'spatiu_id' => $citireData['spatiu_id'],
+                    'spatiu_id' => $spatiuId,
                     'data_citire' => $dataCitire,
                     'index_vechi' => $indexVechi,
                     'index_nou' => $indexNou,
@@ -297,28 +346,39 @@ class CitireContorController extends Controller
         Spatiu::query()
             ->where('imobil_id', $imobilId)
             ->whereNotNull('configurare_anexa_id')
-            ->with(['configurareAnexa.linii' => fn ($query) => TipCalculAnexa::applyLiniiContorScope(
+            ->with(['configurareAnexa.linii' => fn ($query) => TipCalculAnexa::applyLiniiContorSpatiuScope(
                 $query->orderBy('ordine')->orderBy('id')
             )])
             ->each(function (Spatiu $spatiu) use (&$count): void {
                 $count += $spatiu->configurareAnexa?->linii->count() ?? 0;
             });
 
+        $count += ContorConfigurabil::query()->where('imobil_id', $imobilId)->count();
+
         return $count;
     }
 
     private function ultimaLunaCititaForImobil(int $imobilId): ?string
     {
-        return CitireContor::query()
-            ->whereHas('spatiu', fn ($query) => $query->where('imobil_id', $imobilId))
-            ->orderByDesc('luna')
-            ->value('luna');
+        $luni = collect([
+            CitireContor::query()
+                ->whereHas('spatiu', fn ($query) => $query->where('imobil_id', $imobilId))
+                ->orderByDesc('luna')
+                ->value('luna'),
+            CitireContor::query()
+                ->whereNull('spatiu_id')
+                ->whereHas('configurareAnexaLinie.configurare', fn ($query) => $query->where('imobil_id', $imobilId))
+                ->orderByDesc('luna')
+                ->value('luna'),
+        ])->filter()->sortDesc()->first();
+
+        return $luni ?: null;
     }
 
     private function spatiiCuCitiriPentruImobil(Imobil $imobil, string $luna, bool $lunaInchisa): array
     {
         return Spatiu::query()
-            ->with(['configurareAnexa.linii' => fn ($query) => TipCalculAnexa::applyLiniiContorScope(
+            ->with(['configurareAnexa.linii' => fn ($query) => TipCalculAnexa::applyLiniiContorSpatiuScope(
                 $query->orderBy('ordine')->orderBy('id')
             )])
             ->where('imobil_id', $imobil->id)
@@ -374,12 +434,20 @@ class CitireContorController extends Controller
 
     private function luniCititePentruImobil(Imobil $imobil): array
     {
-        return CitireContor::query()
+        $luniSpatiu = CitireContor::query()
             ->whereHas('spatiu', fn ($query) => $query->where('imobil_id', $imobil->id))
-            ->select('luna')
-            ->distinct()
-            ->orderByDesc('luna')
-            ->pluck('luna')
+            ->pluck('luna');
+
+        $luniImobil = CitireContor::query()
+            ->whereNull('spatiu_id')
+            ->whereHas('configurareAnexaLinie.configurare', fn ($query) => $query->where('imobil_id', $imobil->id))
+            ->pluck('luna');
+
+        return $luniSpatiu
+            ->merge($luniImobil)
+            ->unique()
+            ->sortDesc()
+            ->values()
             ->map(fn (string $luna): array => [
                 'luna' => $luna,
                 'label' => substr($luna, 5, 2).'.'.substr($luna, 0, 4),
@@ -399,8 +467,14 @@ class CitireContorController extends Controller
     private function areCitiriSalvatePentruLuna(int $imobilId, string $luna): bool
     {
         return CitireContor::query()
-            ->whereHas('spatiu', fn ($query) => $query->where('imobil_id', $imobilId))
             ->where('luna', $luna)
+            ->where(function ($query) use ($imobilId): void {
+                $query->whereHas('spatiu', fn ($spatiuQuery) => $spatiuQuery->where('imobil_id', $imobilId))
+                    ->orWhere(function ($query) use ($imobilId): void {
+                        $query->whereNull('spatiu_id')
+                            ->whereHas('configurareAnexaLinie.configurare', fn ($configurareQuery) => $configurareQuery->where('imobil_id', $imobilId));
+                    });
+            })
             ->exists();
     }
 
@@ -445,9 +519,15 @@ class CitireContorController extends Controller
     private function dataCitirePentruLuna(Imobil $imobil, string $luna): ?string
     {
         $dataCitire = CitireContor::query()
-            ->whereHas('spatiu', fn ($query) => $query->where('imobil_id', $imobil->id))
             ->where('luna', $luna)
             ->whereNotNull('data_citire')
+            ->where(function ($query) use ($imobil): void {
+                $query->whereHas('spatiu', fn ($spatiuQuery) => $spatiuQuery->where('imobil_id', $imobil->id))
+                    ->orWhere(function ($query) use ($imobil): void {
+                        $query->whereNull('spatiu_id')
+                            ->whereHas('configurareAnexaLinie.configurare', fn ($configurareQuery) => $configurareQuery->where('imobil_id', $imobil->id));
+                    });
+            })
             ->orderByDesc('data_citire')
             ->value('data_citire');
 
@@ -457,8 +537,14 @@ class CitireContorController extends Controller
     private function existaLunaUlterioara(int $imobilId, string $luna): bool
     {
         return CitireContor::query()
-            ->whereHas('spatiu', fn ($query) => $query->where('imobil_id', $imobilId))
             ->where('luna', '>', $luna)
+            ->where(function ($query) use ($imobilId): void {
+                $query->whereHas('spatiu', fn ($spatiuQuery) => $spatiuQuery->where('imobil_id', $imobilId))
+                    ->orWhere(function ($query) use ($imobilId): void {
+                        $query->whereNull('spatiu_id')
+                            ->whereHas('configurareAnexaLinie.configurare', fn ($configurareQuery) => $configurareQuery->where('imobil_id', $imobilId));
+                    });
+            })
             ->exists();
     }
 
@@ -488,5 +574,62 @@ class CitireContorController extends Controller
             ->where('luna', '<', $luna)
             ->orderByDesc('luna')
             ->value('index_nou') ?? 0);
+    }
+
+    private function linieAreCitireLunaUlterioaraImobil(int $linieId, string $luna): bool
+    {
+        return CitireContor::query()
+            ->whereNull('spatiu_id')
+            ->where('configurare_anexa_linie_id', $linieId)
+            ->where('luna', '>', $luna)
+            ->exists();
+    }
+
+    private function ultimulIndexNouImobil(int $linieId, string $luna): float
+    {
+        return (float) (CitireContor::query()
+            ->whereNull('spatiu_id')
+            ->where('configurare_anexa_linie_id', $linieId)
+            ->where('luna', '<', $luna)
+            ->orderByDesc('luna')
+            ->value('index_nou') ?? 0);
+    }
+
+    private function contoareConfigurabilePentruImobil(Imobil $imobil, string $luna, bool $lunaInchisa): array
+    {
+        return ContorConfigurabil::query()
+            ->with(['configurareAnexaLinie', 'configurareAnexa'])
+            ->where('imobil_id', $imobil->id)
+            ->orderBy('configurare_anexa_id')
+            ->orderBy('id')
+            ->get()
+            ->map(function (ContorConfigurabil $regula) use ($luna, $lunaInchisa): array {
+                $linie = $regula->configurareAnexaLinie;
+                $citire = CitireContor::query()
+                    ->whereNull('spatiu_id')
+                    ->where('configurare_anexa_linie_id', $regula->configurare_anexa_linie_id)
+                    ->where('luna', $luna)
+                    ->first();
+
+                $ultimulIndexNou = $this->ultimulIndexNouImobil($regula->configurare_anexa_linie_id, $luna);
+                $editabila = ! $lunaInchisa && ! $this->linieAreCitireLunaUlterioaraImobil($regula->configurare_anexa_linie_id, $luna);
+
+                return [
+                    'configurare_anexa_linie_id' => $regula->configurare_anexa_linie_id,
+                    'denumire' => $linie?->denumire ?: '—',
+                    'anexa' => $regula->configurareAnexa?->denumire ?: '—',
+                    'tip_calcul' => $linie?->tip_calcul ?: 'Contor configurabil',
+                    'um' => $linie?->um,
+                    'index_vechi' => $citire
+                        ? ($citire->index_vechi ?? '')
+                        : $ultimulIndexNou,
+                    'index_nou' => $citire?->index_nou ?? '',
+                    'consum' => $citire?->consum ?? '',
+                    'citire_salvata' => $citire !== null,
+                    'editabila' => $editabila,
+                ];
+            })
+            ->values()
+            ->all();
     }
 }

@@ -1031,13 +1031,11 @@ td {
 }
 
 .meter-reading-groups .citiri-contoare-table th:nth-child(6),
-.meter-reading-groups .citiri-contoare-table td:nth-child(6) {
-    width: 12%;
-}
-
+.meter-reading-groups .citiri-contoare-table td:nth-child(6),
 .meter-reading-groups .citiri-contoare-table th:nth-child(7),
 .meter-reading-groups .citiri-contoare-table td:nth-child(7) {
-    width: 12%;
+    width: 11%;
+    min-width: 7.5rem;
 }
 
 .meter-reading-groups .citiri-contoare-table th:nth-child(8),
@@ -3788,4 +3786,216 @@ tr:last-child td {
 .form-field-incomplete textarea {
     border-color: #d32f2f;
     box-shadow: 0 0 0 1px rgba(211, 47, 47, 0.12);
+}
+
+.contor-config-list {
+    display: grid;
+    gap: 18px;
+}
+
+.contor-config-card .contor-config-formula {
+    margin: 0 0 18px;
+    color: var(--text-secondary);
+    font-weight: 600;
+}
+
+.contor-config-consum-summary {
+    margin: 4px 0 0;
+    color: var(--text-secondary);
+    font-weight: 600;
+}
+
+.contor-config-consum-summary strong {
+    color: var(--title-green);
+}
+
+.contor-config-section {
+    margin-bottom: 20px;
+}
+
+.contor-config-section h3 {
+    margin: 0 0 6px;
+    color: var(--title-green);
+}
+
+.contor-config-help {
+    margin: 0 0 12px;
+    color: var(--text-secondary);
+}
+
+.contor-config-scadere-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto;
+    gap: 12px;
+    align-items: end;
+    margin-bottom: 12px;
+}
+
+.contor-config-alocari-title {
+    margin: 0 0 12px;
+    line-height: 1.45;
+}
+
+.contor-config-alocari-title strong {
+    color: var(--brand-green, #1f4d3a);
+}
+
+.contor-config-alocari {
+    display: grid;
+    gap: 10px;
+}
+
+.contor-config-warning {
+    color: #b45309;
+    font-weight: 700;
+}
+
+.contor-config-citiri-block {
+    margin-bottom: 24px;
+}
+
+.contor-config-citiri-title {
+    margin: 0 0 6px;
+    color: var(--title-green);
+}
+
+.contor-config-citiri-help {
+    margin: 0 0 14px;
+    color: var(--text-secondary);
+}
+
+.contor-config-citiri-table th:nth-child(2),
+.contor-config-citiri-table td:nth-child(2) {
+    min-width: 220px;
+}
+
+.meter-reading-groups .contor-config-citiri-table th:nth-child(1),
+.meter-reading-groups .contor-config-citiri-table td:nth-child(1) {
+    width: 14%;
+}
+
+.meter-reading-groups .contor-config-citiri-table th:nth-child(3),
+.meter-reading-groups .contor-config-citiri-table td:nth-child(3) {
+    width: 8%;
+}
+
+.meter-reading-groups .contor-config-citiri-table th:nth-child(4),
+.meter-reading-groups .contor-config-citiri-table td:nth-child(4) {
+    width: 6%;
+}
+
+.meter-reading-groups .contor-config-citiri-table th:nth-child(5),
+.meter-reading-groups .contor-config-citiri-table td:nth-child(5),
+.meter-reading-groups .contor-config-citiri-table th:nth-child(6),
+.meter-reading-groups .contor-config-citiri-table td:nth-child(6) {
+    width: 11%;
+    min-width: 7.5rem;
+}
+
+.meter-reading-groups .contor-config-citiri-table th:nth-child(7),
+.meter-reading-groups .contor-config-citiri-table td:nth-child(7) {
+    width: 10%;
+}
+
+.meter-reading-groups .contor-config-citiri-table th:nth-child(n + 5),
+.meter-reading-groups .contor-config-citiri-table td:nth-child(n + 5) {
+    text-align: right;
+}
+
+.contor-config-list-table-card .responsive-table {
+    overflow-x: hidden;
+}
+
+.contor-config-list-table {
+    table-layout: fixed;
+    width: 100%;
+    min-width: 0;
+}
+
+.contor-config-list-table th,
+.contor-config-list-table td {
+    padding: 0 10px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.contor-config-list-table th:nth-child(1),
+.contor-config-list-table td:nth-child(1) {
+    width: 17%;
+    white-space: normal;
+    line-height: 1.35;
+}
+
+.contor-config-list-table th:nth-child(2),
+.contor-config-list-table td:nth-child(2) {
+    width: 19%;
+}
+
+.contor-config-list-table th:nth-child(3),
+.contor-config-list-table td:nth-child(3) {
+    width: 5%;
+}
+
+.contor-config-list-table th:nth-child(4),
+.contor-config-list-table td:nth-child(4) {
+    width: 8%;
+}
+
+.contor-config-list-table th:nth-child(5),
+.contor-config-list-table td:nth-child(5),
+.contor-config-list-table th:nth-child(6),
+.contor-config-list-table td:nth-child(6) {
+    width: 11%;
+    text-align: right;
+}
+
+.contor-config-list-table th:nth-child(7),
+.contor-config-list-table td:nth-child(7) {
+    width: 10%;
+    text-align: right;
+}
+
+.contor-config-list-table th:nth-child(8),
+.contor-config-list-table td:nth-child(8) {
+    width: 9%;
+}
+
+.contor-config-citire-card {
+    margin-bottom: 18px;
+}
+
+.contor-config-citire-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 16px;
+    margin-bottom: 16px;
+}
+
+.contor-config-citire-header h2 {
+    margin: 0 0 6px;
+    color: var(--title-green);
+}
+
+.contor-config-citire-header p {
+    margin: 0;
+    color: var(--text-secondary);
+}
+
+.contor-config-citire-grid {
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 16px;
+}
+
+.contor-config-citire-item span {
+    display: block;
+    margin-bottom: 4px;
+    color: var(--text-secondary);
+    font-size: 0.92rem;
+}
+
+.contor-config-citire-item strong {
+    color: var(--title-green);
+    font-size: 1.05rem;
 }
