@@ -576,6 +576,7 @@ export default function Form({
                                         <select value={data.chirias_pj.administrator.calitate || 'administrator'} onChange={(event) => updateAdministrator('calitate', event.target.value)}>
                                             <option value="administrator">Administrator</option>
                                             <option value="asociat">Asociat</option>
+                                            <option value="presedinte">Președinte</option>
                                             <option value="imputernicit_notarial">Împuternicit notarial</option>
                                         </select>
                                         {errors['chirias_pj.administrator.calitate'] ? <small>{errors['chirias_pj.administrator.calitate']}</small> : null}

@@ -76,7 +76,7 @@ class DocumentFormatter
         return self::faraDiacritice($display);
     }
 
-    public static function lunaText(?string $luna): string
+    public static function lunaNume(?string $luna): string
     {
         $luni = [
             '01' => 'Ianuarie',
@@ -93,13 +93,42 @@ class DocumentFormatter
             '12' => 'Decembrie',
         ];
 
-        [$year, $month] = array_pad(explode('-', (string) $luna, 2), 2, null);
+        [, $month] = array_pad(explode('-', (string) $luna, 2), 2, null);
 
-        if (! $year || ! $month) {
+        return $luni[$month] ?? '';
+    }
+
+    public static function lunaText(?string $luna): string
+    {
+        [$year] = array_pad(explode('-', (string) $luna, 2), 2, null);
+        $lunaNume = self::lunaNume($luna);
+
+        if (! $year || $lunaNume === '') {
             return '—';
         }
 
-        return trim("{$month} ".($luni[$month] ?? '')." {$year}");
+        return trim("{$lunaNume} {$year}");
+    }
+
+    public static function denumireServiciuCuLuna(?string $denumire, ?string $luna): string
+    {
+        $denumire = trim((string) $denumire);
+
+        if ($denumire === '') {
+            return '';
+        }
+
+        $lunaNume = self::lunaNume($luna);
+
+        if ($lunaNume === '') {
+            return $denumire;
+        }
+
+        if (preg_match('/\s'.preg_quote($lunaNume, '/').'$/iu', $denumire) === 1) {
+            return $denumire;
+        }
+
+        return "{$denumire} {$lunaNume}";
     }
 
     public static function perioadaCitireDefault(?string $luna): string

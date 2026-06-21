@@ -50,7 +50,9 @@ class AnexaDocumentPayload
             'linii' => $anexa->linii->values()->map(fn (AnexaLinie $linie): array => [
                 'tip_linie' => $linie->tip_linie ?: 'serviciu',
                 'nr_crt' => $linie->nr_crt,
-                'denumire' => $linie->denumire,
+                'denumire' => ($linie->tip_linie ?: 'serviciu') === 'header'
+                    ? $linie->denumire
+                    : DocumentFormatter::denumireServiciuCuLuna($linie->denumire, $anexa->luna),
                 'tip_calcul' => $linie->tip_calcul,
                 'coeficient' => $linie->coeficient,
                 'index_vechi' => $linie->index_vechi,

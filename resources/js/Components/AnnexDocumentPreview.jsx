@@ -25,7 +25,7 @@ function lunaText(luna) {
         '12': 'Decembrie',
     };
 
-    return `${month} ${luni[month] || ''} ${year}`;
+    return `${luni[month] || ''} ${year}`.trim();
 }
 
 export default function AnnexDocumentPreview({ anexa, compactHeader = false }) {
