@@ -40,7 +40,9 @@ class CitireContorController extends Controller
         $lunaCeruta = $request->string('luna')->toString();
         $luniCititeValues = collect($luniCitite)->pluck('luna');
         $luna = $lunaCeruta
-            ?: ($mode === 'new' ? $this->lunaUrmatoare($luniCitite[0]['luna'] ?? null) : ($luniCitite[0]['luna'] ?? now()->format('Y-m')));
+            ?: ($mode === 'new'
+                ? $this->lunaImplicitaModNou($imobil->id, $luniCitite)
+                : ($luniCitite[0]['luna'] ?? now()->format('Y-m')));
 
         if ($mode === 'history' && ! $luniCititeValues->contains($luna)) {
             $mode = 'new';
@@ -419,6 +421,25 @@ class CitireContorController extends Controller
         return $luna
             ? \Carbon\Carbon::createFromFormat('Y-m', $luna)->addMonth()->format('Y-m')
             : now()->format('Y-m');
+    }
+
+    /**
+     * @param  array<int, array{luna: string, label: string, inchisa: bool}>  $luniCitite
+     */
+    private function lunaImplicitaModNou(int $imobilId, array $luniCitite): string
+    {
+        foreach ($luniCitite as $item) {
+            if (! $item['inchisa']) {
+                return $item['luna'];
+            }
+        }
+
+        $ultimaLunaInchisa = CitireContorLunaInchisa::query()
+            ->where('imobil_id', $imobilId)
+            ->orderByDesc('luna')
+            ->value('luna');
+
+        return $this->lunaUrmatoare($ultimaLunaInchisa);
     }
 
     private function dataCitirePentruLuna(Imobil $imobil, string $luna): ?string

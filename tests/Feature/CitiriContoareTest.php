@@ -156,6 +156,26 @@ class CitiriContoareTest extends TestCase
         $this->get(route('citiri-contoare.imobil', ['imobil' => $imobil->id, 'mode' => 'new']))
             ->assertOk()
             ->assertInertia(fn (Assert $page) => $page
+                ->where('luna', '2026-06')
+                ->where('lunaInchisa', false)
+                ->where('readOnly', false)
+            );
+
+        $this->post(route('citiri-contoare.inchide'), [
+            'imobil_id' => $imobil->id,
+            'luna' => '2026-06',
+            'data_citire' => '2026-06-20T12:00',
+            'citiri' => [[
+                'spatiu_id' => $spatiu->id,
+                'configurare_anexa_linie_id' => $linie->id,
+                'index_vechi' => 0,
+                'index_nou' => 125.5,
+            ]],
+        ])->assertRedirect();
+
+        $this->get(route('citiri-contoare.imobil', ['imobil' => $imobil->id, 'mode' => 'new']))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
                 ->where('luna', '2026-07')
                 ->where('spatii.0.liniiContor.0.index_vechi', 125.5)
                 ->where('readOnly', false)
