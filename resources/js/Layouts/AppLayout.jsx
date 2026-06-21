@@ -22,12 +22,12 @@ import { navigateTo } from '../navigation';
 const navigation = [
     { label: 'Imobile', icon: Building2, href: '/imobile' },
     { label: 'Spații', icon: BarChart3, href: '/spatii' },
+    { label: 'Configurare anexă', icon: ReceiptText, href: '/configurare-anexa' },
     { label: 'Locatori', icon: Users, href: '/locatori' },
     { label: 'Contracte', icon: FileText, href: '/contracte' },
     { label: 'Indexare chirii', icon: BarChart3, href: '/indexare-chirii' },
     { label: 'Utilități', icon: Zap, href: '/utilitati' },
     { label: 'Citiri contoare', icon: BarChart3, href: '/citiri-contoare' },
-    { label: 'Configurare anexă', icon: ReceiptText, href: '/configurare-anexa' },
     { label: 'Generare anexe', icon: ReceiptText, href: '/anexe' },
     { label: 'Facturare', icon: WalletCards, href: '/facturare' },
     { label: 'Contabilitate primară', icon: FileText, href: '/contabilitate-primara' },
