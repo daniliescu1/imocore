@@ -984,12 +984,13 @@ td {
 }
 
 .meter-reading-groups .responsive-table {
-    overflow-x: hidden;
+    overflow-x: auto;
 }
 
 .meter-reading-groups .citiri-contoare-table {
     min-width: 0;
     table-layout: fixed;
+    width: 100%;
 }
 
 .meter-reading-groups .citiri-contoare-table th,
@@ -1013,32 +1014,35 @@ td {
 
 .meter-reading-groups .citiri-contoare-table th:nth-child(3),
 .meter-reading-groups .citiri-contoare-table td:nth-child(3) {
-    width: 18.2%;
+    width: 22%;
+    min-width: 12rem;
+    overflow: visible;
+    text-overflow: clip;
 }
 
 .meter-reading-groups .citiri-contoare-table th:nth-child(4),
 .meter-reading-groups .citiri-contoare-table td:nth-child(4) {
-    width: 7%;
+    width: 6%;
 }
 
 .meter-reading-groups .citiri-contoare-table th:nth-child(5),
 .meter-reading-groups .citiri-contoare-table td:nth-child(5) {
-    width: 5%;
+    width: 4%;
 }
 
 .meter-reading-groups .citiri-contoare-table th:nth-child(6),
 .meter-reading-groups .citiri-contoare-table td:nth-child(6) {
-    width: 13.3%;
+    width: 12%;
 }
 
 .meter-reading-groups .citiri-contoare-table th:nth-child(7),
 .meter-reading-groups .citiri-contoare-table td:nth-child(7) {
-    width: 14%;
+    width: 12%;
 }
 
 .meter-reading-groups .citiri-contoare-table th:nth-child(8),
 .meter-reading-groups .citiri-contoare-table td:nth-child(8) {
-    width: 17%;
+    width: 15%;
 }
 
 .meter-reading-groups .citiri-contoare-table th:nth-child(n + 6),
