@@ -910,4 +910,55 @@ class ContractChiriasTest extends TestCase
             ],
         ]));
     }
+
+    public function test_contract_pj_cu_cnp_prefix_devine_activ(): void
+    {
+        $imobil = Imobil::query()->create([
+            'nume' => '700 Office',
+            'strada' => 'Strada Test',
+            'numar' => '1',
+            'localitate' => 'Timișoara',
+        ]);
+
+        $spatiu = Spatiu::query()->create([
+            'imobil_id' => $imobil->id,
+            'identificator' => 'E106',
+            'status' => 'liber',
+            'ordine' => 1,
+        ]);
+
+        $locator = Locator::query()->create(['nume' => 'Golden Cube']);
+
+        $this->post('/contracte', [
+            'spatiu_id' => $spatiu->id,
+            ...$this->contractRequiredFields($locator),
+            'numar_contract' => 'Nr. 294 din 27.03.2025',
+            'chirias_tip' => 'pj',
+            'chirias_pj' => [
+                'denumire' => 'CFB TRAININGS&DEVELOPMENT SRL',
+                'sediu_social' => 'Timisoara',
+                'telefon' => '0726440428',
+                'email' => 'florinburlacu5@gmail.com',
+                'email_2' => 'florinburlacu5@gmail.com',
+                'nr_reg_comert' => 'J35/3580/19.09.2019',
+                'cui' => 'RO41663515',
+                'administrator' => [
+                    'nume_complet' => 'Burlacu Florin',
+                    'serie_ci' => 'CI seria TZ nr. 921154',
+                    'cnp' => 'CNP 1790907354739',
+                    'domiciliu' => 'Sat Beregsau Mic',
+                ],
+            ],
+            'data_start' => '2025-04-01',
+            'data_end' => '2026-04-30',
+            'chirie' => 270,
+            'moneda' => 'EUR',
+            'persoane_declarate' => 1,
+        ])->assertRedirect('/contracte');
+
+        $contract = Contract::query()->firstOrFail();
+
+        $this->assertSame('activ', $contract->status);
+        $this->assertSame('1790907354739', $contract->chirias_date['administrator']['cnp']);
+    }
 }

@@ -84,6 +84,24 @@ function isBlank(value) {
     return value === null || value === undefined || String(value).trim() === '';
 }
 
+function normalizeCnpDigits(value) {
+    const digits = String(value || '').replace(/\D/g, '');
+
+    if (!digits) {
+        return '';
+    }
+
+    return digits.length > 13 ? digits.slice(-13) : digits;
+}
+
+function isInvalidCnp(value, required = false) {
+    if (isBlank(value)) {
+        return required;
+    }
+
+    return normalizeCnpDigits(value).length !== 13;
+}
+
 function missingFieldKeysForForm(data) {
     const missing = [];
 
@@ -98,7 +116,7 @@ function missingFieldKeysForForm(data) {
         if (isBlank(data.chirias_pf?.nume_complet)) missing.push('chirias_pf.nume_complet');
         if (isBlank(data.chirias_pf?.serie_ci)) missing.push('chirias_pf.serie_ci');
         if (isBlank(data.chirias_pf?.numar_ci)) missing.push('chirias_pf.numar_ci');
-        if (isBlank(data.chirias_pf?.cnp)) missing.push('chirias_pf.cnp');
+        if (isBlank(data.chirias_pf?.cnp) || isInvalidCnp(data.chirias_pf?.cnp, true)) missing.push('chirias_pf.cnp');
         if (isBlank(data.chirias_pf?.domiciliu)) missing.push('chirias_pf.domiciliu');
         if (isBlank(data.chirias_pf?.email)) missing.push('chirias_pf.email');
         if (isBlank(data.chirias_pf?.telefon)) missing.push('chirias_pf.telefon');
@@ -110,6 +128,12 @@ function missingFieldKeysForForm(data) {
         if (isBlank(data.chirias_pj?.nr_reg_comert)) missing.push('chirias_pj.nr_reg_comert');
         if (isBlank(data.chirias_pj?.cui)) missing.push('chirias_pj.cui');
         if (isBlank(data.chirias_pj?.administrator?.nume_complet)) missing.push('chirias_pj.administrator.nume_complet');
+        if (isInvalidCnp(data.chirias_pj?.administrator?.cnp)) missing.push('chirias_pj.administrator.cnp');
+
+        const admin2 = data.chirias_pj?.administrator_2;
+        if (admin2 && !isBlank(admin2.nume_complet)) {
+            if (isInvalidCnp(admin2.cnp)) missing.push('chirias_pj.administrator_2.cnp');
+        }
     }
 
     return missing;
@@ -366,12 +390,11 @@ export default function Form({
             return [];
         }
 
-        if (isIncompleteContract || isEditing) {
-            return missingFieldKeysForForm(data);
-        }
+        const clientMissing = missingFieldKeysForForm(data);
+        const serverMissing = contract?.missing_field_keys || [];
 
-        return contract?.missing_field_keys || [];
-    }, [contract?.missing_field_keys, data, isActiveContract, isEditing, isIncompleteContract]);
+        return [...new Set([...clientMissing, ...serverMissing])];
+    }, [contract?.missing_field_keys, data, isActiveContract]);
     const missingLabels = missingKeys.map((key) => fieldLabels[key] || key);
     const hasMissingFields = missingKeys.length > 0;
     const showIncompleteState = isIncompleteContract && hasMissingFields;
@@ -490,10 +513,10 @@ export default function Form({
     const editTitle = isEditing ? `Editare contract ${contract.numar_contract || ''}`.trim() : '';
     const contractStatusBadge = isEditing && isActiveContract ? (
         <span className="contract-status-topbar-badge contract-status-topbar-badge-activ">Contract Activ. Date complete.</span>
-    ) : isEditing && showIncompleteState ? (
+    ) : isEditing && isIncompleteContract && hasMissingFields ? (
         <span className="contract-status-topbar-badge contract-status-topbar-badge-incomplet">Incomplet</span>
     ) : isEditing && isIncompleteContract ? (
-        <span className="contract-status-topbar-badge contract-status-topbar-badge-activ">Contract Activ. Date complete.</span>
+        <span className="contract-status-topbar-badge contract-status-topbar-badge-activ">Gata de activare — salvează contractul</span>
     ) : null;
     const topbarTitle = isEditing ? (
         <div className="topbar-page-title">
@@ -513,6 +536,11 @@ export default function Form({
                         <span>
                             {`Contract Incomplet. Mai trebuie: ${missingLabels.slice(0, 5).join(', ')}${missingLabels.length > 5 ? ` (+${missingLabels.length - 5})` : ''}`}
                         </span>
+                    </div>
+                ) : null}
+                {isEditing && isIncompleteContract && !hasMissingFields ? (
+                    <div className="contract-status-banner contract-status-banner-incomplet">
+                        <span>Date complete în formular. Salvează contractul pentru activare.</span>
                     </div>
                 ) : null}
 

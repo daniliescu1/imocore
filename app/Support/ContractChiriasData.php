@@ -164,6 +164,10 @@ class ContractChiriasData
      */
     private static function normalizePf(Request $request): array
     {
+        $request->merge([
+            'chirias_pf' => self::normalizeCnpInRequestGroup($request->input('chirias_pf', [])),
+        ]);
+
         $validated = $request->validate([
             'chirias_pf' => ['required', 'array'],
             'chirias_pf.nume_complet' => ['required', 'string', 'max:255'],
@@ -202,6 +206,10 @@ class ContractChiriasData
      */
     private static function normalizePj(Request $request): array
     {
+        $request->merge([
+            'chirias_pj' => self::normalizeCnpInRequestGroup($request->input('chirias_pj', [])),
+        ]);
+
         $validated = $request->validate([
             'chirias_pj' => ['required', 'array'],
             'chirias_pj.denumire' => ['required', 'string', 'max:255'],
@@ -394,6 +402,27 @@ class ContractChiriasData
      * @param  array<string, mixed>  $input
      * @return array<string, mixed>
      */
+    public static function normalizeCnpInRequestGroup(array $input): array
+    {
+        foreach ($input as $key => $value) {
+            if ($key === 'cnp' && is_string($value)) {
+                $input[$key] = ContractIncompleteStorage::normalizeCnpValue($value) ?? '';
+
+                continue;
+            }
+
+            if (is_array($value)) {
+                $input[$key] = self::normalizeCnpInRequestGroup($value);
+            }
+        }
+
+        return $input;
+    }
+
+    /**
+     * @param  array<string, mixed>  $input
+     * @return array<string, mixed>
+     */
     private static function trimStrings(array $input): array
     {
         $result = [];
@@ -401,6 +430,12 @@ class ContractChiriasData
         foreach ($input as $key => $value) {
             if (is_array($value)) {
                 $result[$key] = self::trimStrings($value);
+                continue;
+            }
+
+            if ($key === 'cnp' && is_string($value)) {
+                $result[$key] = ContractIncompleteStorage::normalizeCnpValue($value) ?? '';
+
                 continue;
             }
 

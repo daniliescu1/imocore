@@ -105,6 +105,58 @@ class ContractIncompleteStorage
             }
         }
 
+        if (isset($input['chirias_pf']) && is_array($input['chirias_pf'])) {
+            $input['chirias_pf'] = self::normalizeChiriasGroup($input['chirias_pf']);
+        }
+
+        if (isset($input['chirias_pj']) && is_array($input['chirias_pj'])) {
+            $input['chirias_pj'] = self::normalizeChiriasGroup($input['chirias_pj']);
+
+            if (blank($input['chirias_pj']['administrator_2']['nume_complet'] ?? null)) {
+                unset($input['chirias_pj']['administrator_2']);
+            }
+        }
+
         return $input;
+    }
+
+    /**
+     * @param  array<string, mixed>  $input
+     * @return array<string, mixed>
+     */
+    private static function normalizeChiriasGroup(array $input): array
+    {
+        foreach ($input as $key => $value) {
+            if ($key === 'cnp') {
+                $input[$key] = self::normalizeCnpValue(is_string($value) ? $value : null);
+
+                continue;
+            }
+
+            if (is_array($value)) {
+                $input[$key] = self::normalizeChiriasGroup($value);
+            }
+        }
+
+        return $input;
+    }
+
+    public static function normalizeCnpValue(?string $value): ?string
+    {
+        if ($value === null || trim($value) === '') {
+            return null;
+        }
+
+        $digits = preg_replace('/\D+/', '', $value) ?? '';
+
+        if ($digits === '') {
+            return null;
+        }
+
+        if (strlen($digits) > 13) {
+            $digits = substr($digits, -13);
+        }
+
+        return $digits;
     }
 }

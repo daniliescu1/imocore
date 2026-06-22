@@ -158,6 +158,8 @@ class ContractController extends Controller
             'data_start' => ContractIncompleteStorage::normalizeDateValue($request->input('data_start')),
             'data_end' => ContractIncompleteStorage::normalizeDateValue($request->input('data_end')),
             'data_crestere_chirie' => ContractIncompleteStorage::normalizeDateValue($request->input('data_crestere_chirie')),
+            'chirias_pf' => ContractChiriasData::normalizeCnpInRequestGroup($request->input('chirias_pf', [])),
+            'chirias_pj' => ContractChiriasData::normalizeCnpInRequestGroup($request->input('chirias_pj', [])),
         ]);
 
         $baseValidated = $request->validate([
