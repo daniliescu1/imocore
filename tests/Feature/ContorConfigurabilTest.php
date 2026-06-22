@@ -324,6 +324,62 @@ class ContorConfigurabilTest extends TestCase
         ])->assertStatus(422);
     }
 
+    public function test_lista_contoare_afiseaza_toate_spatiile_anexei_fara_scaderi(): void
+    {
+        [
+            $imobil,
+            $configurare,
+            ,
+            ,
+            $spatiuA,
+            $spatiuB,
+        ] = $this->creeazaScenariuContorConfigurabil();
+
+        $spatiuC = Spatiu::query()->create([
+            'imobil_id' => $imobil->id,
+            'identificator' => 'HQC1',
+            'status' => 'inchiriat',
+            'configurare_anexa_id' => $configurare->id,
+        ]);
+
+        $liniePausal = ConfigurareAnexaLinie::query()->create([
+            'configurare_anexa_id' => $configurare->id,
+            'denumire' => 'Consum apa - mc / pers',
+            'tip_calcul' => 'pausal',
+            'um' => 'MC',
+            'activ' => true,
+            'ordine' => 4,
+        ]);
+
+        ContorConfigurabilSync::syncForConfigurare($configurare->fresh(['linii']));
+
+        $regula = ContorConfigurabil::query()
+            ->where('configurare_anexa_linie_id', $liniePausal->id)
+            ->firstOrFail();
+
+        $regula->update([
+            'foloseste_scaderi' => false,
+            'scaderi' => [],
+            'alocari' => [$spatiuA->id, $spatiuB->id],
+        ]);
+
+        $this->get(route('configurare-contoare.imobil', $imobil))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('ConfigurareContoare/Imobil')
+                ->where('contoare', fn ($contoare) => collect($contoare)->firstWhere('id', $regula->id)['alocari_count'] === 3)
+            );
+
+        $this->get(route('configurare-contoare.contor', [
+            'imobil' => $imobil->id,
+            'contorConfigurabil' => $regula->id,
+        ]))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->has('contor.spatiiOptions', 3)
+            );
+    }
+
     /**
      * @return array{
      *     0: Imobil,
