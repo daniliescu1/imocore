@@ -378,6 +378,35 @@ class FacturaController extends Controller
         ];
     }
 
+    public function destroyAllForImobil(Request $request, Imobil $imobil): RedirectResponse
+    {
+        $searchSpatiu = trim($request->string('search_spatiu')->toString());
+        $searchChirias = trim($request->string('search_chirias')->toString());
+        $query = $this->facturiQuery($imobil->id, $searchSpatiu, $searchChirias);
+        $deleted = (clone $query)->count();
+        $redirectParams = array_filter([
+            'imobil' => $imobil->id,
+            'search_spatiu' => $searchSpatiu,
+            'search_chirias' => $searchChirias,
+        ], fn ($value) => $value !== '' && $value !== null);
+
+        if ($deleted === 0) {
+            return redirect()
+                ->route('facturare.imobil', $redirectParams)
+                ->with('warning', 'Nu există facturi de șters.');
+        }
+
+        $query->delete();
+
+        $message = ($searchSpatiu !== '' || $searchChirias !== '')
+            ? "{$deleted} facturi filtrate au fost șterse."
+            : "{$deleted} facturi au fost șterse.";
+
+        return redirect()
+            ->route('facturare.imobil', $redirectParams)
+            ->with('success', $message);
+    }
+
     public function destroy(Factura $factura): RedirectResponse
     {
         $factura->loadMissing(['anexa.contract.spatiu', 'contract.spatiu']);

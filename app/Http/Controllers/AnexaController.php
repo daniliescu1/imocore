@@ -215,6 +215,23 @@ class AnexaController extends Controller
         return Pdf::loadView('documents.anexa', ['anexa' => $payload])->download($filename);
     }
 
+    public function destroyAllForImobil(Imobil $imobil): RedirectResponse
+    {
+        $deleted = $this->anexeQuery($imobil->id)->count();
+
+        if ($deleted === 0) {
+            return redirect()
+                ->route('anexe.imobil', ['imobil' => $imobil->id])
+                ->with('warning', 'Nu există anexe de șters pentru acest imobil.');
+        }
+
+        $this->anexeQuery($imobil->id)->delete();
+
+        return redirect()
+            ->route('anexe.imobil', ['imobil' => $imobil->id])
+            ->with('success', "{$deleted} anexe au fost șterse.");
+    }
+
     public function destroy(Anexa $anexa): RedirectResponse
     {
         $anexa->loadMissing('contract.spatiu');

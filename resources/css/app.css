@@ -1848,6 +1848,22 @@ tr:last-child td {
     text-align: right;
 }
 
+.delete-all-header-button {
+    border: 1px solid rgba(214, 69, 69, 0.25);
+    border-radius: 8px;
+    padding: 4px 8px;
+    background: rgba(214, 69, 69, 0.06);
+    color: var(--danger);
+    cursor: pointer;
+    font-size: 12px;
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.delete-all-header-button:hover {
+    background: rgba(214, 69, 69, 0.12);
+}
+
 .table-name-link {
     color: var(--title-green);
     font-weight: 900;

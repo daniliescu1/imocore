@@ -50,6 +50,13 @@ export default function Imobil({ imobil, anexe = [], lunaImplicita = '', contrac
         router.delete(`/anexe/${anexa.id}`, { preserveScroll: true });
     }
 
+    function deleteAllAnexe() {
+        if (anexe.length === 0) return;
+        if (!window.confirm(`Ștergi toate cele ${anexe.length} anexe generate pentru acest imobil?`)) return;
+
+        router.delete(`/anexe/imobil/${imobil.id}`, { preserveScroll: true });
+    }
+
     const topbarActions = (
         <form className="topbar-actions" onSubmit={generate}>
             <select className="filter-input topbar-filter" value={data.luna} onChange={(event) => setData('luna', event.target.value)}>
@@ -91,7 +98,13 @@ export default function Imobil({ imobil, anexe = [], lunaImplicita = '', contrac
                                 <th>Luna</th>
                                 <th>Total</th>
                                 <th>Status</th>
-                                <th />
+                                <th className="table-action-cell">
+                                    {anexe.length > 0 ? (
+                                        <button className="delete-all-header-button" type="button" onClick={deleteAllAnexe} aria-label="Șterge toate anexele">
+                                            Șterge toate
+                                        </button>
+                                    ) : null}
+                                </th>
                             </tr>
                         </thead>
                         <tbody>

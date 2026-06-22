@@ -62,6 +62,21 @@ export default function Imobil({
         router.delete(`/facturare/${factura.id}`, { preserveScroll: true });
     }
 
+    function deleteAllFacturi() {
+        if (facturi.length === 0) return;
+
+        const confirmMessage = hasActiveFilters
+            ? `Ștergi cele ${facturi.length} facturi afișate (filtrate)?`
+            : `Ștergi toate cele ${facturi.length} facturi generate pentru acest imobil?`;
+
+        if (!window.confirm(confirmMessage)) return;
+
+        router.delete(`/facturare/imobil/${imobil.id}`, {
+            data: buildFilters(filters),
+            preserveScroll: true,
+        });
+    }
+
     const hasActiveFilters = Boolean(filters.search_spatiu || filters.search_chirias);
 
     const topbarActions = (
@@ -115,7 +130,13 @@ export default function Imobil({
                                 <th>Status</th>
                                 <th>Email facturare</th>
                                 <th>Anexă utilizată</th>
-                                <th />
+                                <th className="table-action-cell">
+                                    {facturi.length > 0 ? (
+                                        <button className="delete-all-header-button" type="button" onClick={deleteAllFacturi} aria-label="Șterge toate facturile">
+                                            Șterge toate
+                                        </button>
+                                    ) : null}
+                                </th>
                             </tr>
                         </thead>
                         <tbody>

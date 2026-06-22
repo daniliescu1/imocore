@@ -133,4 +133,121 @@ class FacturareTest extends TestCase
 
         $this->assertDatabaseCount('facturi', 1);
     }
+
+    public function test_destroy_all_for_imobil_deletes_all_facturi(): void
+    {
+        $imobil = Imobil::query()->create([
+            'nume' => 'Imobil bulk',
+            'strada' => 'Strada 2',
+            'numar' => '2',
+            'localitate' => 'Timișoara',
+            'ordine' => 1,
+        ]);
+
+        $spatiu = Spatiu::query()->create([
+            'imobil_id' => $imobil->id,
+            'identificator' => 'S2',
+            'status' => 'inchiriat',
+            'moneda' => 'EUR',
+            'ordine' => 1,
+        ]);
+
+        $contract = Contract::query()->create([
+            'spatiu_id' => $spatiu->id,
+            'numar_contract' => 'C2',
+            'chirias' => 'Chiriaș bulk',
+            'status' => 'activ',
+        ]);
+
+        foreach (['2026-05', '2026-06'] as $luna) {
+            $anexa = Anexa::query()->create([
+                'contract_id' => $contract->id,
+                'luna' => $luna,
+                'total' => 100,
+                'status' => 'draft',
+            ]);
+
+            Factura::query()->create([
+                'anexa_id' => $anexa->id,
+                'numar_factura' => "FACT-{$luna}",
+                'total' => 1500,
+                'status' => 'draft',
+            ]);
+        }
+
+        $this->delete(route('facturare.imobil.destroy-all', $imobil))
+            ->assertRedirect(route('facturare.imobil', $imobil))
+            ->assertSessionHas('success');
+
+        $this->assertDatabaseCount('facturi', 0);
+    }
+
+    public function test_destroy_all_for_imobil_respects_filters(): void
+    {
+        $imobil = Imobil::query()->create([
+            'nume' => 'Imobil filtru',
+            'strada' => 'Strada 3',
+            'numar' => '3',
+            'localitate' => 'Timișoara',
+            'ordine' => 1,
+        ]);
+
+        $spatiuA = Spatiu::query()->create([
+            'imobil_id' => $imobil->id,
+            'identificator' => 'A-1',
+            'status' => 'inchiriat',
+            'moneda' => 'EUR',
+            'ordine' => 1,
+        ]);
+
+        $spatiuB = Spatiu::query()->create([
+            'imobil_id' => $imobil->id,
+            'identificator' => 'B-1',
+            'status' => 'inchiriat',
+            'moneda' => 'EUR',
+            'ordine' => 2,
+        ]);
+
+        $contractA = Contract::query()->create([
+            'spatiu_id' => $spatiuA->id,
+            'numar_contract' => 'CA',
+            'chirias' => 'Alpha SRL',
+            'status' => 'activ',
+        ]);
+
+        $contractB = Contract::query()->create([
+            'spatiu_id' => $spatiuB->id,
+            'numar_contract' => 'CB',
+            'chirias' => 'Beta SRL',
+            'status' => 'activ',
+        ]);
+
+        foreach ([$contractA, $contractB] as $contract) {
+            $anexa = Anexa::query()->create([
+                'contract_id' => $contract->id,
+                'luna' => '2026-05',
+                'total' => 100,
+                'status' => 'draft',
+            ]);
+
+            Factura::query()->create([
+                'anexa_id' => $anexa->id,
+                'numar_factura' => "FACT-{$contract->numar_contract}",
+                'total' => 1500,
+                'status' => 'draft',
+            ]);
+        }
+
+        $this->delete(route('facturare.imobil.destroy-all', $imobil), [
+            'search_chirias' => 'Alpha',
+        ])->assertRedirect(route('facturare.imobil', [
+            'imobil' => $imobil->id,
+            'search_chirias' => 'Alpha',
+        ]))->assertSessionHas('success');
+
+        $this->assertDatabaseCount('facturi', 1);
+        $this->assertDatabaseHas('facturi', [
+            'numar_factura' => 'FACT-CB',
+        ]);
+    }
 }
