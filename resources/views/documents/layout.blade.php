@@ -220,7 +220,8 @@
         }
 
         .generated-annex-meta span,
-        .generated-annex-parties span {
+        .generated-annex-parties span,
+        .generated-annex-parties-email span {
             display: block;
             color: #6f6f6f;
             font-size: 12px;
@@ -229,7 +230,8 @@
         }
 
         .generated-annex-meta strong,
-        .generated-annex-parties strong {
+        .generated-annex-parties strong,
+        .generated-annex-parties-email strong {
             display: block;
             margin-top: 4px;
             color: #1f2a2e;
@@ -474,6 +476,15 @@
             background: #fffdf8;
             vertical-align: top;
             height: auto;
+        }
+
+        .generated-annex-parties-table td[colspan] {
+            width: 100%;
+        }
+
+        .generated-annex-parties-table td[colspan] strong {
+            overflow-wrap: anywhere;
+            word-break: break-word;
         }
 
         .generated-annex-parties-table span {

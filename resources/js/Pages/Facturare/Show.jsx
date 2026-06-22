@@ -67,10 +67,14 @@ function InvoiceLocatarCard({ locatar }) {
 }
 
 export default function Show({ factura, downloadUrl }) {
+    const imobilId = factura?.imobil?.id;
+    const backHref = imobilId ? `/facturare/imobil/${imobilId}` : '/facturare';
+    const backLabel = imobilId ? 'Înapoi la imobil' : 'Înapoi la facturi';
+
     const topbarActions = (
         <>
             <a className="secondary-button button-link" href={downloadUrl}>Descarcă PDF</a>
-            <Link className="secondary-button button-link" href="/facturare">Înapoi la facturi</Link>
+            <Link className="secondary-button button-link" href={backHref}>{backLabel}</Link>
         </>
     );
     const sumar = factura.sumar || {

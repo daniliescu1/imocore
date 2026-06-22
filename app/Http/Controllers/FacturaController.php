@@ -102,7 +102,7 @@ class FacturaController extends Controller
         }
 
         foreach ($anexe as $anexa) {
-            $chirie = (float) ($anexa->contract?->chirieAplicabilaPentruLunaAnexa($anexa->luna) ?? 0);
+            $chirie = (float) ($anexa->contract?->chirieFacturabilaPentruLunaAnexa($anexa->luna) ?? 0);
             $moneda = $anexa->contract?->moneda ?: 'EUR';
             $penalitati = 0;
 
@@ -250,6 +250,7 @@ class FacturaController extends Controller
                 'identificator' => $spatiu?->identificator,
             ],
             'imobil' => [
+                'id' => $imobil?->id,
                 'nume' => $imobil?->nume,
                 'adresa' => trim(implode(' ', array_filter([$imobil?->strada, $imobil?->numar]))),
                 'localitate' => $imobil?->localitate,

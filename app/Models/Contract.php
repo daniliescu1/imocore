@@ -73,6 +73,18 @@ class Contract extends Model
         return $this->chirieAplicabilaLa($lunaChirie->endOfMonth());
     }
 
+    public function chirieFacturabilaPentruLunaAnexa(?string $luna): float
+    {
+        $chirieContractuala = $this->chirieAplicabilaPentruLunaAnexa($luna);
+        $chirieIndexata = (float) ($this->spatiu?->indexare_2026 ?? 0);
+
+        if ($chirieIndexata > $chirieContractuala) {
+            return $chirieIndexata;
+        }
+
+        return $chirieContractuala;
+    }
+
     private function normalizeDate(mixed $date = null): Carbon
     {
         if ($date instanceof Carbon) {

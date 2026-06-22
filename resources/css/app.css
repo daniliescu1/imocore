@@ -1384,7 +1384,8 @@ td {
 }
 
 .generated-annex-meta span,
-.generated-annex-parties span {
+.generated-annex-parties span,
+.generated-annex-parties-email span {
     color: var(--text-secondary);
     font-size: 12px;
     font-weight: 800;
@@ -1392,7 +1393,8 @@ td {
 }
 
 .generated-annex-meta strong,
-.generated-annex-parties strong {
+.generated-annex-parties strong,
+.generated-annex-parties-email strong {
     color: var(--text-dark);
     font-size: 16px;
 }
@@ -1405,9 +1407,24 @@ td {
 
 .generated-annex-parties {
     display: grid;
-    grid-template-columns: repeat(6, minmax(0, 1fr));
+    grid-template-columns: repeat(5, minmax(0, 1fr));
     gap: 12px;
+    margin-bottom: 12px;
+}
+
+.generated-annex-parties-email {
+    display: grid;
+    gap: 5px;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 13px 14px;
     margin-bottom: 24px;
+    background: #fff;
+}
+
+.generated-annex-parties-email strong {
+    overflow-wrap: anywhere;
+    word-break: break-word;
 }
 
 .generated-annex-parties > div {

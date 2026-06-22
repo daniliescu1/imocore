@@ -69,10 +69,10 @@ export default function AnnexDocumentPreview({ anexa, compactHeader = false }) {
                     <span>Contract</span>
                     <strong>{anexa.contract?.numar || '—'}</strong>
                 </div>
-                <div>
-                    <span>Email facturare</span>
-                    <strong>{anexa.contract?.email_facturare || '—'}</strong>
-                </div>
+            </div>
+            <div className="generated-annex-parties-email">
+                <span>Email facturare</span>
+                <strong>{anexa.contract?.email_facturare || '—'}</strong>
             </div>
 
             <div className="responsive-table generated-annex-table-wrap">

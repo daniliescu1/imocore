@@ -92,6 +92,92 @@ class FacturaRentIncreaseTest extends TestCase
         $this->assertSame('9000.00', $facturi['C-DUPA']->chirie_lei);
     }
 
+    public function test_facturarea_foloseste_chiria_indexata_cand_este_mai_mare_decat_chiria_contractuala(): void
+    {
+        $imobil = Imobil::query()->create([
+            'nume' => 'Imobil indexare',
+            'strada' => 'Strada Test',
+            'numar' => '1',
+            'localitate' => 'Timișoara',
+        ]);
+
+        $spatiu = Spatiu::query()->create([
+            'imobil_id' => $imobil->id,
+            'identificator' => 'F-INDEX',
+            'status' => 'inchiriat',
+            'moneda' => 'EUR',
+            'indexare_2026' => 2000,
+        ]);
+
+        $contract = Contract::query()->create([
+            'spatiu_id' => $spatiu->id,
+            'numar_contract' => 'C-INDEX',
+            'chirias' => 'Chiriaș indexat',
+            'data_start' => '2026-01-01',
+            'chirie' => 1600,
+            'moneda' => 'EUR',
+            'status' => 'activ',
+        ]);
+
+        Anexa::query()->create([
+            'contract_id' => $contract->id,
+            'luna' => '2026-05',
+            'total' => 100,
+        ]);
+
+        $this->post(route('facturare.generate'), [
+            'curs_eur' => 5,
+        ])->assertRedirect(route('facturare.index'));
+
+        $factura = Factura::query()->firstOrFail();
+
+        $this->assertSame('2000.00', $factura->chirie_eur);
+        $this->assertSame('10000.00', $factura->chirie_lei);
+    }
+
+    public function test_facturarea_pastreaza_chiria_contractuala_cand_indexarea_este_mai_mica(): void
+    {
+        $imobil = Imobil::query()->create([
+            'nume' => 'Imobil indexare mica',
+            'strada' => 'Strada Test',
+            'numar' => '2',
+            'localitate' => 'Timișoara',
+        ]);
+
+        $spatiu = Spatiu::query()->create([
+            'imobil_id' => $imobil->id,
+            'identificator' => 'F-INDEX-MICA',
+            'status' => 'inchiriat',
+            'moneda' => 'EUR',
+            'indexare_2026' => 1400,
+        ]);
+
+        $contract = Contract::query()->create([
+            'spatiu_id' => $spatiu->id,
+            'numar_contract' => 'C-INDEX-MICA',
+            'chirias' => 'Chiriaș contractual',
+            'data_start' => '2026-01-01',
+            'chirie' => 1600,
+            'moneda' => 'EUR',
+            'status' => 'activ',
+        ]);
+
+        Anexa::query()->create([
+            'contract_id' => $contract->id,
+            'luna' => '2026-05',
+            'total' => 100,
+        ]);
+
+        $this->post(route('facturare.generate'), [
+            'curs_eur' => 5,
+        ])->assertRedirect(route('facturare.index'));
+
+        $factura = Factura::query()->firstOrFail();
+
+        $this->assertSame('1600.00', $factura->chirie_eur);
+        $this->assertSame('8000.00', $factura->chirie_lei);
+    }
+
     public function test_factura_afiseaza_utilitatile_grupate_pe_cote_tva(): void
     {
         $imobil = Imobil::query()->create([

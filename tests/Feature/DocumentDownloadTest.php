@@ -58,7 +58,8 @@ class DocumentDownloadTest extends TestCase
             ->assertOk()
             ->assertInertia(fn ($page) => $page
                 ->component('Facturare/Show')
-                ->where('downloadUrl', route('facturare.download', $factura)));
+                ->where('downloadUrl', route('facturare.download', $factura))
+                ->where('factura.imobil.id', $factura->anexa->contract->spatiu->imobil_id));
     }
 
     public function test_anexa_show_includes_download_url(): void
