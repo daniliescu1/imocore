@@ -1835,6 +1835,15 @@ tr:last-child td {
     background: rgba(214, 69, 69, 0.12);
 }
 
+.delete-inline-button:disabled {
+    opacity: 0.35;
+    cursor: not-allowed;
+}
+
+.delete-inline-button:disabled:hover {
+    background: rgba(214, 69, 69, 0.06);
+}
+
 .table-action-cell {
     text-align: right;
 }
@@ -2376,6 +2385,7 @@ tr:last-child td {
 .annex-save-actions {
     display: flex;
     justify-content: flex-end;
+    gap: 10px;
     margin-top: 16px;
 }
 

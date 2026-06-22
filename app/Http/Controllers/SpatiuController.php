@@ -474,6 +474,7 @@ class SpatiuController extends Controller
             ->findOrFail($spatiu->configurare_anexa_id);
 
         $denumireSugestie = trim($sursa->denumire.' · '.$spatiu->identificator);
+        $anexaAnterioaraId = $sursa->id;
 
         $noua = ConfigurareAnexaImobil::query()->create([
             'imobil_id' => $spatiu->imobil_id,
@@ -498,6 +499,8 @@ class SpatiuController extends Controller
                 'configurare' => $noua,
                 'return_url' => $returnUrl,
                 'personalizare' => 1,
+                'spatiu_id' => $spatiu->id,
+                'anexa_anterioara_id' => $anexaAnterioaraId,
                 'denumire_sugestie' => $denumireSugestie,
             ])
             ->with('success', 'Anexa a fost copiată. Pune un nume pentru varianta acestui spațiu.');

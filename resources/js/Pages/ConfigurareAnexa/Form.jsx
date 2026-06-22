@@ -1,5 +1,5 @@
 import React, { useEffect, useRef } from 'react';
-import { Link, useForm } from '@inertiajs/react';
+import { Link, router, useForm } from '@inertiajs/react';
 import { ArrowDown, ArrowUp, Trash2 } from 'lucide-react';
 import AppLayout from '../../Layouts/AppLayout';
 
@@ -317,6 +317,10 @@ export default function Form({
 }) {
     const isEditing = Boolean(anexa);
     const isPersonalizare = Boolean(personalizare?.activ);
+    const canCancelPersonalizare = isPersonalizare
+        && personalizare?.spatiu_id
+        && personalizare?.anexa_anterioara_id
+        && anexa?.id;
     const denumireInputRef = useRef(null);
     const { data, setData, post, put, processing, errors, transform } = useForm(buildFormState(anexa, selectedImobilId, serviciiStandard, personalizare));
 
@@ -364,6 +368,22 @@ export default function Form({
             }
 
             return base;
+        });
+    }
+
+    function cancelPersonalizare() {
+        if (!canCancelPersonalizare) {
+            return;
+        }
+
+        if (!window.confirm('Anulezi personalizarea? Spațiul revine la anexa anterioară și copia nesalvată va fi ștearsă.')) {
+            return;
+        }
+
+        router.post(`/configurare-anexa/${anexa.id}/anuleaza-personalizare`, {
+            spatiu_id: personalizare.spatiu_id,
+            anexa_anterioara_id: personalizare.anexa_anterioara_id,
+            return_url: returnUrl,
         });
     }
 
@@ -531,7 +551,13 @@ export default function Form({
     const tvaOptions = serviciiStandard.tva || [];
     const tipCalculOptions = serviciiStandard.tip_calcul || [];
 
-    const topbarActions = <Link className="secondary-button button-link" href={returnUrl || '/configurare-anexa'}>Înapoi</Link>;
+    const topbarActions = canCancelPersonalizare ? (
+        <button type="button" className="secondary-button" onClick={cancelPersonalizare} disabled={processing}>
+            Anulează
+        </button>
+    ) : (
+        <Link className="secondary-button button-link" href={returnUrl || '/configurare-anexa'}>Înapoi</Link>
+    );
     const pageTitle = isPersonalizare
         ? 'Personalizează anexă'
         : (isEditing ? `Editare ${anexa.denumire || 'anexă'}` : 'Adaugă anexă');
@@ -756,6 +782,11 @@ export default function Form({
                 </div>
 
                 <div className="annex-save-actions">
+                    {canCancelPersonalizare ? (
+                        <button type="button" className="secondary-button" onClick={cancelPersonalizare} disabled={processing}>
+                            Anulează
+                        </button>
+                    ) : null}
                     <button className="primary-button" type="submit" disabled={processing}>{processing ? 'Se salvează...' : 'Salvează anexa'}</button>
                 </div>
             </form>

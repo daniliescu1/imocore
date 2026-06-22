@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\Anexa;
+use App\Models\ConfigurareAnexaImobil;
 use App\Models\Contract;
 use App\Models\Imobil;
 use App\Models\ServiciuStandardAnexa;
@@ -759,5 +760,80 @@ class ConfigurareAnexaPageTest extends TestCase
         $linie = Anexa::query()->with('linii')->firstOrFail()->linii->first();
 
         $this->assertEquals(1, (float) $linie->cantitate);
+    }
+
+    public function test_sterge_anexa_neutilizata(): void
+    {
+        $imobil = Imobil::query()->create([
+            'nume' => 'Imobil stergere anexa',
+            'strada' => 'Strada Test',
+            'numar' => '1',
+            'localitate' => 'Cluj',
+        ]);
+
+        $configurare = $imobil->configurariAnexe()->create([
+            'denumire' => 'Anexa de sters',
+            'implicit' => true,
+        ]);
+
+        $this->delete(route('configurare-anexa.destroy', $configurare))
+            ->assertRedirect(route('configurare-anexa.index', ['imobil_id' => $imobil->id]));
+
+        $this->assertNull(ConfigurareAnexaImobil::query()->find($configurare->id));
+    }
+
+    public function test_sterge_anexa_respinge_daca_e_folosita_de_spatii(): void
+    {
+        $imobil = Imobil::query()->create([
+            'nume' => 'Imobil anexa ocupata',
+            'strada' => 'Strada Test',
+            'numar' => '1',
+            'localitate' => 'Cluj',
+        ]);
+
+        $configurare = $imobil->configurariAnexe()->create([
+            'denumire' => 'Anexa ocupata',
+            'implicit' => true,
+        ]);
+
+        Spatiu::query()->create([
+            'imobil_id' => $imobil->id,
+            'identificator' => 'D101',
+            'status' => 'inchiriat',
+            'configurare_anexa_id' => $configurare->id,
+            'ordine' => 1,
+        ]);
+
+        $this->from(route('configurare-anexa.index'))
+            ->delete(route('configurare-anexa.destroy', $configurare))
+            ->assertSessionHasErrors('anexa');
+
+        $this->assertNotNull(ConfigurareAnexaImobil::query()->find($configurare->id));
+    }
+
+    public function test_sterge_anexa_implicita_promoveaza_alta_anexa(): void
+    {
+        $imobil = Imobil::query()->create([
+            'nume' => 'Imobil anexa implicita',
+            'strada' => 'Strada Test',
+            'numar' => '1',
+            'localitate' => 'Cluj',
+        ]);
+
+        $implicita = $imobil->configurariAnexe()->create([
+            'denumire' => 'Anexa A',
+            'implicit' => true,
+        ]);
+
+        $alta = $imobil->configurariAnexe()->create([
+            'denumire' => 'Anexa B',
+            'implicit' => false,
+        ]);
+
+        $this->delete(route('configurare-anexa.destroy', $implicita))
+            ->assertRedirect(route('configurare-anexa.index', ['imobil_id' => $imobil->id]));
+
+        $this->assertNull(ConfigurareAnexaImobil::query()->find($implicita->id));
+        $this->assertTrue((bool) $alta->fresh()->implicit);
     }
 }

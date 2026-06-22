@@ -2,7 +2,10 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\CitireContor;
 use App\Models\ConfigurareAnexaImobil;
+use App\Models\Contor;
+use App\Models\ContorConfigurabil;
 use App\Models\Factura;
 use App\Models\Imobil;
 use App\Models\ServiciuStandardAnexa;
@@ -26,7 +29,7 @@ class ConfigurareAnexaController extends Controller
 
         $query = ConfigurareAnexaImobil::query()
             ->with('imobil')
-            ->withCount('linii')
+            ->withCount(['linii', 'spatii'])
             ->orderByDesc('implicit')
             ->orderBy('denumire');
 
@@ -43,6 +46,7 @@ class ConfigurareAnexaController extends Controller
                 'implicit' => $configurare->implicit,
                 'activ' => $configurare->activ,
                 'linii_count' => $configurare->linii_count,
+                'spatii_count' => $configurare->spatii_count,
             ]),
             'imobile' => $this->imobileForSelect(),
             'selectedImobilId' => $selectedImobilId,
@@ -121,6 +125,7 @@ class ConfigurareAnexaController extends Controller
         $returnUrl = InternalReturnUrl::normalize($request->string('return_url')->toString());
         $spatiiCount = Spatiu::query()->where('configurare_anexa_id', $configurare->id)->count();
         $spatiuId = $request->integer('spatiu_id') ?: null;
+        $anexaAnterioaraId = $request->integer('anexa_anterioara_id') ?: null;
         $denumireSugestie = trim($request->string('denumire_sugestie')->toString());
         $isPersonalizare = $request->boolean('personalizare') || trim($configurare->denumire) === '';
 
@@ -138,8 +143,42 @@ class ConfigurareAnexaController extends Controller
             'personalizare' => [
                 'activ' => $isPersonalizare,
                 'denumire_sugestie' => $denumireSugestie !== '' ? $denumireSugestie : null,
+                'spatiu_id' => $spatiuId ?: null,
+                'anexa_anterioara_id' => $anexaAnterioaraId ?: null,
             ],
         ]);
+    }
+
+    public function cancelPersonalizare(Request $request, ConfigurareAnexaImobil $configurare): RedirectResponse
+    {
+        $validated = $request->validate([
+            'spatiu_id' => ['required', 'integer', 'exists:spatii,id'],
+            'anexa_anterioara_id' => ['required', 'integer', 'exists:configurari_anexe_imobil,id'],
+            'return_url' => ['nullable', 'string'],
+        ]);
+
+        $spatiu = Spatiu::query()->findOrFail($validated['spatiu_id']);
+        $anexaAnterioara = ConfigurareAnexaImobil::query()->findOrFail($validated['anexa_anterioara_id']);
+
+        abort_unless((int) $spatiu->configurare_anexa_id === (int) $configurare->id, 422, 'Spațiul nu folosește această anexă.');
+        abort_unless((int) $spatiu->imobil_id === (int) $configurare->imobil_id, 422, 'Anexa nu aparține aceluiași imobil.');
+        abort_unless((int) $anexaAnterioara->imobil_id === (int) $spatiu->imobil_id, 422, 'Anexa anterioară nu aparține aceluiași imobil.');
+        abort_unless((int) $anexaAnterioara->id !== (int) $configurare->id, 422, 'Anexa anterioară nu poate fi aceeași cu anexa de anulat.');
+        abort_unless(
+            Spatiu::query()->where('configurare_anexa_id', $configurare->id)->count() === 1
+            && Spatiu::query()->whereKey($spatiu->id)->where('configurare_anexa_id', $configurare->id)->exists(),
+            422,
+            'Anexa personalizată nu poate fi anulată decât când e folosită doar de acest spațiu.',
+        );
+
+        $spatiu->update(['configurare_anexa_id' => $anexaAnterioara->id]);
+        SincronizareContoareDinAnexa::syncForSpatiu($spatiu->fresh());
+        $this->deleteConfigurareAnexa($configurare);
+
+        $returnUrl = InternalReturnUrl::normalize($validated['return_url'] ?? null)
+            ?: route('spatii.edit', $spatiu);
+
+        return redirect($returnUrl)->with('success', 'Personalizarea anexei a fost anulată.');
     }
 
     public function update(Request $request, ConfigurareAnexaImobil $configurare): RedirectResponse
@@ -164,6 +203,43 @@ class ConfigurareAnexaController extends Controller
         return redirect()
             ->route('configurare-anexa.edit', $configurare)
             ->with('success', 'Anexa a fost actualizată.');
+    }
+
+    public function destroy(Request $request, ConfigurareAnexaImobil $configurare): RedirectResponse
+    {
+        $spatiiCount = Spatiu::query()->where('configurare_anexa_id', $configurare->id)->count();
+
+        if ($spatiiCount > 0) {
+            throw ValidationException::withMessages([
+                'anexa' => 'Anexa «'.trim($configurare->denumire).'» e folosită de '.$spatiiCount.' spații. Schimbă anexa pe spații înainte de ștergere.',
+            ]);
+        }
+
+        $imobilId = (int) $configurare->imobil_id;
+        $wasImplicit = $configurare->implicit;
+
+        $this->deleteConfigurareAnexa($configurare);
+
+        if ($wasImplicit) {
+            $next = ConfigurareAnexaImobil::query()
+                ->where('imobil_id', $imobilId)
+                ->orderBy('denumire')
+                ->first();
+
+            if ($next) {
+                ConfigurareAnexaImobil::query()
+                    ->where('imobil_id', $imobilId)
+                    ->whereKeyNot($next->id)
+                    ->update(['implicit' => false]);
+                $next->update(['implicit' => true]);
+            }
+        }
+
+        $redirectParams = $request->integer('imobil_id') ?: $imobilId ?: null;
+
+        return redirect()
+            ->route('configurare-anexa.index', $redirectParams ? ['imobil_id' => $redirectParams] : [])
+            ->with('success', 'Anexa a fost ștearsă.');
     }
 
     private function imobileForSelect()
@@ -553,5 +629,19 @@ class ConfigurareAnexaController extends Controller
             'cursImplicit' => Factura::query()->latest()->value('curs_eur') ?: 5,
             'cursSursa' => 'Ultimul curs salvat / fallback',
         ];
+    }
+
+    private function deleteConfigurareAnexa(ConfigurareAnexaImobil $configurare): void
+    {
+        $linieIds = $configurare->linii()->pluck('id');
+
+        if ($linieIds->isNotEmpty()) {
+            CitireContor::query()->whereIn('configurare_anexa_linie_id', $linieIds)->delete();
+            Contor::query()->whereIn('configurare_anexa_linie_id', $linieIds)->delete();
+        }
+
+        ContorConfigurabil::query()->where('configurare_anexa_id', $configurare->id)->delete();
+        $configurare->linii()->delete();
+        $configurare->delete();
     }
 }

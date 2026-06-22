@@ -44,7 +44,9 @@ Route::delete('/configurare-anexa/servicii-standard/{tip}/{serviciuStandard}', [
 Route::get('/configurare-anexa/adauga', [ConfigurareAnexaController::class, 'create'])->name('configurare-anexa.create');
 Route::post('/configurare-anexa', [ConfigurareAnexaController::class, 'store'])->name('configurare-anexa.store');
 Route::get('/configurare-anexa/{configurare}/editare', [ConfigurareAnexaController::class, 'edit'])->name('configurare-anexa.edit');
+Route::post('/configurare-anexa/{configurare}/anuleaza-personalizare', [ConfigurareAnexaController::class, 'cancelPersonalizare'])->name('configurare-anexa.cancel-personalizare');
 Route::put('/configurare-anexa/{configurare}', [ConfigurareAnexaController::class, 'update'])->name('configurare-anexa.update');
+Route::delete('/configurare-anexa/{configurare}', [ConfigurareAnexaController::class, 'destroy'])->name('configurare-anexa.destroy');
 Route::put('/spatii/reordonare', [SpatiuController::class, 'reorder'])->name('spatii.reorder');
 Route::get('/spatii', [SpatiuController::class, 'index'])->name('spatii.index');
 Route::get('/spatii/adauga', [SpatiuController::class, 'create'])->name('spatii.create');

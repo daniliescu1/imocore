@@ -62,27 +62,43 @@ class Contract extends Model
 
     public function chirieAplicabilaPentruLunaAnexa(?string $luna): float
     {
-        if (! preg_match('/^\d{4}-\d{2}$/', (string) $luna)) {
-            return $this->chirieAplicabilaLa();
+        return $this->chirieAplicabilaLa($this->dataReferintaPentruLunaAnexa($luna));
+    }
+
+    public function chirieContractualaPentruLunaAnexa(?string $luna): float
+    {
+        $pretLunar = (float) ($this->spatiu?->pret_lunar ?? 0);
+        $chirieDinContract = $this->chirieAplicabilaPentruLunaAnexa($luna);
+
+        if ($this->folosesteCrestereChirieLa($this->dataReferintaPentruLunaAnexa($luna))) {
+            return max($pretLunar, $chirieDinContract);
         }
 
-        $lunaChirie = Carbon::createFromFormat('Y-m', $luna)
-            ->startOfMonth()
-            ->addMonth();
+        if ($pretLunar > 0) {
+            return $pretLunar;
+        }
 
-        return $this->chirieAplicabilaLa($lunaChirie->endOfMonth());
+        return $chirieDinContract;
     }
 
     public function chirieFacturabilaPentruLunaAnexa(?string $luna): float
     {
-        $chirieContractuala = $this->chirieAplicabilaPentruLunaAnexa($luna);
+        $chirieContractuala = $this->chirieContractualaPentruLunaAnexa($luna);
         $chirieIndexata = (float) ($this->spatiu?->indexare_2026 ?? 0);
 
-        if ($chirieIndexata > $chirieContractuala) {
-            return $chirieIndexata;
+        return max($chirieContractuala, $chirieIndexata);
+    }
+
+    private function dataReferintaPentruLunaAnexa(?string $luna): Carbon
+    {
+        if (! preg_match('/^\d{4}-\d{2}$/', (string) $luna)) {
+            return Carbon::today();
         }
 
-        return $chirieContractuala;
+        return Carbon::createFromFormat('Y-m', $luna)
+            ->startOfMonth()
+            ->addMonth()
+            ->endOfMonth();
     }
 
     private function normalizeDate(mixed $date = null): Carbon

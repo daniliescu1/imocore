@@ -106,6 +106,7 @@ class FacturaRentIncreaseTest extends TestCase
             'identificator' => 'F-INDEX',
             'status' => 'inchiriat',
             'moneda' => 'EUR',
+            'pret_lunar' => 1600,
             'indexare_2026' => 2000,
         ]);
 
@@ -149,6 +150,7 @@ class FacturaRentIncreaseTest extends TestCase
             'identificator' => 'F-INDEX-MICA',
             'status' => 'inchiriat',
             'moneda' => 'EUR',
+            'pret_lunar' => 1600,
             'indexare_2026' => 1400,
         ]);
 
@@ -176,6 +178,49 @@ class FacturaRentIncreaseTest extends TestCase
 
         $this->assertSame('1600.00', $factura->chirie_eur);
         $this->assertSame('8000.00', $factura->chirie_lei);
+    }
+
+    public function test_facturarea_foloseste_pret_lunar_din_spatiu_in_loc_de_chiria_lunara_din_contract(): void
+    {
+        $imobil = Imobil::query()->create([
+            'nume' => 'Imobil chirie contractuala',
+            'strada' => 'Strada Test',
+            'numar' => '3',
+            'localitate' => 'Timișoara',
+        ]);
+
+        $spatiu = Spatiu::query()->create([
+            'imobil_id' => $imobil->id,
+            'identificator' => 'F-PRET-LUNAR',
+            'status' => 'inchiriat',
+            'moneda' => 'EUR',
+            'pret_lunar' => 180,
+        ]);
+
+        $contract = Contract::query()->create([
+            'spatiu_id' => $spatiu->id,
+            'numar_contract' => 'C-PRET-LUNAR',
+            'chirias' => 'Chiriaș contractual',
+            'data_start' => '2026-01-01',
+            'chirie' => 150,
+            'moneda' => 'EUR',
+            'status' => 'activ',
+        ]);
+
+        Anexa::query()->create([
+            'contract_id' => $contract->id,
+            'luna' => '2026-05',
+            'total' => 100,
+        ]);
+
+        $this->post(route('facturare.generate'), [
+            'curs_eur' => 5,
+        ])->assertRedirect(route('facturare.index'));
+
+        $factura = Factura::query()->firstOrFail();
+
+        $this->assertSame('180.00', $factura->chirie_eur);
+        $this->assertSame('900.00', $factura->chirie_lei);
     }
 
     public function test_factura_afiseaza_utilitatile_grupate_pe_cote_tva(): void

@@ -320,12 +320,16 @@ class SpatiuDocumenteTest extends TestCase
             'configurare' => $copie,
             'return_url' => route('spatii.edit', $spatiu),
             'personalizare' => 1,
+            'spatiu_id' => $spatiu->id,
+            'anexa_anterioara_id' => $configurare->id,
             'denumire_sugestie' => 'Anexă utilități · D204',
         ], absolute: false));
 
         $this->get(route('configurare-anexa.edit', [
             'configurare' => $copie,
             'personalizare' => 1,
+            'spatiu_id' => $spatiu->id,
+            'anexa_anterioara_id' => $configurare->id,
             'denumire_sugestie' => 'Anexă utilități · D204',
         ]))
             ->assertOk()
@@ -333,8 +337,61 @@ class SpatiuDocumenteTest extends TestCase
                 ->component('ConfigurareAnexa/Form')
                 ->where('personalizare.activ', true)
                 ->where('personalizare.denumire_sugestie', 'Anexă utilități · D204')
+                ->where('personalizare.spatiu_id', $spatiu->id)
+                ->where('personalizare.anexa_anterioara_id', $configurare->id)
                 ->where('anexa.denumire', 'Anexă utilități · D204')
             );
+    }
+
+    public function test_anularea_personalizarii_anexei_restabileste_anexa_anterioara(): void
+    {
+        $imobil = Imobil::query()->create([
+            'nume' => '700 Office',
+            'strada' => 'Strada Test',
+            'numar' => '1',
+            'localitate' => 'Timișoara',
+        ]);
+
+        $configurare = ConfigurareAnexaImobil::query()->create([
+            'imobil_id' => $imobil->id,
+            'denumire' => 'Anexă utilități',
+            'implicit' => true,
+            'activ' => true,
+        ]);
+
+        $configurare->linii()->create([
+            'ordine' => 1,
+            'tip_linie' => 'serviciu',
+            'denumire' => 'Apă rece',
+            'tip_calcul' => 'manual',
+            'activ' => true,
+        ]);
+
+        $spatiu = Spatiu::query()->create([
+            'imobil_id' => $imobil->id,
+            'identificator' => 'D204',
+            'status' => 'inchiriat',
+            'configurare_anexa_id' => $configurare->id,
+            'ordine' => 1,
+        ]);
+
+        $this->post(route('spatii.anexa-individuala', $spatiu));
+
+        $spatiu->refresh();
+        $copieId = $spatiu->configurare_anexa_id;
+        $this->assertNotSame($configurare->id, $copieId);
+
+        $response = $this->post(route('configurare-anexa.cancel-personalizare', $copieId), [
+            'spatiu_id' => $spatiu->id,
+            'anexa_anterioara_id' => $configurare->id,
+            'return_url' => route('spatii.edit', $spatiu),
+        ]);
+
+        $response->assertRedirect(route('spatii.edit', $spatiu, absolute: false));
+
+        $spatiu->refresh();
+        $this->assertSame($configurare->id, $spatiu->configurare_anexa_id);
+        $this->assertNull(ConfigurareAnexaImobil::query()->find($copieId));
     }
 
     public function test_salvarea_anexei_respinge_denumire_duplicata_pe_acelasi_imobil(): void
