@@ -398,7 +398,7 @@ class FacturaRentIncreaseTest extends TestCase
         $this->get(route('facturare.show', $factura))
             ->assertOk()
             ->assertInertia(fn (Assert $page) => $page
-                ->where('factura.linii.0.denumire', 'Chirie spațiu iunie 2026')
+                ->where('factura.linii.0.denumire', 'Chirie spațiu iunie 2026 · 1.000,00 EUR/lună (5.000,00 lei/lună)')
                 ->where('factura.linii.1.denumire', 'Utilități 21% TVA mai 2026')
                 ->where('factura.linii.2.denumire', 'Penalități')
                 ->has('factura.linii', 3)
@@ -460,7 +460,7 @@ class FacturaRentIncreaseTest extends TestCase
         $this->get(route('facturare.show', $factura))
             ->assertOk()
             ->assertInertia(fn (Assert $page) => $page
-                ->where('factura.linii.0.denumire', 'Chirie spațiu iunie 2026')
+                ->where('factura.linii.0.denumire', 'Chirie spațiu iunie 2026 · 2.500,00 EUR/lună (12.511,57 lei/lună)')
                 ->where('factura.linii.0.valoare', '12511.57')
                 ->where('factura.linii.0.tva', 2627.43)
                 ->where('factura.sumar.tva_21', 2627.43)

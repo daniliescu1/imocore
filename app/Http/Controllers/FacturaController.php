@@ -190,7 +190,7 @@ class FacturaController extends Controller
         $liniiFactura = [
             [
                 'nr_crt' => 1,
-                'denumire' => trim('Chirie spațiu '.$lunaChirie.($anChirie !== '' ? ' '.$anChirie : '')),
+                'denumire' => $this->denumireLinieChirieFactura($factura, $lunaChirie, $anChirie),
                 'cantitate' => 1,
                 'um' => 'LUNĂ',
                 'pret_unitar' => $factura->chirie_lei,
@@ -496,6 +496,27 @@ class FacturaController extends Controller
             'telefon' => ($date['telefon'] ?? null) ?: null,
             'email' => ($date['email'] ?? null) ?: null,
         ];
+    }
+
+    private function denumireLinieChirieFactura(Factura $factura, string $lunaChirie, string $anChirie): string
+    {
+        $perioada = trim('Chirie spațiu '.$lunaChirie.($anChirie !== '' ? ' '.$anChirie : ''));
+        $chirieEur = (float) $factura->chirie_eur;
+        $chirieLei = (float) $factura->chirie_lei;
+
+        if ($chirieEur > 0 && $chirieLei > 0) {
+            return $perioada.' · '.DocumentFormatter::amount($chirieEur).' EUR/lună ('.DocumentFormatter::amount($chirieLei).' lei/lună)';
+        }
+
+        if ($chirieEur > 0) {
+            return $perioada.' · '.DocumentFormatter::amount($chirieEur).' EUR/lună';
+        }
+
+        if ($chirieLei > 0) {
+            return $perioada.' · '.DocumentFormatter::amount($chirieLei).' lei/lună';
+        }
+
+        return $perioada;
     }
 
     private function numeLunaUrmatoare(?string $luna): string
