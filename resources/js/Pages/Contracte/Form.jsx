@@ -132,9 +132,6 @@ function missingFieldKeysForForm(data) {
     } else {
         if (isBlank(data.chirias_pj?.denumire)) missing.push('chirias_pj.denumire');
         if (isBlank(data.chirias_pj?.sediu_social)) missing.push('chirias_pj.sediu_social');
-        if (isBlank(data.chirias_pj?.telefon)) missing.push('chirias_pj.telefon');
-        if (isBlank(data.chirias_pj?.nr_reg_comert)) missing.push('chirias_pj.nr_reg_comert');
-        if (isBlank(data.chirias_pj?.cui)) missing.push('chirias_pj.cui');
         if (isBlank(data.chirias_pj?.administrator?.nume_complet)) missing.push('chirias_pj.administrator.nume_complet');
         if (isInvalidCnp(data.chirias_pj?.administrator?.cnp)) missing.push('chirias_pj.administrator.cnp');
 
@@ -662,11 +659,11 @@ export default function Form({
                                     <PfField label="Denumire" value={data.chirias_pj.denumire} onChange={(value) => updatePj('denumire', value)} error={errors['chirias_pj.denumire']} required incomplete={fieldIncomplete('chirias_pj.denumire')} gridSpan={1} />
                                     <PfField label="Sediul social" value={data.chirias_pj.sediu_social} onChange={(value) => updatePj('sediu_social', value)} error={errors['chirias_pj.sediu_social']} required incomplete={fieldIncomplete('chirias_pj.sediu_social')} gridSpan={1} />
                                 </div>
-                                <PfField label="Registrul Comerțului" value={data.chirias_pj.nr_reg_comert} onChange={(value) => updatePj('nr_reg_comert', value)} error={errors['chirias_pj.nr_reg_comert']} required incomplete={fieldIncomplete('chirias_pj.nr_reg_comert')} gridSpan={1} />
-                                <PfField label="CUI" value={data.chirias_pj.cui} onChange={(value) => updatePj('cui', value)} error={errors['chirias_pj.cui']} required incomplete={fieldIncomplete('chirias_pj.cui')} gridSpan={1} />
+                                <PfField label="Registrul Comerțului" value={data.chirias_pj.nr_reg_comert} onChange={(value) => updatePj('nr_reg_comert', value)} error={errors['chirias_pj.nr_reg_comert']} incomplete={fieldIncomplete('chirias_pj.nr_reg_comert')} gridSpan={1} />
+                                <PfField label="CUI" value={data.chirias_pj.cui} onChange={(value) => updatePj('cui', value)} error={errors['chirias_pj.cui']} incomplete={fieldIncomplete('chirias_pj.cui')} gridSpan={1} />
                                 <PfField label="Email" value={data.chirias_pj.email} onChange={(value) => updatePj('email', value)} error={errors['chirias_pj.email']} incomplete={fieldIncomplete('chirias_pj.email')} gridSpan={1} />
                                 <PfField label="Email facturare" value={data.chirias_pj.email_2} onChange={(value) => updatePj('email_2', value)} error={errors['chirias_pj.email_2']} gridSpan={1} />
-                                <PfField label="Telefon" value={data.chirias_pj.telefon} onChange={(value) => updatePj('telefon', value)} error={errors['chirias_pj.telefon']} required incomplete={fieldIncomplete('chirias_pj.telefon')} gridSpan={1} formatter={formatPhoneNumber} />
+                                <PfField label="Telefon" value={data.chirias_pj.telefon} onChange={(value) => updatePj('telefon', value)} error={errors['chirias_pj.telefon']} incomplete={fieldIncomplete('chirias_pj.telefon')} gridSpan={1} formatter={formatPhoneNumber} />
                                 <PfField label="Cont bancar" value={data.chirias_pj.cont_bancar} onChange={(value) => updatePj('cont_bancar', value)} error={errors['chirias_pj.cont_bancar']} gridSpan={1} />
                                 <PfField label="Banca" value={data.chirias_pj.banca} onChange={(value) => updatePj('banca', value)} error={errors['chirias_pj.banca']} gridSpan={1} />
                                 {!spatiuAdministrativ ? (
