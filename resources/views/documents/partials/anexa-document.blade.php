@@ -45,6 +45,10 @@
             <span>Contract</span>
             <strong>{{ DocumentFormatter::pdfText($anexa['contract']['numar'] ?? null) }}</strong>
         </td>
+        <td>
+            <span>Email facturare</span>
+            <strong>{{ DocumentFormatter::pdfText($anexa['contract']['email_facturare'] ?? null) }}</strong>
+        </td>
     </tr>
 </table>
 

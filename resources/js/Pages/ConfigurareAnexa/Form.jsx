@@ -661,6 +661,7 @@ export default function Form({
                             (() => {
                                 const hideIndexFields = templateFaraIndex(linie.tip_calcul);
                                 const hideQuantityFields = templateFaraCantitati(linie.tip_calcul);
+                                const isFixLine = linie.tip_calcul === 'fix' || isAdministrareValue(linie.tip_calcul);
 
                                 return (
                             <div className="annex-line-row" key={`line-${lineIndex}`}>

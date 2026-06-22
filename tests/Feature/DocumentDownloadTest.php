@@ -69,7 +69,8 @@ class DocumentDownloadTest extends TestCase
             ->assertOk()
             ->assertInertia(fn ($page) => $page
                 ->component('Anexe/Show')
-                ->where('downloadUrl', route('anexe.download', $anexa)));
+                ->where('downloadUrl', route('anexe.download', $anexa))
+                ->where('anexa.contract.email_facturare', 'facturare@zbo.ro'));
     }
 
     public function test_factura_pdf_has_invoice_on_first_page_and_annex_on_second(): void
@@ -188,6 +189,11 @@ class DocumentDownloadTest extends TestCase
             'spatiu_id' => $spatiu->id,
             'numar_contract' => 'Nr. 366 din 27.05.2026',
             'chirias' => 'ZBOELECTRONICS SRL',
+            'chirias_tip' => 'pj',
+            'chirias_date' => [
+                'email' => 'contact@zbo.ro',
+                'email_2' => 'facturare@zbo.ro',
+            ],
             'status' => 'activ',
         ]);
 

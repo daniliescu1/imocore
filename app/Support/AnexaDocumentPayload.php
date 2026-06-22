@@ -4,6 +4,7 @@ namespace App\Support;
 
 use App\Models\Anexa;
 use App\Models\AnexaLinie;
+use App\Models\Contract;
 
 class AnexaDocumentPayload
 {
@@ -36,6 +37,7 @@ class AnexaDocumentPayload
             'contract' => [
                 'numar' => $contract?->numar_contract,
                 'chirias' => $contract?->chirias,
+                'email_facturare' => self::emailFacturareDinContract($contract),
             ],
             'spatiu' => [
                 'identificator' => $spatiu?->identificator,
@@ -65,6 +67,18 @@ class AnexaDocumentPayload
                 'tva_21' => $linie->tva_21,
             ])->all(),
         ];
+    }
+
+    private static function emailFacturareDinContract(?Contract $contract): ?string
+    {
+        if ($contract === null) {
+            return null;
+        }
+
+        $date = is_array($contract->chirias_date) ? $contract->chirias_date : [];
+        $email = trim((string) ($date['email_2'] ?? ''));
+
+        return $email !== '' ? $email : null;
     }
 
     private static function lunaUtilitati(?string $luna): string
