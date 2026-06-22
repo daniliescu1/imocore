@@ -216,9 +216,8 @@ class ContractController extends Controller
     {
         $this->updateSpatiuLocator($contract->spatiu, $request->integer('locator_id') ?: null);
 
-        $configurareAnexaId = $this->validatedConfigurareAnexaId($request, $contract->spatiu);
         $spatiuUpdates = [
-            'configurare_anexa_id' => $configurareAnexaId,
+            'configurare_anexa_id' => $this->resolveConfigurareAnexaIdForSpatiu($request, $contract->spatiu),
         ];
 
         if ($status === 'activ') {
@@ -230,6 +229,19 @@ class ContractController extends Controller
 
         $contract->spatiu->update($spatiuUpdates);
         $contract->spatiu->imobil->recalculeazaSpatii();
+    }
+
+    private function resolveConfigurareAnexaIdForSpatiu(Request $request, Spatiu $spatiu): ?int
+    {
+        if (! $request->has('configurare_anexa_id')) {
+            return $spatiu->configurare_anexa_id;
+        }
+
+        if (blank($request->input('configurare_anexa_id'))) {
+            return $spatiu->configurare_anexa_id;
+        }
+
+        return $this->validatedConfigurareAnexaId($request, $spatiu);
     }
 
     private function validatedConfigurareAnexaId(Request $request, Spatiu $spatiu): ?int

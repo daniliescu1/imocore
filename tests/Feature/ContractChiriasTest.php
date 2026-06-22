@@ -503,6 +503,68 @@ class ContractChiriasTest extends TestCase
         $this->assertSame($configurare->id, $spatiu->fresh()->configurare_anexa_id);
     }
 
+    public function test_contract_update_pastreaza_anexa_spatiului_la_schimbarea_chiriasului(): void
+    {
+        $imobil = Imobil::query()->create([
+            'nume' => '700 Office',
+            'strada' => 'Strada Test',
+            'numar' => '1',
+            'localitate' => 'Timișoara',
+        ]);
+
+        $configurare = ConfigurareAnexaImobil::query()->create([
+            'imobil_id' => $imobil->id,
+            'denumire' => 'Anexă utilități',
+            'implicit' => true,
+            'activ' => true,
+        ]);
+
+        $spatiu = Spatiu::query()->create([
+            'imobil_id' => $imobil->id,
+            'identificator' => 'D209',
+            'status' => 'inchiriat',
+            'configurare_anexa_id' => $configurare->id,
+            'ordine' => 1,
+        ]);
+
+        $contract = Contract::query()->create([
+            'spatiu_id' => $spatiu->id,
+            'numar_contract' => 'C-ANEXA-PAST',
+            'chirias' => 'Chiriaș vechi SRL',
+            'chirias_tip' => 'pj',
+            'chirias_date' => [
+                'denumire' => 'Chiriaș vechi SRL',
+            ],
+            'data_start' => '2025-01-01',
+            'chirie' => 800,
+            'moneda' => 'EUR',
+            'status' => 'activ',
+        ]);
+
+        $this->put(route('contracte.update', $contract), [
+            'spatiu_id' => $spatiu->id,
+            ...$this->contractRequiredFields(),
+            'numar_contract' => 'C-ANEXA-PAST',
+            'chirias_tip' => 'pj',
+            'chirias_pj' => [
+                'denumire' => 'Chiriaș nou SRL',
+                'sediu_social' => 'Timișoara',
+                'administrator' => [
+                    'nume_complet' => 'Admin Nou',
+                ],
+            ],
+            'data_start' => '2025-01-01',
+            'chirie' => 900,
+            'moneda' => 'EUR',
+            'configurare_anexa_id' => '',
+        ])->assertRedirect('/contracte');
+
+        $spatiu->refresh();
+
+        $this->assertSame($configurare->id, $spatiu->configurare_anexa_id);
+        $this->assertSame('Chiriaș nou SRL', $spatiu->chirias);
+    }
+
     public function test_contract_update_salveaza_cresterea_de_chirie(): void
     {
         $imobil = Imobil::query()->create([
@@ -847,8 +909,8 @@ class ContractChiriasTest extends TestCase
 
         $this->assertContains('numar_contract', $missing);
         $this->assertContains('locator_id', $missing);
-        $this->assertContains('data_start', $missing);
-        $this->assertContains('data_end', $missing);
+        $this->assertNotContains('data_start', $missing);
+        $this->assertNotContains('data_end', $missing);
     }
 
     public function test_contract_fara_telefon_chirias_ramane_incomplet(): void

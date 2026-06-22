@@ -10,7 +10,8 @@ class DocumentFormatter
             return '—';
         }
 
-        $formatted = (string) (float) $value;
+        $rounded = round((float) $value, 2);
+        $formatted = number_format($rounded, 2, '.', '');
 
         return preg_replace(['/(\.\d*?)0+$/', '/\.$/'], ['$1', ''], $formatted) ?: '0';
     }

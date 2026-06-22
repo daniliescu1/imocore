@@ -100,8 +100,8 @@ class ContractCompleteness
             'locator_id' => ['required', 'exists:locatori,id'],
             'numar_contract' => ['required', 'string', 'max:255'],
             'chirias_tip' => ['required', 'in:pf,pj'],
-            'data_start' => ['required', 'date'],
-            'data_end' => ['required', 'date', 'after_or_equal:data_start'],
+            'data_start' => ['nullable', 'date'],
+            'data_end' => ['nullable', 'date', 'after_or_equal:data_start'],
             'chirie' => ['required', 'numeric', 'min:0'],
         ];
 

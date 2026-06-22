@@ -1,10 +1,6 @@
 import React from 'react';
 import { AnnexTableBodyRows } from './AnnexTableRows';
-
-function formatDecimal(value) {
-    if (value === null || value === undefined || value === '') return '—';
-    return String(Number(value)).replace(/(\.\d*?)0+$/, '$1').replace(/\.$/, '');
-}
+import { formatAnnexDecimal } from '../lib/formatDecimal';
 
 function lunaText(luna) {
     const [year, month] = String(luna || '').split('-');
@@ -91,7 +87,7 @@ export default function AnnexDocumentPreview({ anexa, compactHeader = false }) {
                         </tr>
                     </thead>
                     <tbody>
-                        <AnnexTableBodyRows linii={anexa.linii} formatDecimal={formatDecimal} />
+                        <AnnexTableBodyRows linii={anexa.linii} formatDecimal={formatAnnexDecimal} formatMoney={formatAnnexDecimal} />
                     </tbody>
                 </table>
             </div>

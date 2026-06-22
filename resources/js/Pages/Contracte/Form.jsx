@@ -119,8 +119,6 @@ function missingFieldKeysForForm(data) {
     if (!data.spatiu_id) missing.push('spatiu_id');
     if (!data.locator_id) missing.push('locator_id');
     if (isBlank(data.numar_contract)) missing.push('numar_contract');
-    if (isBlank(data.data_start)) missing.push('data_start');
-    if (isBlank(data.data_end)) missing.push('data_end');
     if (isBlank(data.chirie) && data.chirie !== 0) missing.push('chirie');
 
     if (data.chirias_tip === 'pf') {
@@ -591,9 +589,9 @@ export default function Form({
                         {errors.chirie ? <small>{errors.chirie}</small> : null}
                     </label>
 
-                    <DateField label="Data start" value={data.data_start} onChange={(value) => setData('data_start', value)} error={errors.data_start} incomplete={fieldIncomplete('data_start')} />
+                    <DateField label="Data start" value={data.data_start} onChange={(value) => setData('data_start', value)} error={errors.data_start} incomplete={fieldIncomplete('data_start')} required={false} />
 
-                    <DateField label="Data end" value={data.data_end} onChange={(value) => setData('data_end', value)} error={errors.data_end} incomplete={fieldIncomplete('data_end')} />
+                    <DateField label="Data end" value={data.data_end} onChange={(value) => setData('data_end', value)} error={errors.data_end} incomplete={fieldIncomplete('data_end')} required={false} />
 
                     <label className="form-field form-grid-span-1">
                         <span>Creștere chirie la</span>
