@@ -961,4 +961,54 @@ class ContractChiriasTest extends TestCase
         $this->assertSame('activ', $contract->status);
         $this->assertSame('1790907354739', $contract->chirias_date['administrator']['cnp']);
     }
+
+    public function test_contract_pf_cu_serie_ci_lunga_nu_este_marcat_incomplet(): void
+    {
+        $serieCi = 'CI seria KS nr. 656152, eliberat de SPCLEP Resita';
+
+        $missing = \App\Support\ContractCompleteness::missingFieldKeys([
+            'spatiu_id' => 1,
+            'locator_id' => 1,
+            'numar_contract' => 'Nr. 235 din 20.12.2023',
+            'data_start' => '2024-01-01',
+            'data_end' => '2026-12-31',
+            'chirie' => 230,
+            'chirias_tip' => 'pf',
+            'chirias_pf' => [
+                'nume_complet' => 'MARINA DENISA GEORGIA',
+                'serie_ci' => $serieCi,
+                'numar_ci' => '',
+                'cnp' => '1234567890123',
+                'domiciliu' => 'Resita',
+                'email' => 'marina@example.com',
+                'telefon' => '0722000000',
+            ],
+        ]);
+
+        $this->assertNotContains('chirias_pf.serie_ci', $missing);
+    }
+
+    public function test_contract_pf_foloseste_numar_ci_legacy_pentru_completitudine(): void
+    {
+        $missing = \App\Support\ContractCompleteness::missingFieldKeys([
+            'spatiu_id' => 1,
+            'locator_id' => 1,
+            'numar_contract' => 'Nr. 235 din 20.12.2023',
+            'data_start' => '2024-01-01',
+            'data_end' => '2026-12-31',
+            'chirie' => 230,
+            'chirias_tip' => 'pf',
+            'chirias_pf' => [
+                'nume_complet' => 'MARINA DENISA GEORGIA',
+                'serie_ci' => '',
+                'numar_ci' => '656152',
+                'cnp' => '1234567890123',
+                'domiciliu' => 'Resita',
+                'email' => 'marina@example.com',
+                'telefon' => '0722000000',
+            ],
+        ]);
+
+        $this->assertNotContains('chirias_pf.serie_ci', $missing);
+    }
 }

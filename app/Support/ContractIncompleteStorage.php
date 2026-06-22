@@ -106,6 +106,7 @@ class ContractIncompleteStorage
         }
 
         if (isset($input['chirias_pf']) && is_array($input['chirias_pf'])) {
+            ContractChiriasData::mergeLegacyPfCiFields($input['chirias_pf']);
             $input['chirias_pf'] = self::normalizeChiriasGroup($input['chirias_pf']);
         }
 

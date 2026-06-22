@@ -102,6 +102,17 @@ function isInvalidCnp(value, required = false) {
     return normalizeCnpDigits(value).length !== 13;
 }
 
+function pfCiValue(chiriasPf) {
+    const serie = String(chiriasPf?.serie_ci || '').trim();
+    const numar = String(chiriasPf?.numar_ci || '').trim();
+
+    if (serie !== '') {
+        return serie;
+    }
+
+    return numar;
+}
+
 function missingFieldKeysForForm(data) {
     const missing = [];
 
@@ -114,8 +125,7 @@ function missingFieldKeysForForm(data) {
 
     if (data.chirias_tip === 'pf') {
         if (isBlank(data.chirias_pf?.nume_complet)) missing.push('chirias_pf.nume_complet');
-        if (isBlank(data.chirias_pf?.serie_ci)) missing.push('chirias_pf.serie_ci');
-        if (isBlank(data.chirias_pf?.numar_ci)) missing.push('chirias_pf.numar_ci');
+        if (isBlank(pfCiValue(data.chirias_pf))) missing.push('chirias_pf.serie_ci');
         if (isBlank(data.chirias_pf?.cnp) || isInvalidCnp(data.chirias_pf?.cnp, true)) missing.push('chirias_pf.cnp');
         if (isBlank(data.chirias_pf?.domiciliu)) missing.push('chirias_pf.domiciliu');
         if (isBlank(data.chirias_pf?.email)) missing.push('chirias_pf.email');
@@ -148,7 +158,6 @@ const fieldLabels = {
     chirie: 'Chirie lunară',
     'chirias_pf.nume_complet': 'Nume complet chiriaș',
     'chirias_pf.serie_ci': 'Serie CI chiriaș',
-    'chirias_pf.numar_ci': 'Număr CI chiriaș',
     'chirias_pf.cnp': 'CNP chiriaș',
     'chirias_pf.domiciliu': 'Domiciliu chiriaș',
     'chirias_pf.email': 'Email chiriaș',
@@ -390,11 +399,8 @@ export default function Form({
             return [];
         }
 
-        const clientMissing = missingFieldKeysForForm(data);
-        const serverMissing = contract?.missing_field_keys || [];
-
-        return [...new Set([...clientMissing, ...serverMissing])];
-    }, [contract?.missing_field_keys, data, isActiveContract]);
+        return missingFieldKeysForForm(data);
+    }, [data, isActiveContract]);
     const missingLabels = missingKeys.map((key) => fieldLabels[key] || key);
     const hasMissingFields = missingKeys.length > 0;
     const showIncompleteState = isIncompleteContract && hasMissingFields;
@@ -636,7 +642,6 @@ export default function Form({
                         <div className="form-grid form-grid-chirias">
                             <PfField label="Nume complet" value={data.chirias_pf.nume_complet} onChange={(value) => updatePf('nume_complet', value)} error={errors['chirias_pf.nume_complet']} required incomplete={fieldIncomplete('chirias_pf.nume_complet')} />
                             <PfField label="Serie CI Număr CI, eliberat de, la data." value={data.chirias_pf.serie_ci} onChange={(value) => updatePf('serie_ci', value)} error={errors['chirias_pf.serie_ci']} required incomplete={fieldIncomplete('chirias_pf.serie_ci')} />
-                            <PfField label="Număr CI" value={data.chirias_pf.numar_ci} onChange={(value) => updatePf('numar_ci', value)} error={errors['chirias_pf.numar_ci']} required incomplete={fieldIncomplete('chirias_pf.numar_ci')} />
                             <PfField label="Domiciliu" value={data.chirias_pf.domiciliu} onChange={(value) => updatePf('domiciliu', value)} error={errors['chirias_pf.domiciliu']} required incomplete={fieldIncomplete('chirias_pf.domiciliu')} />
                             <PfField label="CNP" value={data.chirias_pf.cnp} onChange={(value) => updatePf('cnp', value)} error={errors['chirias_pf.cnp']} required incomplete={fieldIncomplete('chirias_pf.cnp')} />
                             <PfField label="Email" value={data.chirias_pf.email} onChange={(value) => updatePf('email', value)} error={errors['chirias_pf.email']} type="email" required incomplete={fieldIncomplete('chirias_pf.email')} gridSpan={1} />

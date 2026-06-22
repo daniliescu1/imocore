@@ -104,6 +104,7 @@ class ContractChiriasData
         if ($tip === 'pf') {
             $emptyPf = array_merge($emptyPf, self::onlyKeys($date ?? [], array_keys($emptyPf)));
             self::splitLegacyEmailField($emptyPf);
+            self::mergeLegacyPfCiFields($emptyPf);
             if ($emptyPf['nume_complet'] === '' && $chirias) {
                 $emptyPf['nume_complet'] = $chirias;
             }
@@ -171,8 +172,7 @@ class ContractChiriasData
         $validated = $request->validate([
             'chirias_pf' => ['required', 'array'],
             'chirias_pf.nume_complet' => ['required', 'string', 'max:255'],
-            'chirias_pf.serie_ci' => ['required', 'string', 'max:10'],
-            'chirias_pf.numar_ci' => ['required', 'string', 'max:20'],
+            'chirias_pf.serie_ci' => ['required', 'string', 'max:500'],
             'chirias_pf.cnp' => ['required', 'string', 'max:13'],
             'chirias_pf.domiciliu' => ['required', 'string', 'max:500'],
             'chirias_pf.email' => ['required', 'email', 'max:255'],
@@ -189,7 +189,7 @@ class ContractChiriasData
             'chirias' => $pf['nume_complet'],
             'chirias_date' => [
                 'serie_ci' => $pf['serie_ci'],
-                'numar_ci' => $pf['numar_ci'],
+                'numar_ci' => null,
                 'cnp' => $pf['cnp'],
                 'domiciliu' => $pf['domiciliu'],
                 'email' => $pf['email'],
@@ -245,6 +245,23 @@ class ContractChiriasData
                 'administrator_2' => self::administratorPayload($admin2, nullWhenEmpty: true),
             ],
         ];
+    }
+
+    /**
+     * @param  array<string, mixed>  $pf
+     */
+    public static function mergeLegacyPfCiFields(array &$pf): void
+    {
+        $serie = trim((string) ($pf['serie_ci'] ?? ''));
+        $numar = trim((string) ($pf['numar_ci'] ?? ''));
+
+        if ($serie !== '') {
+            return;
+        }
+
+        if ($numar !== '') {
+            $pf['serie_ci'] = $numar;
+        }
     }
 
     /**
