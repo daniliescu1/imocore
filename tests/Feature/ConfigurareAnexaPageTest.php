@@ -2,6 +2,8 @@
 
 namespace Tests\Feature;
 
+use App\Models\Anexa;
+use App\Models\Contract;
 use App\Models\Imobil;
 use App\Models\ServiciuStandardAnexa;
 use App\Models\Spatiu;
@@ -609,5 +611,153 @@ class ConfigurareAnexaPageTest extends TestCase
         $this->assertSame('1.5280', (string) $pret->fresh()->coeficient);
         $this->assertSame('Kw', ServiciuStandardAnexa::umPentruDenumire('Energie Electrica'));
         $this->assertSame('Kw', $configurare->linii()->first()->fresh()->um);
+    }
+
+    public function test_salvarea_anexei_pastreaza_facturat_pentru_tip_administrare(): void
+    {
+        $imobil = Imobil::query()->create([
+            'nume' => 'Imobil administrare',
+            'strada' => 'Strada Test',
+            'numar' => '1',
+            'localitate' => 'Timisoara',
+        ]);
+
+        $configurare = $imobil->configurariAnexe()->create([
+            'denumire' => 'Anexa administrare',
+            'implicit' => true,
+        ]);
+
+        $this->put(route('configurare-anexa.update', $configurare), [
+            'imobil_id' => $imobil->id,
+            'denumire' => 'Anexa administrare',
+            'implicit' => true,
+            'activ' => true,
+            'linii' => [[
+                'tip_linie' => 'serviciu',
+                'denumire' => 'Administrare spatiu: citire contoare',
+                'tip_calcul' => 'Administrare',
+                'facturat' => '1',
+                'um' => 'buc',
+                'pret_unitar' => '55',
+                'valoare' => '55',
+                'tva_21' => '21',
+                'activ' => true,
+            ]],
+        ])->assertRedirect();
+
+        $linie = $configurare->fresh()->linii->firstOrFail();
+
+        $this->assertSame('administrare', $linie->tip_calcul);
+        $this->assertSame('1.000', $linie->facturat);
+        $this->assertNull($linie->index_vechi);
+        $this->assertNull($linie->index_nou);
+    }
+
+    public function test_generarea_anexei_afiseaza_cantitatea_pentru_tip_administrare(): void
+    {
+        $imobil = Imobil::query()->create([
+            'nume' => 'Imobil administrare generare',
+            'strada' => 'Strada Test',
+            'numar' => '1',
+            'localitate' => 'Timisoara',
+        ]);
+
+        $configurare = $imobil->configurariAnexe()->create([
+            'denumire' => 'Anexa administrare',
+            'implicit' => true,
+        ]);
+
+        $configurare->linii()->create([
+            'denumire' => 'Administrare spatiu: citire contoare',
+            'tip_calcul' => 'administrare',
+            'facturat' => '1',
+            'um' => 'buc',
+            'pret_unitar' => '55',
+            'valoare' => '55',
+            'tva_21' => '21',
+            'ordine' => 1,
+            'nr_crt' => 1,
+            'activ' => true,
+        ]);
+
+        $spatiu = Spatiu::query()->create([
+            'imobil_id' => $imobil->id,
+            'identificator' => 'HO STEAGURI',
+            'status' => 'inchiriat',
+            'configurare_anexa_id' => $configurare->id,
+        ]);
+
+        Contract::query()->create([
+            'spatiu_id' => $spatiu->id,
+            'numar_contract' => 'Nr. 90 din 11.05.2021',
+            'chirias' => 'CLEAR VIEW MEDIA OOH SRL',
+            'data_start' => '2021-05-11',
+            'status' => 'activ',
+        ]);
+
+        $this->post('/anexe/generare', [
+            'luna' => '2026-06',
+            'imobil_id' => $imobil->id,
+        ])->assertRedirect();
+
+        $linie = Anexa::query()->with('linii')->firstOrFail()->linii->first();
+
+        $this->assertSame('administrare', $linie->tip_calcul);
+        $this->assertEquals(1, (float) $linie->cantitate);
+        $this->assertEquals(55, (float) $linie->valoare);
+        $this->assertNull($linie->index_vechi);
+        $this->assertNull($linie->index_nou);
+    }
+
+    public function test_generarea_anexei_deriveaza_cantitatea_din_valoare_pentru_administrare_fara_facturat(): void
+    {
+        $imobil = Imobil::query()->create([
+            'nume' => 'Imobil administrare fallback',
+            'strada' => 'Strada Test',
+            'numar' => '1',
+            'localitate' => 'Timisoara',
+        ]);
+
+        $configurare = $imobil->configurariAnexe()->create([
+            'denumire' => 'Anexa administrare',
+            'implicit' => true,
+        ]);
+
+        $configurare->linii()->create([
+            'denumire' => 'Administrare spatiu: citire contoare',
+            'tip_calcul' => 'administrare',
+            'facturat' => null,
+            'um' => 'buc',
+            'pret_unitar' => '55',
+            'valoare' => '55',
+            'tva_21' => '21',
+            'ordine' => 1,
+            'nr_crt' => 1,
+            'activ' => true,
+        ]);
+
+        $spatiu = Spatiu::query()->create([
+            'imobil_id' => $imobil->id,
+            'identificator' => 'HO STEAGURI',
+            'status' => 'inchiriat',
+            'configurare_anexa_id' => $configurare->id,
+        ]);
+
+        Contract::query()->create([
+            'spatiu_id' => $spatiu->id,
+            'numar_contract' => 'C-001',
+            'chirias' => 'Test SRL',
+            'data_start' => '2026-01-01',
+            'status' => 'activ',
+        ]);
+
+        $this->post('/anexe/generare', [
+            'luna' => '2026-06',
+            'imobil_id' => $imobil->id,
+        ])->assertRedirect();
+
+        $linie = Anexa::query()->with('linii')->firstOrFail()->linii->first();
+
+        $this->assertEquals(1, (float) $linie->cantitate);
     }
 }

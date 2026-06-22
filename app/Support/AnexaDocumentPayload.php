@@ -43,6 +43,7 @@ class AnexaDocumentPayload
                 'chirias' => $spatiu?->chirias ?: $contract?->chirias,
             ],
             'imobil' => [
+                'id' => $imobil?->id,
                 'nume' => $imobil?->nume,
                 'adresa' => trim(implode(' ', array_filter([$imobil?->strada, $imobil?->numar]))),
                 'localitate' => $imobil?->localitate,

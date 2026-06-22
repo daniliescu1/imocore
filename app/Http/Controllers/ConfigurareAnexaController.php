@@ -11,6 +11,7 @@ use App\Models\Spatiu;
 use App\Support\InternalReturnUrl;
 use App\Support\ContorConfigurabilSync;
 use App\Support\SincronizareContoareDinAnexa;
+use App\Support\TipCalculAnexa;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
@@ -368,6 +369,10 @@ class ConfigurareAnexaController extends Controller
             return 'mp_coeficient';
         }
 
+        if ($normalized === 'administrare') {
+            return 'administrare';
+        }
+
         return $tipCalcul ?: 'manual';
     }
 
@@ -470,7 +475,7 @@ class ConfigurareAnexaController extends Controller
             $lineValues['valoare'] = null;
         }
 
-        if ($tip === 'fix') {
+        if ($tip === 'fix' || TipCalculAnexa::isAdministrare($tipCalcul)) {
             $lineValues['index_vechi'] = null;
             $lineValues['index_nou'] = null;
         }
@@ -480,7 +485,7 @@ class ConfigurareAnexaController extends Controller
 
     private function indexForForm($linie, string $tipCalcul): mixed
     {
-        if ($this->linieTemplateFaraCantitati($tipCalcul)) {
+        if ($this->linieTemplateFaraIndex($tipCalcul)) {
             return '';
         }
 
@@ -489,7 +494,7 @@ class ConfigurareAnexaController extends Controller
 
     private function indexNouForForm($linie, string $tipCalcul): mixed
     {
-        if ($this->linieTemplateFaraCantitati($tipCalcul)) {
+        if ($this->linieTemplateFaraIndex($tipCalcul)) {
             return '';
         }
 
@@ -522,6 +527,15 @@ class ConfigurareAnexaController extends Controller
             || in_array($tip, ['mp', 'pe_mp'], true)
             || $tip === 'persoane'
             || $tip === 'mp_coeficient';
+    }
+
+    private function linieTemplateFaraIndex(string $tipCalcul): bool
+    {
+        $tip = $this->normalizeTipCalcul($tipCalcul);
+
+        return $this->linieTemplateFaraCantitati($tipCalcul)
+            || $tip === 'fix'
+            || TipCalculAnexa::isAdministrare($tipCalcul);
     }
 
     private function cursEurForm(): array

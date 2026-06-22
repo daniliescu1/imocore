@@ -25,6 +25,10 @@ class TipCalculAnexa
             return 'pausal';
         }
 
+        if ($normalized === 'administrare') {
+            return 'administrare';
+        }
+
         if (in_array($normalized, ['mp', 'pemp'], true)) {
             return 'mp';
         }
@@ -44,6 +48,40 @@ class TipCalculAnexa
     public static function isPausal(?string $tipCalcul): bool
     {
         return self::normalize($tipCalcul) === 'pausal';
+    }
+
+    public static function isAdministrare(?string $tipCalcul): bool
+    {
+        return self::normalize($tipCalcul) === 'administrare';
+    }
+
+    public static function folosesteFacturatDinTemplate(?string $tipCalcul): bool
+    {
+        return in_array(self::normalize($tipCalcul), ['manual', 'fix', 'administrare', 'zero'], true);
+    }
+
+    public static function cantitateDinTemplateLinie(
+        ?string $tipCalcul,
+        mixed $facturat,
+        mixed $pretUnitar,
+        mixed $valoare,
+    ): ?float {
+        if (! self::folosesteFacturatDinTemplate($tipCalcul)) {
+            return null;
+        }
+
+        if ($facturat !== null && $facturat !== '') {
+            return (float) $facturat;
+        }
+
+        $pret = (float) ($pretUnitar ?? 0);
+        $total = (float) ($valoare ?? 0);
+
+        if ($pret > 0 && $total > 0) {
+            return round($total / $pret, 3);
+        }
+
+        return null;
     }
 
     public static function isContorConfigurabil(?string $tipCalcul): bool

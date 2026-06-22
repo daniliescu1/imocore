@@ -279,8 +279,13 @@ class AnexaController extends Controller
             if ($citire) {
                 $cantitate = $citire->consum;
             }
-        } elseif ($tipCalcul === 'fix' || $tipCalcul === 'manual') {
-            $cantitate = $linieConfigurata->facturat;
+        } elseif (TipCalculAnexa::folosesteFacturatDinTemplate($tipCalcul)) {
+            $cantitate = TipCalculAnexa::cantitateDinTemplateLinie(
+                $tipCalcul,
+                $linieConfigurata->facturat,
+                $linieConfigurata->pret_unitar,
+                $linieConfigurata->valoare,
+            );
         }
 
         $pretUnitar = $linieConfigurata->pret_unitar;

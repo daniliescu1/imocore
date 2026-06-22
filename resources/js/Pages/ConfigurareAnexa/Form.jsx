@@ -65,6 +65,14 @@ function isContorConfigurabilValue(value) {
     return normalized.includes('contor') && normalized.includes('configurabil');
 }
 
+function isAdministrareValue(value) {
+    return String(value || '').trim().toLowerCase().replace(/[\s_-]/g, '') === 'administrare';
+}
+
+function templateFaraIndex(tipCalcul) {
+    return templateFaraCantitati(tipCalcul) || tipCalcul === 'fix' || isAdministrareValue(tipCalcul);
+}
+
 function templateFaraCantitati(tipCalcul) {
     return tipCalcul === 'contor'
         || isContorConfigurabilValue(tipCalcul)
@@ -243,13 +251,14 @@ function formatLineForForm(line) {
     const isCoeficient = isMpCoeficientValue(line.tip_calcul);
     const tipCalcul = isCoeficient ? 'mp_coeficient' : (line.tip_calcul || 'manual');
     const stripQuantities = templateFaraCantitati(tipCalcul);
+    const stripIndex = templateFaraIndex(tipCalcul);
 
     return {
         ...line,
         tip_linie: 'serviciu',
         tip_calcul: tipCalcul,
-        index_vechi: stripQuantities ? '' : formatDecimalForInput(line.index_vechi),
-        index_nou: stripQuantities ? '' : formatDecimalForInput(line.index_nou),
+        index_vechi: stripIndex ? '' : formatDecimalForInput(line.index_vechi),
+        index_nou: stripIndex ? '' : formatDecimalForInput(line.index_nou),
         facturat: stripQuantities ? '' : formatDecimalForInput(line.facturat),
         pret_unitar: formatDecimalForInput(line.pret_unitar),
         valoare: stripQuantities ? '' : formatDecimalForInput(line.valoare),
@@ -344,11 +353,12 @@ export default function Form({
                 };
             }
 
-            if (linie.tip_calcul === 'fix') {
+            if (linie.tip_calcul === 'fix' || isAdministrareValue(tipCalcul)) {
                 return {
                     ...base,
                     index_vechi: '',
                     index_nou: '',
+                    facturat: linie.facturat ?? '',
                     valoare: calculatedValoare(linie.facturat, linie.pret_unitar),
                 };
             }
@@ -422,6 +432,9 @@ export default function Form({
                     nextLine.index_nou = '';
                     nextLine.facturat = '';
                     nextLine.valoare = '';
+                } else if (templateFaraIndex(value)) {
+                    nextLine.index_vechi = '';
+                    nextLine.index_nou = '';
                 }
 
                 if (value !== 'mp_coeficient') {
@@ -451,7 +464,7 @@ export default function Form({
                 return nextLine;
             }
 
-            if (nextLine.tip_calcul === 'fix') {
+            if (nextLine.tip_calcul === 'fix' || isAdministrareValue(nextLine.tip_calcul)) {
                 nextLine.index_vechi = '';
                 nextLine.index_nou = '';
             }
@@ -646,8 +659,7 @@ export default function Form({
                             })()
                         ) : (
                             (() => {
-                                const isFixLine = linie.tip_calcul === 'fix';
-                                const hideIndexFields = templateFaraCantitati(linie.tip_calcul) || isFixLine;
+                                const hideIndexFields = templateFaraIndex(linie.tip_calcul);
                                 const hideQuantityFields = templateFaraCantitati(linie.tip_calcul);
 
                                 return (
