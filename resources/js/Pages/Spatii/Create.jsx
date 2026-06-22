@@ -298,6 +298,14 @@ export default function Create({
         });
     }
 
+    function previewAnexa() {
+        if (!spatiu?.id || !data.configurare_anexa_id) {
+            return;
+        }
+
+        router.visit(`/spatii/${spatiu.id}/anexa-previzualizare?configurare_anexa_id=${data.configurare_anexa_id}&return_url=${encodedReturnUrl}`);
+    }
+
     function toggleMarcaj(field) {
         const activating = !data[field];
         const previous = {
@@ -684,7 +692,10 @@ export default function Create({
                             </div>
                             <div className="spatiu-documente-actions">
                                 {data.configurare_anexa_id ? (
-                                    <button type="button" className="secondary-button" onClick={personalizeAnexa}>Personalizează anexa</button>
+                                    <>
+                                        <button type="button" className="secondary-button" onClick={previewAnexa}>Previzualizează anexa</button>
+                                        <button type="button" className="secondary-button" onClick={personalizeAnexa}>Personalizează anexa</button>
+                                    </>
                                 ) : null}
                             </div>
                         </div>

@@ -68,4 +68,69 @@ class FacturareTest extends TestCase
                 ->where('anexeFacturate', 1)
                 ->where('anexeNefacturate', 1));
     }
+
+    public function test_generate_creates_rent_only_invoice_for_contract_without_anexa(): void
+    {
+        $this->travelTo('2026-06-15');
+
+        $imobil = Imobil::query()->create([
+            'nume' => 'Imobil parcare',
+            'strada' => 'Strada P',
+            'numar' => '1',
+            'localitate' => 'Timișoara',
+            'ordine' => 1,
+        ]);
+
+        $spatiu = Spatiu::query()->create([
+            'imobil_id' => $imobil->id,
+            'identificator' => 'P-12',
+            'etaj' => 'Parcare',
+            'status' => 'inchiriat',
+            'moneda' => 'EUR',
+            'pret_lunar' => 290,
+            'ordine' => 1,
+        ]);
+
+        Contract::query()->create([
+            'spatiu_id' => $spatiu->id,
+            'numar_contract' => 'C-PARC',
+            'chirias' => 'PARC SRL',
+            'data_start' => '2026-05-01',
+            'chirie' => 250,
+            'moneda' => 'EUR',
+            'status' => 'activ',
+        ]);
+
+        $this->post(route('facturare.generate'), [
+            'imobil_id' => $imobil->id,
+        ])->assertRedirect(route('facturare.imobil', $imobil));
+
+        $this->assertDatabaseCount('facturi', 1);
+        $this->assertDatabaseHas('facturi', [
+            'anexa_id' => null,
+            'luna' => '2026-05',
+            'chirie_eur' => 290,
+            'status' => 'draft',
+        ]);
+
+        $factura = Factura::query()->firstOrFail();
+
+        $this->get(route('facturare.show', $factura))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('Facturare/Show')
+                ->where('factura.luna', '2026-05')
+                ->where('factura.contract.numar', 'C-PARC')
+                ->where('factura.spatiu.identificator', 'P-12')
+                ->has('factura.linii', 2)
+                ->where('factura.linii.0.denumire', 'Chirie spațiu iunie 2026 · 290,00 EUR/lună')
+                ->where('factura.linii.1.denumire', 'Penalități')
+            );
+
+        $this->post(route('facturare.generate'), [
+            'imobil_id' => $imobil->id,
+        ])->assertRedirect(route('facturare.imobil', $imobil));
+
+        $this->assertDatabaseCount('facturi', 1);
+    }
 }

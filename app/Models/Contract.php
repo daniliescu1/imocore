@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Support\Carbon;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Contract extends Model
 {
@@ -38,6 +39,11 @@ class Contract extends Model
     public function spatiu(): BelongsTo
     {
         return $this->belongsTo(Spatiu::class);
+    }
+
+    public function facturi(): HasMany
+    {
+        return $this->hasMany(Factura::class);
     }
 
     public function folosesteCrestereChirieLa(mixed $date = null): bool

@@ -6,9 +6,11 @@ use App\Models\Contor;
 use App\Models\PerioadaInchiriereFatada;
 use App\Models\ConfigurareAnexaImobil;
 use App\Models\ConfigurareAnexaLinie;
+use App\Models\Contract;
 use App\Models\Imobil;
 use App\Models\Locator;
 use App\Models\Spatiu;
+use App\Support\AnexaPreviewPayload;
 use App\Support\DecimalInput;
 use App\Support\InternalReturnUrl;
 use App\Support\SincronizareContoareDinAnexa;
@@ -504,6 +506,44 @@ class SpatiuController extends Controller
                 'denumire_sugestie' => $denumireSugestie,
             ])
             ->with('success', 'Anexa a fost copiată. Pune un nume pentru varianta acestui spațiu.');
+    }
+
+    public function previewAnexa(Request $request, Spatiu $spatiu): Response
+    {
+        $validated = $request->validate([
+            'configurare_anexa_id' => ['nullable', 'integer', 'exists:configurari_anexe_imobil,id'],
+            'luna' => ['nullable', 'string', 'size:7'],
+        ]);
+
+        $configurareId = (int) ($validated['configurare_anexa_id'] ?? $spatiu->configurare_anexa_id ?: 0);
+
+        abort_unless($configurareId > 0, 422, 'Alege o anexă înainte de previzualizare.');
+
+        $configurare = ConfigurareAnexaImobil::query()
+            ->whereKey($configurareId)
+            ->where('imobil_id', $spatiu->imobil_id)
+            ->firstOrFail();
+
+        $contract = $spatiu->contracte()
+            ->where('status', 'activ')
+            ->orderByDesc('id')
+            ->first();
+
+        $returnUrl = InternalReturnUrl::normalize($request->string('return_url')->toString())
+            ?: route('spatii.edit', $spatiu);
+
+        return Inertia::render('Anexe/Show', [
+            'anexa' => AnexaPreviewPayload::forSpatiu(
+                $spatiu,
+                $configurare,
+                $contract,
+                $validated['luna'] ?? null,
+            ),
+            'downloadUrl' => null,
+            'previewMode' => true,
+            'returnUrl' => $returnUrl,
+            'returnLabel' => 'Înapoi la spațiu',
+        ]);
     }
 
     public function updateAnexa(Request $request, Spatiu $spatiu): RedirectResponse

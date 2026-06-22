@@ -479,4 +479,71 @@ class SpatiuDocumenteTest extends TestCase
             'numar_contract' => 'C-NEW',
         ]);
     }
+
+    public function test_preview_anexa_renders_allocated_template_without_persisting(): void
+    {
+        $imobil = Imobil::query()->create([
+            'nume' => '700 Office',
+            'strada' => 'Strada Test',
+            'numar' => '1',
+            'localitate' => 'Timișoara',
+        ]);
+
+        $configurare = ConfigurareAnexaImobil::query()->create([
+            'imobil_id' => $imobil->id,
+            'denumire' => 'Anexă utilități',
+            'implicit' => true,
+            'activ' => true,
+        ]);
+
+        ConfigurareAnexaLinie::query()->create([
+            'configurare_anexa_id' => $configurare->id,
+            'ordine' => 1,
+            'tip_linie' => 'serviciu',
+            'denumire' => 'Energie electrica',
+            'tip_calcul' => 'manual',
+            'activ' => true,
+        ]);
+
+        $spatiu = Spatiu::query()->create([
+            'imobil_id' => $imobil->id,
+            'identificator' => 'D204',
+            'status' => 'inchiriat',
+            'configurare_anexa_id' => $configurare->id,
+            'ordine' => 1,
+        ]);
+
+        Contract::query()->create([
+            'spatiu_id' => $spatiu->id,
+            'numar_contract' => 'C-204',
+            'chirias' => 'Test SRL',
+            'data_start' => '2025-01-01',
+            'chirie' => 1000,
+            'moneda' => 'EUR',
+            'status' => 'activ',
+        ]);
+
+        $returnUrl = route('spatii.edit', $spatiu);
+        $normalizedReturnUrl = '/spatii/'.$spatiu->id.'/editare';
+
+        $this->get(route('spatii.anexa-previzualizare', [
+            'spatiu' => $spatiu,
+            'configurare_anexa_id' => $configurare->id,
+            'return_url' => $returnUrl,
+        ]))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('Anexe/Show')
+                ->where('previewMode', true)
+                ->where('downloadUrl', null)
+                ->where('returnUrl', $normalizedReturnUrl)
+                ->where('returnLabel', 'Înapoi la spațiu')
+                ->where('anexa.status', 'preview')
+                ->where('anexa.configurare.denumire', 'Anexă utilități')
+                ->where('anexa.spatiu.identificator', 'D204')
+                ->has('anexa.linii', 1)
+            );
+
+        $this->assertDatabaseCount('anexe', 0);
+    }
 }

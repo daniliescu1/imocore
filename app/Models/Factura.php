@@ -11,6 +11,8 @@ class Factura extends Model
 
     protected $fillable = [
         'anexa_id',
+        'contract_id',
+        'luna',
         'numar_factura',
         'data_emitere',
         'data_scadenta',
@@ -38,5 +40,10 @@ class Factura extends Model
     public function anexa(): BelongsTo
     {
         return $this->belongsTo(Anexa::class);
+    }
+
+    public function contract(): BelongsTo
+    {
+        return $this->belongsTo(Contract::class);
     }
 }

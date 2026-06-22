@@ -2,6 +2,7 @@ import React from 'react';
 import { Link, router, useForm } from '@inertiajs/react';
 import { Trash2 } from 'lucide-react';
 import AppLayout from '../../Layouts/AppLayout';
+import { useDebouncedSearch } from '../../lib/useDebouncedSearch';
 
 function formatMoney(value) {
     if (value === null || value === undefined || value === '') return '—';
@@ -16,8 +17,38 @@ function facturareStatusLine(anexeFacturate, anexeNefacturate, cursImplicit) {
     return `${anexeFacturate} ${facturateLabel} · ${anexeNefacturate} ${nefacturateLabel} — Curs ${cursImplicit} RON/EUR`;
 }
 
-export default function Imobil({ imobil, facturi = [], anexeFacturate = 0, anexeNefacturate = 0, cursImplicit = 5 }) {
+function buildFilters(filters, overrides = {}) {
+    return {
+        search_spatiu: filters.search_spatiu || '',
+        search_chirias: filters.search_chirias || '',
+        ...overrides,
+    };
+}
+
+export default function Imobil({
+    imobil,
+    facturi = [],
+    anexeFacturate = 0,
+    anexeNefacturate = 0,
+    cursImplicit = 5,
+    filters = {},
+}) {
     const { processing } = useForm({});
+
+    function updateFilters(overrides = {}) {
+        router.get(`/facturare/imobil/${imobil.id}`, buildFilters(filters, overrides), {
+            preserveState: true,
+            preserveScroll: true,
+        });
+    }
+
+    const [searchSpatiuDraft, handleSearchSpatiuChange] = useDebouncedSearch(filters.search_spatiu, (value) => {
+        updateFilters({ search_spatiu: value });
+    });
+
+    const [searchChiriasDraft, handleSearchChiriasChange] = useDebouncedSearch(filters.search_chirias, (value) => {
+        updateFilters({ search_chirias: value });
+    });
 
     function generate(event) {
         event.preventDefault();
@@ -31,8 +62,24 @@ export default function Imobil({ imobil, facturi = [], anexeFacturate = 0, anexe
         router.delete(`/facturare/${factura.id}`, { preserveScroll: true });
     }
 
+    const hasActiveFilters = Boolean(filters.search_spatiu || filters.search_chirias);
+
     const topbarActions = (
         <>
+            <input
+                className="filter-input topbar-search"
+                type="search"
+                value={searchSpatiuDraft}
+                placeholder="Caută spațiu..."
+                onChange={(event) => handleSearchSpatiuChange(event.target.value)}
+            />
+            <input
+                className="filter-input topbar-search"
+                type="search"
+                value={searchChiriasDraft}
+                placeholder="Caută chiriaș..."
+                onChange={(event) => handleSearchChiriasChange(event.target.value)}
+            />
             <Link className="secondary-button button-link facturare-imobil-back" href="/facturare">Înapoi</Link>
             <button className="primary-button topbar-primary-button" type="button" onClick={generate} disabled={processing}>
                 {processing ? 'Se generează...' : 'Generează pentru imobil'}
@@ -47,6 +94,10 @@ export default function Imobil({ imobil, facturi = [], anexeFacturate = 0, anexe
             <p>{statusLine}</p>
         </div>
     );
+
+    const emptyMessage = hasActiveFilters
+        ? 'Nu există facturi care să corespundă căutării.'
+        : 'Nu există facturi generate pentru acest imobil.';
 
     return (
         <AppLayout title={`Facturare ${imobil.nume}`} showGlobalSearch={false} topbarActions={topbarActions} topbarTitle={topbarTitle}>
@@ -90,7 +141,7 @@ export default function Imobil({ imobil, facturi = [], anexeFacturate = 0, anexe
                             })}
                             {facturi.length === 0 ? (
                                 <tr>
-                                    <td colSpan="9">Nu există facturi generate pentru acest imobil.</td>
+                                    <td colSpan="9">{emptyMessage}</td>
                                 </tr>
                             ) : null}
                         </tbody>

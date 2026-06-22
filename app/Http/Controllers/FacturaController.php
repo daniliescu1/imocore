@@ -42,10 +42,12 @@ class FacturaController extends Controller
         ]);
     }
 
-    public function imobil(Imobil $imobil): Response
+    public function imobil(Request $request, Imobil $imobil): Response
     {
+        $searchSpatiu = trim($request->string('search_spatiu')->toString());
+        $searchChirias = trim($request->string('search_chirias')->toString());
         $curs = $this->cursEurBt();
-        $facturi = $this->facturiQuery($imobil->id)
+        $facturi = $this->facturiQuery($imobil->id, $searchSpatiu, $searchChirias)
             ->latest()
             ->get()
             ->map(fn (Factura $factura): array => $this->mapFacturaForList($factura));
@@ -70,6 +72,10 @@ class FacturaController extends Controller
             'anexeNefacturate' => $anexeNefacturate,
             'cursImplicit' => $curs['valoare'],
             'cursSursa' => $curs['sursa'],
+            'filters' => [
+                'search_spatiu' => $searchSpatiu,
+                'search_chirias' => $searchChirias,
+            ],
         ]);
     }
 
@@ -96,45 +102,149 @@ class FacturaController extends Controller
             ->orderBy('id')
             ->get();
 
-        if ($anexe->isEmpty()) {
-            return redirect()->route($redirectRoute[0], $redirectRoute[1])
-                ->with('warning', 'Nu există anexe nefacturate pentru generare.');
-        }
+        $contracteFaraAnexa = $this->contracteFacturabileFaraAnexaQuery($imobilId)->get();
+        $generatedFromAnexe = 0;
+        $generatedFromContracte = 0;
 
         foreach ($anexe as $anexa) {
-            $chirie = (float) ($anexa->contract?->chirieFacturabilaPentruLunaAnexa($anexa->luna) ?? 0);
-            $moneda = $anexa->contract?->moneda ?: 'EUR';
-            $penalitati = 0;
+            $this->createFacturaFromAnexa($anexa, $cursEur);
+            $generatedFromAnexe++;
+        }
 
-            if ($moneda === 'RON') {
-                $chirieEur = 0;
-                $chirieLei = $chirie;
-            } else {
-                $chirieEur = $chirie;
-                $chirieLei = round($chirieEur * $cursEur, 2);
+        foreach ($contracteFaraAnexa as $contract) {
+            foreach ($this->luniFacturabileNeacoperite($contract) as $luna) {
+                $this->createFacturaFromContract($contract, $luna, $cursEur);
+                $generatedFromContracte++;
             }
+        }
 
-            $locator = $anexa->contract?->spatiu?->locatorEntitate;
-            $chirieTva = $this->tvaChirieLei($chirieLei, $locator);
-            $dataEmitere = now()->toDateString();
+        $generatedTotal = $generatedFromAnexe + $generatedFromContracte;
 
-            Factura::query()->create([
-                'anexa_id' => $anexa->id,
-                'numar_factura' => $this->nextInvoiceNumber(),
-                'data_emitere' => $dataEmitere,
-                'data_scadenta' => now()->addDays(5)->toDateString(),
-                'curs_eur' => $cursEur,
-                'chirie_eur' => $chirieEur,
-                'chirie_lei' => $chirieLei,
-                'penalitati' => $penalitati,
-                'total' => $chirieLei + $chirieTva + (float) $anexa->total + $penalitati,
-                'status' => 'draft',
-                'email_chirias' => null,
-            ]);
+        if ($generatedTotal === 0) {
+            return redirect()->route($redirectRoute[0], $redirectRoute[1])
+                ->with('warning', 'Nu există anexe nefacturate sau contracte fără anexă de facturat.');
         }
 
         return redirect()->route($redirectRoute[0], $redirectRoute[1])
-            ->with('success', "{$anexe->count()} facturi au fost generate.");
+            ->with('success', "{$generatedTotal} facturi au fost generate.");
+    }
+
+    private function createFacturaFromAnexa(Anexa $anexa, float $cursEur): Factura
+    {
+        $chirie = (float) ($anexa->contract?->chirieFacturabilaPentruLunaAnexa($anexa->luna) ?? 0);
+        $moneda = $anexa->contract?->moneda ?: 'EUR';
+        $penalitati = 0;
+
+        if ($moneda === 'RON') {
+            $chirieEur = 0;
+            $chirieLei = $chirie;
+        } else {
+            $chirieEur = $chirie;
+            $chirieLei = round($chirieEur * $cursEur, 2);
+        }
+
+        $locator = $anexa->contract?->spatiu?->locatorEntitate;
+        $chirieTva = $this->tvaChirieLei($chirieLei, $locator);
+        $dataEmitere = now()->toDateString();
+
+        return Factura::query()->create([
+            'anexa_id' => $anexa->id,
+            'contract_id' => null,
+            'luna' => null,
+            'numar_factura' => $this->nextInvoiceNumber(),
+            'data_emitere' => $dataEmitere,
+            'data_scadenta' => now()->addDays(5)->toDateString(),
+            'curs_eur' => $cursEur,
+            'chirie_eur' => $chirieEur,
+            'chirie_lei' => $chirieLei,
+            'penalitati' => $penalitati,
+            'total' => $chirieLei + $chirieTva + (float) $anexa->total + $penalitati,
+            'status' => 'draft',
+            'email_chirias' => null,
+        ]);
+    }
+
+    private function createFacturaFromContract(Contract $contract, string $luna, float $cursEur): Factura
+    {
+        $chirie = (float) $contract->chirieFacturabilaPentruLunaAnexa($luna);
+        $moneda = $contract->moneda ?: 'EUR';
+        $penalitati = 0;
+
+        if ($moneda === 'RON') {
+            $chirieEur = 0;
+            $chirieLei = $chirie;
+        } else {
+            $chirieEur = $chirie;
+            $chirieLei = round($chirieEur * $cursEur, 2);
+        }
+
+        $locator = $contract->spatiu?->locatorEntitate;
+        $chirieTva = $this->tvaChirieLei($chirieLei, $locator);
+        $dataEmitere = now()->toDateString();
+
+        return Factura::query()->create([
+            'anexa_id' => null,
+            'contract_id' => $contract->id,
+            'luna' => $luna,
+            'numar_factura' => $this->nextInvoiceNumber(),
+            'data_emitere' => $dataEmitere,
+            'data_scadenta' => now()->addDays(5)->toDateString(),
+            'curs_eur' => $cursEur,
+            'chirie_eur' => $chirieEur,
+            'chirie_lei' => $chirieLei,
+            'penalitati' => $penalitati,
+            'total' => $chirieLei + $chirieTva + $penalitati,
+            'status' => 'draft',
+            'email_chirias' => null,
+        ]);
+    }
+
+    private function contracteFacturabileFaraAnexaQuery(?int $imobilId = null)
+    {
+        return Contract::query()
+            ->with(['spatiu.locatorEntitate'])
+            ->where('status', 'activ')
+            ->whereHas('spatiu', fn ($query) => $query
+                ->whereNull('configurare_anexa_id')
+                ->where('status', 'inchiriat')
+                ->when($imobilId, fn ($spatiuQuery) => $spatiuQuery->where('imobil_id', $imobilId)));
+    }
+
+    /**
+     * @return list<string>
+     */
+    private function luniFacturabileNeacoperite(Contract $contract): array
+    {
+        if (! $contract->data_start) {
+            return [];
+        }
+
+        $start = $contract->data_start->copy()->startOfMonth();
+        $end = now()->subMonth()->startOfMonth();
+
+        if ($start->gt($end)) {
+            return [];
+        }
+
+        $luni = [];
+        $current = $start->copy();
+
+        while ($current->lte($end)) {
+            $luna = $current->format('Y-m');
+
+            $exists = Factura::query()
+                ->where('contract_id', $contract->id)
+                ->where('luna', $luna)
+                ->exists();
+
+            if (! $exists) {
+                $luni[] = $luna;
+            }
+
+            $current->addMonth();
+        }
+
+        return $luni;
     }
 
     public function updateCurs(Request $request): RedirectResponse
@@ -174,15 +284,22 @@ class FacturaController extends Controller
      */
     private function buildFacturaPayload(Factura $factura): array
     {
-        $factura->load(['anexa.linii', 'anexa.contract.spatiu.imobil', 'anexa.contract.spatiu.locatorEntitate']);
+        $factura->load([
+            'anexa.linii',
+            'anexa.contract.spatiu.imobil',
+            'anexa.contract.spatiu.locatorEntitate',
+            'contract.spatiu.imobil',
+            'contract.spatiu.locatorEntitate',
+        ]);
         $anexa = $factura->anexa;
-        $contract = $anexa?->contract;
+        $contract = $anexa?->contract ?? $factura->contract;
         $spatiu = $contract?->spatiu;
         $imobil = $spatiu?->imobil;
-        $lunaUtilitati = $this->numeLuna($anexa?->luna);
-        $lunaChirie = $this->numeLunaUrmatoare($anexa?->luna);
-        $anUtilitati = $this->anulDinLuna($anexa?->luna);
-        $anChirie = $this->anulLunaUrmatoare($anexa?->luna);
+        $luna = $anexa?->luna ?? $factura->luna;
+        $lunaUtilitati = $this->numeLuna($luna);
+        $lunaChirie = $this->numeLunaUrmatoare($luna);
+        $anUtilitati = $this->anulDinLuna($luna);
+        $anChirie = $this->anulLunaUrmatoare($luna);
         $anexaLinii = $anexa?->linii->values() ?? collect();
         $anexaLiniiServiciu = $anexaLinii->filter(fn ($linie): bool => ($linie->tip_linie ?: 'serviciu') !== 'header');
         $locator = $spatiu?->locatorEntitate;
@@ -237,7 +354,7 @@ class FacturaController extends Controller
             'total' => $factura->total,
             'status' => $factura->status,
             'email_chirias' => $factura->email_chirias,
-            'luna' => $anexa?->luna,
+            'luna' => $luna,
             'luna_utilitati' => $lunaUtilitati,
             'luna_chirie' => $lunaChirie,
             'contract' => [
@@ -263,8 +380,9 @@ class FacturaController extends Controller
 
     public function destroy(Factura $factura): RedirectResponse
     {
-        $factura->loadMissing('anexa.contract.spatiu');
-        $imobilId = $factura->anexa?->contract?->spatiu?->imobil_id;
+        $factura->loadMissing(['anexa.contract.spatiu', 'contract.spatiu']);
+        $imobilId = $factura->anexa?->contract?->spatiu?->imobil_id
+            ?? $factura->contract?->spatiu?->imobil_id;
 
         $factura->delete();
 
@@ -279,30 +397,57 @@ class FacturaController extends Controller
             ->with('success', 'Factura a fost ștearsă.');
     }
 
-    private function facturiQuery(?int $imobilId = null)
+    private function facturiQuery(?int $imobilId = null, string $searchSpatiu = '', string $searchChirias = '')
     {
         return Factura::query()
-            ->with('anexa.contract.spatiu.imobil')
-            ->when($imobilId, fn ($query) => $query->whereHas(
-                'anexa.contract.spatiu',
-                fn ($spatiuQuery) => $spatiuQuery->where('imobil_id', $imobilId)
-            ));
+            ->with(['anexa.contract.spatiu.imobil', 'contract.spatiu.imobil'])
+            ->when($imobilId, fn ($query) => $query->where(function ($query) use ($imobilId) {
+                $query->whereHas(
+                    'anexa.contract.spatiu',
+                    fn ($spatiuQuery) => $spatiuQuery->where('imobil_id', $imobilId)
+                )->orWhereHas(
+                    'contract.spatiu',
+                    fn ($spatiuQuery) => $spatiuQuery->where('imobil_id', $imobilId)
+                );
+            }))
+            ->when($searchSpatiu !== '', fn ($query) => $query->where(function ($query) use ($searchSpatiu) {
+                $query->whereHas(
+                    'anexa.contract.spatiu',
+                    fn ($spatiuQuery) => $spatiuQuery->where('identificator', 'like', '%'.$searchSpatiu.'%')
+                )->orWhereHas(
+                    'contract.spatiu',
+                    fn ($spatiuQuery) => $spatiuQuery->where('identificator', 'like', '%'.$searchSpatiu.'%')
+                );
+            }))
+            ->when($searchChirias !== '', fn ($query) => $query->where(function ($query) use ($searchChirias) {
+                $query->whereHas(
+                    'anexa.contract',
+                    fn ($contractQuery) => $contractQuery->where('chirias', 'like', '%'.$searchChirias.'%')
+                )->orWhereHas(
+                    'contract',
+                    fn ($contractQuery) => $contractQuery->where('chirias', 'like', '%'.$searchChirias.'%')
+                );
+            }));
     }
 
     private function mapFacturaForList(Factura $factura): array
     {
+        $contract = $factura->anexa?->contract ?? $factura->contract;
+        $luna = $factura->anexa?->luna ?? $factura->luna;
+
         return [
             'id' => $factura->id,
             'numar_factura' => $factura->numar_factura ?: '—',
-            'anexa' => $factura->anexa?->luna ?: '—',
-            'contract' => $factura->anexa?->contract?->numar_contract ?: '—',
-            'imobil' => $factura->anexa?->contract?->spatiu?->imobil?->nume ?: '—',
-            'spatiu' => $factura->anexa?->contract?->spatiu?->identificator ?: '—',
-            'chirias' => $factura->anexa?->contract?->chirias ?: '—',
+            'anexa' => $luna ?: '—',
+            'contract' => $contract?->numar_contract ?: '—',
+            'imobil' => $contract?->spatiu?->imobil?->nume ?: '—',
+            'spatiu' => $contract?->spatiu?->identificator ?: '—',
+            'chirias' => $contract?->chirias ?: '—',
             'curs_eur' => $factura->curs_eur,
             'total' => $factura->total,
             'status' => $factura->status,
             'email_chirias' => $factura->email_chirias ?: '—',
+            'doar_chirie' => $factura->anexa_id === null,
         ];
     }
 
@@ -504,10 +649,6 @@ class FacturaController extends Controller
         $chirieEur = (float) $factura->chirie_eur;
         $chirieLei = (float) $factura->chirie_lei;
 
-        if ($chirieEur > 0 && $chirieLei > 0) {
-            return $perioada.' · '.DocumentFormatter::amount($chirieEur).' EUR/lună ('.DocumentFormatter::amount($chirieLei).' lei/lună)';
-        }
-
         if ($chirieEur > 0) {
             return $perioada.' · '.DocumentFormatter::amount($chirieEur).' EUR/lună';
         }
@@ -572,16 +713,15 @@ class FacturaController extends Controller
     private function rezumatImobile(float $cursEur): array
     {
         $facturiPeImobil = Factura::query()
-            ->join('anexe', 'anexe.id', '=', 'facturi.anexa_id')
-            ->join('contracte', 'contracte.id', '=', 'anexe.contract_id')
-            ->join('spatii', 'spatii.id', '=', 'contracte.spatiu_id')
-            ->select('spatii.imobil_id')
-            ->selectRaw('count(facturi.id) as facturi_emise')
-            ->selectRaw('coalesce(sum(anexe.total), 0) as total_utilitati')
-            ->selectRaw('coalesce(sum(facturi.total), 0) as total_facturat')
-            ->groupBy('spatii.imobil_id')
+            ->with(['anexa.contract.spatiu', 'contract.spatiu'])
             ->get()
-            ->keyBy('imobil_id');
+            ->groupBy(fn (Factura $factura): ?int => $factura->anexa?->contract?->spatiu?->imobil_id
+                ?? $factura->contract?->spatiu?->imobil_id)
+            ->map(fn ($facturi) => (object) [
+                'facturi_emise' => $facturi->count(),
+                'total_utilitati' => round($facturi->sum(fn (Factura $factura): float => (float) ($factura->anexa?->total ?? 0)), 2),
+                'total_facturat' => round($facturi->sum(fn (Factura $factura): float => (float) $factura->total), 2),
+            ]);
 
         $anexePeImobil = Anexa::query()
             ->join('contracte', 'contracte.id', '=', 'anexe.contract_id')

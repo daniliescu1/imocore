@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\Anexa;
+use App\Models\ConfigurareAnexaImobil;
 use App\Models\Contract;
 use App\Models\Factura;
 use App\Models\Imobil;
@@ -15,6 +16,20 @@ use Tests\TestCase;
 class FacturaRentIncreaseTest extends TestCase
 {
     use RefreshDatabase;
+
+    private function ataseazaConfigurareAnexa(Spatiu $spatiu): ConfigurareAnexaImobil
+    {
+        $configurare = ConfigurareAnexaImobil::query()->create([
+            'imobil_id' => $spatiu->imobil_id,
+            'denumire' => 'Anexă test',
+            'implicit' => true,
+            'activ' => true,
+        ]);
+
+        $spatiu->update(['configurare_anexa_id' => $configurare->id]);
+
+        return $configurare;
+    }
 
     public function test_facturarea_foloseste_chiria_crescuta_pentru_luna_aplicabila(): void
     {
@@ -31,6 +46,7 @@ class FacturaRentIncreaseTest extends TestCase
             'status' => 'inchiriat',
             'moneda' => 'EUR',
         ]);
+        $this->ataseazaConfigurareAnexa($spatiuInainte);
 
         $spatiuDupa = Spatiu::query()->create([
             'imobil_id' => $imobil->id,
@@ -38,6 +54,7 @@ class FacturaRentIncreaseTest extends TestCase
             'status' => 'inchiriat',
             'moneda' => 'EUR',
         ]);
+        $this->ataseazaConfigurareAnexa($spatiuDupa);
 
         $contractInainte = Contract::query()->create([
             'spatiu_id' => $spatiuInainte->id,
@@ -398,7 +415,7 @@ class FacturaRentIncreaseTest extends TestCase
         $this->get(route('facturare.show', $factura))
             ->assertOk()
             ->assertInertia(fn (Assert $page) => $page
-                ->where('factura.linii.0.denumire', 'Chirie spațiu iunie 2026 · 1.000,00 EUR/lună (5.000,00 lei/lună)')
+                ->where('factura.linii.0.denumire', 'Chirie spațiu iunie 2026 · 1.000,00 EUR/lună')
                 ->where('factura.linii.1.denumire', 'Utilități 21% TVA mai 2026')
                 ->where('factura.linii.2.denumire', 'Penalități')
                 ->has('factura.linii', 3)
@@ -460,7 +477,7 @@ class FacturaRentIncreaseTest extends TestCase
         $this->get(route('facturare.show', $factura))
             ->assertOk()
             ->assertInertia(fn (Assert $page) => $page
-                ->where('factura.linii.0.denumire', 'Chirie spațiu iunie 2026 · 2.500,00 EUR/lună (12.511,57 lei/lună)')
+                ->where('factura.linii.0.denumire', 'Chirie spațiu iunie 2026 · 2.500,00 EUR/lună')
                 ->where('factura.linii.0.valoare', '12511.57')
                 ->where('factura.linii.0.tva', 2627.43)
                 ->where('factura.sumar.tva_21', 2627.43)
@@ -576,6 +593,79 @@ class FacturaRentIncreaseTest extends TestCase
             );
     }
 
+    public function test_pagina_facturare_imobil_poate_filtra_dupa_spatiu_si_chirias(): void
+    {
+        $imobil = Imobil::query()->create([
+            'nume' => 'Imobil filtre facturi',
+            'strada' => 'Strada D',
+            'numar' => '4',
+            'localitate' => 'Timișoara',
+        ]);
+
+        foreach ([
+            ['identificator' => 'HQE 103', 'chirias' => 'ZBOELECTRONICS SRL', 'suffix' => 'A'],
+            ['identificator' => 'HQE 102', 'chirias' => 'MY&TA EXPERT SRL', 'suffix' => 'B'],
+        ] as $index => $data) {
+            $spatiu = Spatiu::query()->create([
+                'imobil_id' => $imobil->id,
+                'identificator' => $data['identificator'],
+                'status' => 'inchiriat',
+                'moneda' => 'EUR',
+            ]);
+
+            $contract = Contract::query()->create([
+                'spatiu_id' => $spatiu->id,
+                'numar_contract' => 'C-'.$data['suffix'],
+                'chirias' => $data['chirias'],
+                'data_start' => '2026-01-01',
+                'chirie' => 1000,
+                'moneda' => 'EUR',
+                'status' => 'activ',
+            ]);
+
+            $anexa = Anexa::query()->create([
+                'contract_id' => $contract->id,
+                'luna' => '2026-05',
+                'total' => 100,
+            ]);
+
+            Factura::query()->create([
+                'anexa_id' => $anexa->id,
+                'numar_factura' => 'FACT-'.$data['suffix'],
+                'curs_eur' => 5,
+                'chirie_eur' => 1000,
+                'chirie_lei' => 5000,
+                'total' => 5100,
+                'penalitati' => 0,
+                'status' => 'draft',
+            ]);
+        }
+
+        $this->get(route('facturare.imobil', [
+            'imobil' => $imobil,
+            'search_spatiu' => 'HQE 103',
+        ]))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('filters.search_spatiu', 'HQE 103')
+                ->where('facturi.0.spatiu', 'HQE 103')
+                ->where('facturi.0.chirias', 'ZBOELECTRONICS SRL')
+                ->has('facturi', 1)
+            );
+
+        $this->get(route('facturare.imobil', [
+            'imobil' => $imobil,
+            'search_chirias' => 'MY&TA',
+        ]))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('filters.search_chirias', 'MY&TA')
+                ->where('facturi.0.spatiu', 'HQE 102')
+                ->where('facturi.0.chirias', 'MY&TA EXPERT SRL')
+                ->has('facturi', 1)
+            );
+    }
+
     public function test_generarea_din_pagina_imobilului_redirecteaza_inapoi_la_imobil(): void
     {
         $imobil = Imobil::query()->create([
@@ -591,6 +681,7 @@ class FacturaRentIncreaseTest extends TestCase
             'status' => 'inchiriat',
             'moneda' => 'EUR',
         ]);
+        $this->ataseazaConfigurareAnexa($spatiu);
 
         $contract = Contract::query()->create([
             'spatiu_id' => $spatiu->id,
