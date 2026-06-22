@@ -1938,6 +1938,13 @@ tr:last-child td {
     grid-column: 1 / -1;
 }
 
+.contract-chirias-pj-primary-row {
+    grid-column: 1 / -1;
+    display: grid;
+    grid-template-columns: 7fr 13fr;
+    gap: 18px;
+}
+
 .form-field-full {
     grid-column: 1 / -1;
 }
@@ -3290,6 +3297,10 @@ tr:last-child td {
     .form-grid-chirias > .form-field-full,
     .form-grid-spatii > .form-grid-span-2 {
         grid-column: span 1;
+    }
+
+    .contract-chirias-pj-primary-row {
+        grid-template-columns: 1fr;
     }
 
     .readonly-stats {

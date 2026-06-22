@@ -627,8 +627,10 @@ export default function Form({
                     ) : (
                         <>
                             <div className="form-grid form-grid-chirias">
-                                <PfField label="Denumire" value={data.chirias_pj.denumire} onChange={(value) => updatePj('denumire', value)} error={errors['chirias_pj.denumire']} required incomplete={fieldIncomplete('chirias_pj.denumire')} gridSpan={2} />
-                                <PfField label="Sediul social" value={data.chirias_pj.sediu_social} onChange={(value) => updatePj('sediu_social', value)} error={errors['chirias_pj.sediu_social']} required incomplete={fieldIncomplete('chirias_pj.sediu_social')} gridSpan={2} />
+                                <div className="contract-chirias-pj-primary-row">
+                                    <PfField label="Denumire" value={data.chirias_pj.denumire} onChange={(value) => updatePj('denumire', value)} error={errors['chirias_pj.denumire']} required incomplete={fieldIncomplete('chirias_pj.denumire')} gridSpan={1} />
+                                    <PfField label="Sediul social" value={data.chirias_pj.sediu_social} onChange={(value) => updatePj('sediu_social', value)} error={errors['chirias_pj.sediu_social']} required incomplete={fieldIncomplete('chirias_pj.sediu_social')} gridSpan={1} />
+                                </div>
                                 <PfField label="Registrul Comerțului" value={data.chirias_pj.nr_reg_comert} onChange={(value) => updatePj('nr_reg_comert', value)} error={errors['chirias_pj.nr_reg_comert']} required incomplete={fieldIncomplete('chirias_pj.nr_reg_comert')} gridSpan={1} />
                                 <PfField label="CUI" value={data.chirias_pj.cui} onChange={(value) => updatePj('cui', value)} error={errors['chirias_pj.cui']} required incomplete={fieldIncomplete('chirias_pj.cui')} gridSpan={1} />
                                 <PfField label="Email" value={data.chirias_pj.email} onChange={(value) => updatePj('email', value)} error={errors['chirias_pj.email']} type="email" required incomplete={fieldIncomplete('chirias_pj.email')} gridSpan={1} />

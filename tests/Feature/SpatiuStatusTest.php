@@ -106,4 +106,74 @@ class SpatiuStatusTest extends TestCase
         $this->assertSame(0, $spatiu->persoane_standard);
         $this->assertSame(0, $spatiu->persoanePentruAnexa());
     }
+
+    public function test_spatiul_care_devine_liber_promoveaza_indexarea_mai_mare_in_pret_lunar(): void
+    {
+        $imobil = Imobil::query()->create([
+            'nume' => 'Imobil liber indexare',
+            'strada' => 'Strada Test',
+            'numar' => '4',
+            'localitate' => 'Timișoara',
+        ]);
+
+        $spatiu = Spatiu::query()->create([
+            'imobil_id' => $imobil->id,
+            'identificator' => 'S-INDEX',
+            'status' => 'inchiriat',
+            'pret_lunar' => 1000,
+            'indexare_2026' => 1500,
+            'moneda' => 'EUR',
+            'ordine' => 1,
+        ]);
+
+        $this->put(route('spatii.update', $spatiu), [
+            'imobil_id' => $imobil->id,
+            'identificator' => 'S-INDEX',
+            'status' => 'liber',
+            'pret_lunar' => 1000,
+            'indexare_2026' => 1500,
+            'moneda' => 'EUR',
+        ])->assertRedirect('/spatii?imobil_id='.$imobil->id);
+
+        $spatiu->refresh();
+
+        $this->assertSame('liber', $spatiu->status);
+        $this->assertSame('1500.00', $spatiu->pret_lunar);
+        $this->assertNull($spatiu->indexare_2026);
+    }
+
+    public function test_spatiul_care_devine_liber_pastreaza_pret_lunar_cand_indexarea_nu_este_mai_mare(): void
+    {
+        $imobil = Imobil::query()->create([
+            'nume' => 'Imobil liber pret',
+            'strada' => 'Strada Test',
+            'numar' => '5',
+            'localitate' => 'Timișoara',
+        ]);
+
+        $spatiu = Spatiu::query()->create([
+            'imobil_id' => $imobil->id,
+            'identificator' => 'S-PRET',
+            'status' => 'inchiriat',
+            'pret_lunar' => 1200,
+            'indexare_2026' => 900,
+            'moneda' => 'EUR',
+            'ordine' => 1,
+        ]);
+
+        $this->put(route('spatii.update', $spatiu), [
+            'imobil_id' => $imobil->id,
+            'identificator' => 'S-PRET',
+            'status' => 'liber',
+            'pret_lunar' => 1200,
+            'indexare_2026' => 900,
+            'moneda' => 'EUR',
+        ])->assertRedirect('/spatii?imobil_id='.$imobil->id);
+
+        $spatiu->refresh();
+
+        $this->assertSame('liber', $spatiu->status);
+        $this->assertSame('1200.00', $spatiu->pret_lunar);
+        $this->assertNull($spatiu->indexare_2026);
+    }
 }

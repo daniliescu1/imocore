@@ -632,7 +632,7 @@ class SpatiuController extends Controller
         $validated['marcat_verde'] = (bool) ($validated['marcat_verde'] ?? false);
         $validated = $this->normalizeMarcaje($validated);
         $validated = $this->normalizeDeLamuritDetaliu($validated);
-        $validated = $this->normalizeSpatiuByStatus($validated);
+        $validated = $this->normalizeSpatiuByStatus($validated, $spatiu);
 
         if (blank($validated['etaj'] ?? null)) {
             $validated['etaj'] = 'Parter';
@@ -736,7 +736,7 @@ class SpatiuController extends Controller
         return $validated;
     }
 
-    private function normalizeSpatiuByStatus(array $validated): array
+    private function normalizeSpatiuByStatus(array $validated, ?Spatiu $spatiu = null): array
     {
         if (($validated['status'] ?? '') === 'administrativ') {
             $validated['regim_incalzire'] = 'neincalzit';
@@ -757,6 +757,20 @@ class SpatiuController extends Controller
             $validated['persoane_declarate'] = 0;
 
             return $validated;
+        }
+
+        $becomingLiber = ($validated['status'] ?? '') === 'liber'
+            && ($spatiu === null || $spatiu->status !== 'liber');
+
+        if ($becomingLiber) {
+            $pretLunar = (float) ($validated['pret_lunar'] ?? $spatiu?->pret_lunar ?? 0);
+            $indexare = (float) ($validated['indexare_2026'] ?? $spatiu?->indexare_2026 ?? 0);
+
+            if ($indexare > 0 && $indexare > $pretLunar) {
+                $validated['pret_lunar'] = $indexare;
+            }
+
+            $validated['indexare_2026'] = null;
         }
 
         $validated['regim_incalzire'] = $validated['regim_incalzire']
