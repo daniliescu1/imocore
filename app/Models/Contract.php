@@ -95,6 +95,14 @@ class Contract extends Model
         return max($chirieContractuala, $chirieIndexata);
     }
 
+    public function emailFacturare(): ?string
+    {
+        $date = is_array($this->chirias_date) ? $this->chirias_date : [];
+        $email = trim((string) ($date['email_2'] ?? ''));
+
+        return $email !== '' ? $email : null;
+    }
+
     private function dataReferintaPentruLunaAnexa(?string $luna): Carbon
     {
         if (! preg_match('/^\d{4}-\d{2}$/', (string) $luna)) {

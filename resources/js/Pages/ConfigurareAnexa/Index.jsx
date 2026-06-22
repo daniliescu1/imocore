@@ -54,6 +54,7 @@ export default function Index({ anexe = [], imobile = [], selectedImobilId = nul
                                 <th>Implicită</th>
                                 <th>Activă</th>
                                 <th>Servicii</th>
+                                <th>Spații</th>
                                 <th aria-label="Acțiuni" />
                             </tr>
                         </thead>
@@ -72,6 +73,15 @@ export default function Index({ anexe = [], imobile = [], selectedImobilId = nul
                                     <td>{anexa.implicit ? 'Da' : 'Nu'}</td>
                                     <td>{anexa.activ ? 'Da' : 'Nu'}</td>
                                     <td>{anexa.linii_count}</td>
+                                    <td onClick={(event) => event.stopPropagation()}>
+                                        {anexa.spatii_count > 0 ? (
+                                            <Link className="table-name-link" href={`/contracte?configurare_anexa_id=${anexa.id}`}>
+                                                {anexa.spatii_count}
+                                            </Link>
+                                        ) : (
+                                            '0'
+                                        )}
+                                    </td>
                                     <td className="table-action-cell">
                                         <button
                                             type="button"
@@ -89,7 +99,7 @@ export default function Index({ anexe = [], imobile = [], selectedImobilId = nul
                             })}
                             {anexe.length === 0 ? (
                                 <tr>
-                                    <td colSpan="6">Nu există anexe configurate. Adaugă prima anexă.</td>
+                                    <td colSpan="7">Nu există anexe configurate. Adaugă prima anexă.</td>
                                 </tr>
                             ) : null}
                         </tbody>

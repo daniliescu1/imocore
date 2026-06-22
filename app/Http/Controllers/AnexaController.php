@@ -10,6 +10,7 @@ use App\Models\ConfigurareAnexaLinie;
 use App\Models\Imobil;
 use App\Models\Spatiu;
 use App\Support\AnexaDocumentPayload;
+use App\Support\ContorConfigurabilSync;
 use App\Support\DocumentFormatter;
 use App\Support\GenerareAnexaLinieCalculator;
 use Barryvdh\DomPDF\Facade\Pdf;
@@ -68,6 +69,18 @@ class AnexaController extends Controller
         if ($contracte->isEmpty()) {
             return redirect()->route($redirectRoute[0], $redirectRoute[1])
                 ->with('warning', 'Nu există anexe de generat. Verifică dacă ai contracte active și dacă spațiile au o configurare de anexă selectată.');
+        }
+
+        $imobilIds = $imobilId
+            ? collect([$imobilId])
+            : $contracte
+                ->map(fn (Contract $contract): ?int => $contract->spatiu?->imobil_id)
+                ->filter()
+                ->unique()
+                ->values();
+
+        foreach ($imobilIds as $syncImobilId) {
+            ContorConfigurabilSync::syncForImobil((int) $syncImobilId);
         }
 
         $generated = 0;

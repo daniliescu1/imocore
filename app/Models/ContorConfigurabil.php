@@ -52,6 +52,25 @@ class ContorConfigurabil extends Model
     }
 
     /**
+     * @return list<int>
+     */
+    public function alocariEfectiveIds(): array
+    {
+        $spatiiAnexaIds = Spatiu::query()
+            ->where('configurare_anexa_id', $this->configurare_anexa_id)
+            ->orderBy('identificator')
+            ->pluck('id')
+            ->map(fn ($id): int => (int) $id)
+            ->all();
+
+        if ($this->foloseste_scaderi) {
+            return array_values(array_intersect($this->alocariIds(), $spatiiAnexaIds));
+        }
+
+        return $spatiiAnexaIds;
+    }
+
+    /**
      * @return list<array{spatiu_id: int, configurare_anexa_linie_id: int}>
      */
     public function scaderiNormalizate(): array

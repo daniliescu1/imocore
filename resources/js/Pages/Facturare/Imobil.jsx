@@ -113,7 +113,8 @@ export default function Imobil({
                                 <th>Chiriaș</th>
                                 <th>Total</th>
                                 <th>Status</th>
-                                <th>Email chiriaș</th>
+                                <th>Email facturare</th>
+                                <th>Anexă utilizată</th>
                                 <th />
                             </tr>
                         </thead>
@@ -130,7 +131,8 @@ export default function Imobil({
                                         <td>{factura.chirias}</td>
                                         <td>{formatMoney(factura.total)}</td>
                                         <td>{factura.status}</td>
-                                        <td>{factura.email_chirias}</td>
+                                        <td>{factura.email_facturare}</td>
+                                        <td>{factura.denumire_anexa}</td>
                                         <td className="table-action-cell">
                                             <button className="delete-inline-button" type="button" onClick={(event) => deleteFactura(event, factura)} aria-label="Șterge factura">
                                                 <Trash2 size={15} strokeWidth={2.4} />
@@ -141,7 +143,7 @@ export default function Imobil({
                             })}
                             {facturi.length === 0 ? (
                                 <tr>
-                                    <td colSpan="9">{emptyMessage}</td>
+                                    <td colSpan="10">{emptyMessage}</td>
                                 </tr>
                             ) : null}
                         </tbody>

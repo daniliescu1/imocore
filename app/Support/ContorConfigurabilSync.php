@@ -49,7 +49,7 @@ class ContorConfigurabilSync
             $regula->fill([
                 'imobil_id' => $configurare->imobil_id,
                 'configurare_anexa_id' => $configurare->id,
-                'alocari' => $regula->exists && $regula->alocari !== null && $regula->alocari !== []
+                'alocari' => $regula->exists && $regula->foloseste_scaderi
                     ? array_values(array_intersect($regula->alocariIds(), $alocariDefault))
                     : $alocariDefault,
                 'scaderi' => collect($regula->scaderiNormalizate())

@@ -164,8 +164,7 @@ class ConfigurareContoareController extends Controller
     {
         $linie = $regula->configurareAnexaLinie;
         $anexa = $regula->configurareAnexa;
-        $spatiiAnexaIds = $this->spatiiIdsForAnexa($regula->configurare_anexa_id);
-        $alocari = $this->alocariEfectiveIds($regula, $spatiiAnexaIds);
+        $alocari = $regula->alocariEfectiveIds();
 
         return [
             'id' => $regula->id,
@@ -188,7 +187,7 @@ class ConfigurareContoareController extends Controller
         $liniiContorIds = $this->liniiContorIdsForAnexa($regula->configurare_anexa_id);
 
         $ultimaCitire = $this->ultimaCitirePentruRegula($regula->configurare_anexa_linie_id, $linie?->tip_calcul);
-        $alocari = $this->alocariEfectiveIds($regula, $spatiiAnexaIds);
+        $alocari = $regula->alocariEfectiveIds();
 
         return [
             'id' => $regula->id,
@@ -278,19 +277,6 @@ class ConfigurareContoareController extends Controller
             'data_citire' => $citire->data_citire?->format('d.m.Y H:i'),
             'is_pausal' => $isPausal,
         ];
-    }
-
-    /**
-     * @param  list<int>  $spatiiAnexaIds
-     * @return list<int>
-     */
-    private function alocariEfectiveIds(ContorConfigurabil $regula, array $spatiiAnexaIds): array
-    {
-        if ($regula->foloseste_scaderi) {
-            return array_values(array_intersect($regula->alocariIds(), $spatiiAnexaIds));
-        }
-
-        return $spatiiAnexaIds;
     }
 
     /**

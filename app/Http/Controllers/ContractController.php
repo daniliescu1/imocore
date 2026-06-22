@@ -26,12 +26,22 @@ class ContractController extends Controller
             $status = '';
         }
 
+        $configurareAnexaId = $request->integer('configurare_anexa_id') ?: null;
+
+        if ($configurareAnexaId && ! ConfigurareAnexaImobil::query()->whereKey($configurareAnexaId)->exists()) {
+            $configurareAnexaId = null;
+        }
+
         $query = Contract::query()
             ->with('spatiu.imobil')
             ->latest();
 
         if ($status !== '') {
             $query->where('status', $status);
+        }
+
+        if ($configurareAnexaId) {
+            $query->whereHas('spatiu', fn ($spatiuQuery) => $spatiuQuery->where('configurare_anexa_id', $configurareAnexaId));
         }
 
         $contracte = $query
@@ -50,8 +60,17 @@ class ContractController extends Controller
 
         return Inertia::render('Contracte/Index', [
             'contracte' => $contracte,
+            'configurariAnexe' => ConfigurareAnexaImobil::query()
+                ->with('imobil:id,nume')
+                ->orderBy('denumire')
+                ->get(['id', 'denumire', 'imobil_id'])
+                ->map(fn (ConfigurareAnexaImobil $configurare): array => [
+                    'id' => $configurare->id,
+                    'label' => trim($configurare->denumire.' · '.($configurare->imobil?->nume ?: '—')),
+                ]),
             'filters' => [
                 'status' => $status,
+                'configurare_anexa_id' => $configurareAnexaId ? (string) $configurareAnexaId : '',
             ],
         ]);
     }

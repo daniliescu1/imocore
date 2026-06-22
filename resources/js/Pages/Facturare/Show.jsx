@@ -23,9 +23,22 @@ function formatAmount(value) {
     return Number(value).toLocaleString('ro-RO', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
+function faraDiacritice(value) {
+    if (value === null || value === undefined) {
+        return value;
+    }
+
+    const map = {
+        ă: 'a', â: 'a', î: 'i', ș: 's', ş: 's', ț: 't', ţ: 't',
+        Ă: 'A', Â: 'A', Î: 'I', Ș: 'S', Ş: 'S', Ț: 'T', Ţ: 'T',
+    };
+
+    return String(value).replace(/[ăâîșşțţĂÂÎȘŞȚŢ]/g, (character) => map[character] ?? character);
+}
+
 function displayValue(value) {
     if (value === null || value === undefined || String(value).trim() === '') return '—';
-    return value;
+    return faraDiacritice(value);
 }
 
 function InvoicePartyDetail({ label, value }) {
@@ -44,7 +57,7 @@ function InvoiceLocatorCard({ locator }) {
             <strong className="invoice-party-name">{displayValue(locator?.nume)}</strong>
             <InvoicePartyDetail label="CUI" value={locator?.cui} />
             <InvoicePartyDetail label="Reg. Com." value={locator?.reg_com} />
-            <InvoicePartyDetail label="Adresă" value={locator?.adresa} />
+            <InvoicePartyDetail label="Adresa" value={locator?.adresa} />
             <InvoicePartyDetail label="Bancă" value={locator?.banca} />
             <InvoicePartyDetail label="Cont" value={locator?.cont_bancar} />
             <InvoicePartyDetail label="Email" value={locator?.email} />
@@ -59,7 +72,7 @@ function InvoiceLocatarCard({ locatar }) {
             <strong className="invoice-party-name">{displayValue(locatar?.nume)}</strong>
             <InvoicePartyDetail label={locatar?.identificator_label || 'CUI'} value={locatar?.identificator} />
             {locatar?.tip === 'pf' ? <InvoicePartyDetail label="CI" value={locatar?.ci} /> : null}
-            <InvoicePartyDetail label="Adresă" value={locatar?.adresa} />
+            <InvoicePartyDetail label="Adresa" value={locatar?.adresa} />
             <InvoicePartyDetail label="Telefon" value={locatar?.telefon} />
             <InvoicePartyDetail label="Email" value={locatar?.email} />
         </div>
@@ -118,7 +131,7 @@ export default function Show({ factura, downloadUrl }) {
                                 <th>Denumire serviciu</th>
                                 <th>Cantitate</th>
                                 <th>UM</th>
-                                <th>Preț unitar</th>
+                                <th>Pret unitar</th>
                                 <th>Valoare</th>
                                 <th>TVA</th>
                             </tr>
@@ -127,9 +140,9 @@ export default function Show({ factura, downloadUrl }) {
                             {factura.linii.map((linie, index) => (
                                 <tr key={`${linie.nr_crt}-${linie.denumire}`}>
                                     <td>{linie.nr_crt || index + 1}</td>
-                                    <td>{linie.denumire}</td>
+                                    <td>{faraDiacritice(linie.denumire)}</td>
                                     <td>{formatDecimal(linie.cantitate)}</td>
-                                    <td>{linie.um || '—'}</td>
+                                    <td>{linie.um ? faraDiacritice(linie.um) : '—'}</td>
                                     <td>{formatMoneyValue(linie.pret_unitar)}</td>
                                     <td>{formatMoney(linie.valoare)}</td>
                                     <td>{formatMoney(linie.tva)}</td>
@@ -141,7 +154,7 @@ export default function Show({ factura, downloadUrl }) {
 
                 <div className="invoice-totals-summary">
                     <div className="invoice-totals-row">
-                        <span>Total fără TVA:</span>
+                        <span>Total fara TVA:</span>
                         <strong>{formatAmount(sumar.total_fara_tva)}</strong>
                     </div>
                     <div className="invoice-totals-row">

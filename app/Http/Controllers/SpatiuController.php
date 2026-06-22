@@ -11,6 +11,7 @@ use App\Models\Imobil;
 use App\Models\Locator;
 use App\Models\Spatiu;
 use App\Support\AnexaPreviewPayload;
+use App\Support\ContorConfigurabilSync;
 use App\Support\DecimalInput;
 use App\Support\InternalReturnUrl;
 use App\Support\SincronizareContoareDinAnexa;
@@ -430,6 +431,7 @@ class SpatiuController extends Controller
         $this->syncPersoaneForAdministrativ($spatiu);
         $this->syncPersoaneForComun($spatiu);
         SincronizareContoareDinAnexa::syncForSpatiu($spatiu->fresh());
+        ContorConfigurabilSync::syncForImobil($spatiu->imobil_id);
         $spatiu->imobil->recalculeazaSpatii();
 
         return redirect($this->spatiiIndexUrl($spatiu->imobil_id))->with('success', 'Spațiul a fost adăugat.');
@@ -442,6 +444,7 @@ class SpatiuController extends Controller
         $this->syncPersoaneForAdministrativ($spatiu->fresh());
         $this->syncPersoaneForComun($spatiu->fresh());
         SincronizareContoareDinAnexa::syncForSpatiu($spatiu->fresh());
+        ContorConfigurabilSync::syncForImobil($spatiu->imobil_id);
 
         $spatiu->refresh()->imobil->recalculeazaSpatii();
 
@@ -492,6 +495,7 @@ class SpatiuController extends Controller
 
         $spatiu->update(['configurare_anexa_id' => $noua->id]);
         SincronizareContoareDinAnexa::syncForSpatiu($spatiu->fresh());
+        ContorConfigurabilSync::syncForImobil($spatiu->imobil_id);
 
         $returnUrl = InternalReturnUrl::normalize($request->input('return_url'))
             ?: route('spatii.edit', $spatiu);
@@ -565,6 +569,7 @@ class SpatiuController extends Controller
 
         $spatiu->update(['configurare_anexa_id' => $configurareAnexaId]);
         SincronizareContoareDinAnexa::syncForSpatiu($spatiu->fresh());
+        ContorConfigurabilSync::syncForImobil($spatiu->imobil_id);
 
         return back()->with('success', 'Anexa spațiului a fost actualizată.');
     }

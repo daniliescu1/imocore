@@ -554,11 +554,15 @@ class FacturaRentIncreaseTest extends TestCase
                 'status' => 'inchiriat',
                 'moneda' => 'EUR',
             ]);
+            $this->ataseazaConfigurareAnexa($spatiu);
 
             $contract = Contract::query()->create([
                 'spatiu_id' => $spatiu->id,
                 'numar_contract' => 'C-'.$index,
                 'chirias' => 'Chiriaș '.$index,
+                'chirias_date' => [
+                    'email_2' => 'facturare'.$index.'@exemplu.ro',
+                ],
                 'data_start' => '2026-01-01',
                 'chirie' => 1000,
                 'moneda' => 'EUR',
@@ -589,6 +593,8 @@ class FacturaRentIncreaseTest extends TestCase
                 ->component('Facturare/Imobil')
                 ->where('imobil.id', $imobilSelectat->id)
                 ->where('facturi.0.numar_factura', 'FACT-0')
+                ->where('facturi.0.denumire_anexa', 'Anexă test')
+                ->where('facturi.0.email_facturare', 'facturare0@exemplu.ro')
                 ->has('facturi', 1)
             );
     }

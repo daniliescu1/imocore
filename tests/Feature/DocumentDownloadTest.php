@@ -43,6 +43,8 @@ class DocumentDownloadTest extends TestCase
         $this->get(route('facturare.show', $factura))
             ->assertOk()
             ->assertInertia(fn ($page) => $page
+                ->where('factura.linii.0.um', 'LUNA')
+                ->where('factura.linii.0.denumire', fn ($denumire) => ! preg_match('/[ăâîșşțţĂÂÎȘŞȚŢ]/u', (string) $denumire))
                 ->where('factura.anexa_detaliu.numar', '01')
                 ->where('factura.anexa_detaliu.perioada_citire', '20.05.2026 - 25.05.2026')
                 ->where('factura.anexa_detaliu.imobil.nume', '700 Office')

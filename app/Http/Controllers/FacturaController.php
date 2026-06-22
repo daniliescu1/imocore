@@ -309,7 +309,7 @@ class FacturaController extends Controller
                 'nr_crt' => 1,
                 'denumire' => $this->denumireLinieChirieFactura($factura, $lunaChirie, $anChirie),
                 'cantitate' => 1,
-                'um' => 'LUNĂ',
+                'um' => 'LUNA',
                 'pret_unitar' => $factura->chirie_lei,
                 'valoare' => $factura->chirie_lei,
                 'tva' => $chirieTva > 0 ? $chirieTva : null,
@@ -323,9 +323,9 @@ class FacturaController extends Controller
 
             $liniiFactura[] = [
                 'nr_crt' => count($liniiFactura) + 1,
-                'denumire' => trim("Utilități {$grupTva['procent']}% TVA {$lunaUtilitati}".($anUtilitati !== '' ? ' '.$anUtilitati : '')),
+                'denumire' => trim("Utilitati {$grupTva['procent']}% TVA {$lunaUtilitati}".($anUtilitati !== '' ? ' '.$anUtilitati : '')),
                 'cantitate' => 1,
-                'um' => 'LUNĂ',
+                'um' => 'LUNA',
                 'pret_unitar' => $grupTva['valoare'],
                 'valoare' => $grupTva['valoare'],
                 'tva' => $grupTva['tva'],
@@ -334,7 +334,7 @@ class FacturaController extends Controller
 
         $liniiFactura[] = [
             'nr_crt' => count($liniiFactura) + 1,
-            'denumire' => 'Penalități',
+            'denumire' => 'Penalitati',
             'cantitate' => null,
             'um' => null,
             'pret_unitar' => null,
@@ -400,7 +400,12 @@ class FacturaController extends Controller
     private function facturiQuery(?int $imobilId = null, string $searchSpatiu = '', string $searchChirias = '')
     {
         return Factura::query()
-            ->with(['anexa.contract.spatiu.imobil', 'contract.spatiu.imobil'])
+            ->with([
+                'anexa.contract.spatiu.imobil',
+                'anexa.contract.spatiu.configurareAnexa',
+                'contract.spatiu.imobil',
+                'contract.spatiu.configurareAnexa',
+            ])
             ->when($imobilId, fn ($query) => $query->where(function ($query) use ($imobilId) {
                 $query->whereHas(
                     'anexa.contract.spatiu',
@@ -434,11 +439,13 @@ class FacturaController extends Controller
     {
         $contract = $factura->anexa?->contract ?? $factura->contract;
         $luna = $factura->anexa?->luna ?? $factura->luna;
+        $denumireAnexa = $contract?->spatiu?->configurareAnexa?->denumire;
 
         return [
             'id' => $factura->id,
             'numar_factura' => $factura->numar_factura ?: '—',
             'anexa' => $luna ?: '—',
+            'denumire_anexa' => $denumireAnexa ?: '—',
             'contract' => $contract?->numar_contract ?: '—',
             'imobil' => $contract?->spatiu?->imobil?->nume ?: '—',
             'spatiu' => $contract?->spatiu?->identificator ?: '—',
@@ -446,7 +453,7 @@ class FacturaController extends Controller
             'curs_eur' => $factura->curs_eur,
             'total' => $factura->total,
             'status' => $factura->status,
-            'email_chirias' => $factura->email_chirias ?: '—',
+            'email_facturare' => $contract?->emailFacturare() ?: '—',
             'doar_chirie' => $factura->anexa_id === null,
         ];
     }
@@ -583,13 +590,13 @@ class FacturaController extends Controller
         $cui = trim(($locator->cui_are_ro ? 'RO' : '').($locator->cui ?: ''));
 
         return [
-            'nume' => $locator->nume ?: '—',
+            'nume' => $this->faraDiacriticeDisplay($locator->nume ?: '—'),
             'cui' => $cui !== '' ? $cui : null,
-            'reg_com' => $locator->registrul_comertului ?: null,
-            'adresa' => $locator->adresa ?: null,
-            'banca' => $locator->banca ?: null,
-            'cont_bancar' => $locator->cont_bancar ?: null,
-            'email' => $locator->email ?: null,
+            'reg_com' => $this->faraDiacriticeDisplay($locator->registrul_comertului),
+            'adresa' => $this->faraDiacriticeDisplay($locator->adresa),
+            'banca' => $this->faraDiacriticeDisplay($locator->banca),
+            'cont_bancar' => $this->faraDiacriticeDisplay($locator->cont_bancar),
+            'email' => $this->faraDiacriticeDisplay($locator->email),
         ];
     }
 
@@ -621,40 +628,49 @@ class FacturaController extends Controller
 
             return [
                 'tip' => 'pf',
-                'nume' => $contract->chirias ?: '—',
+                'nume' => $this->faraDiacriticeDisplay($contract->chirias ?: '—'),
                 'identificator_label' => 'CNP',
-                'identificator' => ($date['cnp'] ?? null) ?: null,
-                'ci' => $ci !== '' ? $ci : null,
-                'adresa' => ($date['domiciliu'] ?? null) ?: null,
-                'telefon' => ($date['telefon'] ?? null) ?: null,
-                'email' => ($date['email'] ?? null) ?: null,
+                'identificator' => $this->faraDiacriticeDisplay(($date['cnp'] ?? null) ?: null),
+                'ci' => $this->faraDiacriticeDisplay($ci !== '' ? $ci : null),
+                'adresa' => $this->faraDiacriticeDisplay(($date['domiciliu'] ?? null) ?: null),
+                'telefon' => $this->faraDiacriticeDisplay(($date['telefon'] ?? null) ?: null),
+                'email' => $this->faraDiacriticeDisplay(($date['email'] ?? null) ?: null),
             ];
         }
 
         return [
             'tip' => 'pj',
-            'nume' => $contract->chirias ?: '—',
+            'nume' => $this->faraDiacriticeDisplay($contract->chirias ?: '—'),
             'identificator_label' => 'CUI',
-            'identificator' => ($date['cui'] ?? null) ?: null,
+            'identificator' => $this->faraDiacriticeDisplay(($date['cui'] ?? null) ?: null),
             'ci' => null,
-            'adresa' => ($date['sediu_social'] ?? null) ?: null,
-            'telefon' => ($date['telefon'] ?? null) ?: null,
-            'email' => ($date['email'] ?? null) ?: null,
+            'adresa' => $this->faraDiacriticeDisplay(($date['sediu_social'] ?? null) ?: null),
+            'telefon' => $this->faraDiacriticeDisplay(($date['telefon'] ?? null) ?: null),
+            'email' => $this->faraDiacriticeDisplay(($date['email'] ?? null) ?: null),
         ];
+    }
+
+    private function faraDiacriticeDisplay(?string $value): ?string
+    {
+        if ($value === null || $value === '' || $value === '—') {
+            return $value;
+        }
+
+        return DocumentFormatter::faraDiacritice($value);
     }
 
     private function denumireLinieChirieFactura(Factura $factura, string $lunaChirie, string $anChirie): string
     {
-        $perioada = trim('Chirie spațiu '.$lunaChirie.($anChirie !== '' ? ' '.$anChirie : ''));
+        $perioada = trim('Chirie spatiu '.$lunaChirie.($anChirie !== '' ? ' '.$anChirie : ''));
         $chirieEur = (float) $factura->chirie_eur;
         $chirieLei = (float) $factura->chirie_lei;
 
         if ($chirieEur > 0) {
-            return $perioada.' · '.DocumentFormatter::amount($chirieEur).' EUR/lună';
+            return $perioada.' · '.DocumentFormatter::amount($chirieEur).' EUR/luna';
         }
 
         if ($chirieLei > 0) {
-            return $perioada.' · '.DocumentFormatter::amount($chirieLei).' lei/lună';
+            return $perioada.' · '.DocumentFormatter::amount($chirieLei).' lei/luna';
         }
 
         return $perioada;

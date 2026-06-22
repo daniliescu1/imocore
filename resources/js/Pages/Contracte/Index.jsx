@@ -7,16 +7,27 @@ function formatMoney(value, moneda = 'EUR') {
     return `${String(Number(value)).replace(/(\.\d*?)0+$/, '$1').replace(/\.$/, '')} ${moneda}`;
 }
 
-export default function Index({ contracte = [], filters = {} }) {
-    function updateFilters(nextFilters) {
+export default function Index({ contracte = [], configurariAnexe = [], filters = {} }) {
+    function updateFilters(overrides = {}) {
         router.get('/contracte', {
             status: filters.status || '',
-            ...nextFilters,
+            configurare_anexa_id: filters.configurare_anexa_id || '',
+            ...overrides,
         }, { preserveState: true, preserveScroll: true });
     }
 
     const topbarActions = (
         <>
+            <select
+                className="filter-input topbar-filter"
+                value={filters.configurare_anexa_id || ''}
+                onChange={(event) => updateFilters({ configurare_anexa_id: event.target.value })}
+            >
+                <option value="">Anexă: Toate</option>
+                {configurariAnexe.map((configurare) => (
+                    <option value={configurare.id} key={configurare.id}>{configurare.label}</option>
+                ))}
+            </select>
             <select
                 className="filter-input topbar-filter"
                 value={filters.status || ''}

@@ -12,6 +12,7 @@ use App\Http\Controllers\ContabilitatePrimaraController;
 use App\Http\Controllers\FacturaController;
 use App\Http\Controllers\ImobilController;
 use App\Http\Controllers\IndexareChiriiController;
+use App\Http\Controllers\PersoaneDeclarateController;
 use App\Http\Controllers\LocatorController;
 use App\Http\Controllers\ReguliImobilController;
 use App\Http\Controllers\SetariController;
@@ -100,6 +101,8 @@ Route::get('/backup/cron', [BackupController::class, 'runScheduled'])->name('bac
 Route::get('/backup/spatii-toate', [BackupController::class, 'downloadAllSpatii'])->name('backup.download.spatii-toate');
 Route::get('/indexare-chirii', [IndexareChiriiController::class, 'index'])->name('indexare-chirii.index');
 Route::patch('/indexare-chirii/{spatiu}', [IndexareChiriiController::class, 'update'])->name('indexare-chirii.update');
+Route::get('/persoane-declarate', [PersoaneDeclarateController::class, 'index'])->name('persoane-declarate.index');
+Route::patch('/persoane-declarate/{spatiu}', [PersoaneDeclarateController::class, 'update'])->name('persoane-declarate.update');
 Route::get('/backup/{date}/{type}', [BackupController::class, 'download'])->name('backup.download');
 Route::get('/backup/{date}/spatii/{file}', [BackupController::class, 'downloadSpatii'])->name('backup.download.spatii');
 

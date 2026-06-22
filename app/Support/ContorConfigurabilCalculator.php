@@ -17,7 +17,7 @@ class ContorConfigurabilCalculator
         string $lunaUtilitati,
         string $lunaFacturare,
     ): array {
-        $alocari = $regula->alocariIds();
+        $alocari = $regula->alocariEfectiveIds();
 
         if (! in_array($spatiuId, $alocari, true) || $alocari === []) {
             return [
