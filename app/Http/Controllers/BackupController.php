@@ -68,11 +68,11 @@ class BackupController extends Controller
             File::makeDirectory($tempDirectory, 0755, true);
         }
 
-        $tempPath = $tempDirectory.DIRECTORY_SEPARATOR.'spatii-toate-'.Str::uuid().'.csv';
-        $backupService->exportAllSpatiiCsv($tempPath, now()->format('Y-m-d H:i:s'));
+        $tempPath = $tempDirectory.DIRECTORY_SEPARATOR.'spatii-toate-'.Str::uuid().'.xlsx';
+        $backupService->exportAllSpatiiXlsx($tempPath, now()->format('Y-m-d H:i:s'));
 
         return response()->download($tempPath, $backupService->onDemandAllSpatiiDownloadFilename(), [
-            'Content-Type' => 'text/csv',
+            'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
         ])->deleteFileAfterSend();
     }
 

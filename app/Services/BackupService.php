@@ -11,6 +11,8 @@ use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Str;
+use OpenSpout\Common\Entity\Row;
+use OpenSpout\Writer\XLSX\Writer as XlsxWriter;
 use RuntimeException;
 
 class BackupService
@@ -107,7 +109,7 @@ class BackupService
 
     public function onDemandAllSpatiiDownloadFilename(): string
     {
-        return 'imocore-spatii-toate-'.now()->format('Y-m-d').'.csv';
+        return 'imocore-spatii-toate-'.now()->format('Y-m-d').'.xlsx';
     }
 
     public function onDemandMarcateSpatiiDownloadFilename(): string
@@ -785,6 +787,40 @@ class BackupService
         $this->exportFilteredSpatiiCsv($targetPath, $exportDate, fn (): ?string => null, includeAll: true);
     }
 
+    public function exportAllSpatiiXlsx(string $targetPath, string $exportDate): void
+    {
+        $columnFieldsUnion = $this->allSpatiiEditableFieldsUnion();
+        $writer = new XlsxWriter;
+        $writer->openToFile($targetPath);
+        $writer->addRow(Row::fromValues($this->allSpatiiCsvHeaders($columnFieldsUnion)));
+
+        $this->imobileWithOrderedSpatii()
+            ->each(function (Imobil $imobil) use ($writer, $columnFieldsUnion, $exportDate): void {
+                if ($imobil->spatii->isEmpty()) {
+                    return;
+                }
+
+                $editableFields = $this->editableSpatiuFieldsForImobil($imobil);
+
+                foreach ($imobil->spatii as $spatiu) {
+                    $row = $this->buildSpatiuCsvRow(
+                        $spatiu,
+                        $imobil,
+                        $columnFieldsUnion,
+                        $editableFields,
+                        $exportDate,
+                        true,
+                    );
+
+                    $writer->addRow(Row::fromValues(
+                        array_map(fn (mixed $value): string => $this->formatCsvCell($value), $row)
+                    ));
+                }
+            });
+
+        $writer->close();
+    }
+
     public function exportMarcateSpatiiCsv(string $targetPath, string $exportDate): void
     {
         $this->exportFilteredSpatiiCsv(
@@ -1278,7 +1314,7 @@ class BackupService
             throw new RuntimeException('Could not create CSV backup file.');
         }
 
-        fwrite($handle, "\xEF\xBB\xBF");
+        // sep= must be the first bytes in the file so Excel picks the delimiter on any locale.
         fwrite($handle, "sep=;\r\n");
 
         return $handle;

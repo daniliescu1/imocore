@@ -210,13 +210,15 @@ class BackupTest extends TestCase
         Carbon::setTestNow();
     }
 
-    public function test_on_demand_all_spatii_download_returns_csv(): void
+    public function test_on_demand_all_spatii_download_returns_xlsx(): void
     {
         $this->seedSpatiu();
 
-        $this->get(route('backup.download.spatii-toate'))
+        $response = $this->get(route('backup.download.spatii-toate'));
+
+        $response
             ->assertOk()
-            ->assertDownload('imocore-spatii-toate-'.now()->format('Y-m-d').'.csv');
+            ->assertDownload('imocore-spatii-toate-'.now()->format('Y-m-d').'.xlsx');
     }
 
     public function test_unified_spatii_csv_contains_all_imobile_in_order(): void
