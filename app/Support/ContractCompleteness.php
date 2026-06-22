@@ -113,8 +113,8 @@ class ContractCompleteness
                 'chirias_pf.serie_ci' => ['required', 'string', 'max:500'],
                 'chirias_pf.cnp' => ['required', 'string', 'max:13'],
                 'chirias_pf.domiciliu' => ['required', 'string', 'max:500'],
-                'chirias_pf.email' => ['required', 'email', 'max:255'],
-                'chirias_pf.email_2' => ['nullable', 'email', 'max:255'],
+                'chirias_pf.email' => ['nullable', 'string', 'max:255'],
+                'chirias_pf.email_2' => ['nullable', 'string', 'max:255'],
                 'chirias_pf.telefon' => ['required', 'string', 'max:50'],
             ];
         }
@@ -124,8 +124,8 @@ class ContractCompleteness
             'chirias_pj' => ['required', 'array'],
             'chirias_pj.denumire' => ['required', 'string', 'max:255'],
             'chirias_pj.sediu_social' => ['required', 'string', 'max:500'],
-            'chirias_pj.email' => ['required', 'email', 'max:255'],
-            'chirias_pj.email_2' => ['nullable', 'email', 'max:255'],
+            'chirias_pj.email' => ['nullable', 'string', 'max:255'],
+            'chirias_pj.email_2' => ['nullable', 'string', 'max:255'],
             'chirias_pj.telefon' => ['required', 'string', 'max:50'],
             'chirias_pj.nr_reg_comert' => ['required', 'string', 'max:100'],
             'chirias_pj.cui' => ['required', 'string', 'max:20'],
@@ -135,8 +135,8 @@ class ContractCompleteness
             'chirias_pj.administrator.numar_ci' => ['nullable', 'string', 'max:20'],
             'chirias_pj.administrator.cnp' => ['nullable', 'string', 'max:13'],
             'chirias_pj.administrator.domiciliu' => ['nullable', 'string', 'max:500'],
-            'chirias_pj.administrator.email' => ['nullable', 'email', 'max:255'],
-            'chirias_pj.administrator.email_2' => ['nullable', 'email', 'max:255'],
+            'chirias_pj.administrator.email' => ['nullable', 'string', 'max:255'],
+            'chirias_pj.administrator.email_2' => ['nullable', 'string', 'max:255'],
             ...ContractChiriasData::administratorValidationRulesForCompleteness('chirias_pj.administrator_2'),
         ];
     }
