@@ -29,7 +29,7 @@ class ContorConfigurabilSync
                 continue;
             }
 
-            if (! TipCalculAnexa::isContorConfigurabil($linie->tip_calcul)) {
+            if (! TipCalculAnexa::needsConfigurareContoare($linie->tip_calcul)) {
                 continue;
             }
 

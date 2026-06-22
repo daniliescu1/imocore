@@ -47,12 +47,13 @@ function consumPerSpatiuCalculat(contor, data, spatiiOptions) {
 
 function UltimaCitireCard({ contor, imobilId }) {
     const citire = contor.ultima_citire;
+    const isPausal = Boolean(contor.is_pausal || citire?.is_pausal);
 
     return (
         <section className="readonly-info-card contor-config-citire-card">
             <div className="contor-config-citire-header">
                 <div>
-                    <h2>Ultima citire contor</h2>
+                    <h2>Ultima citire {isPausal ? 'pausală' : 'contor'}</h2>
                     <p>Citirea pentru „{contor.denumire}” se introduce din pagina Citiri contoare, la nivel de imobil.</p>
                 </div>
                 <Link
@@ -73,16 +74,20 @@ function UltimaCitireCard({ contor, imobilId }) {
                         <span>Data citire</span>
                         <strong>{citire.data_citire || '—'}</strong>
                     </div>
+                    {!isPausal ? (
+                        <>
+                            <div className="contor-config-citire-item">
+                                <span>Index vechi</span>
+                                <strong>{formatDecimal(citire.index_vechi)}</strong>
+                            </div>
+                            <div className="contor-config-citire-item">
+                                <span>Index nou</span>
+                                <strong>{formatDecimal(citire.index_nou)}</strong>
+                            </div>
+                        </>
+                    ) : null}
                     <div className="contor-config-citire-item">
-                        <span>Index vechi</span>
-                        <strong>{formatDecimal(citire.index_vechi)}</strong>
-                    </div>
-                    <div className="contor-config-citire-item">
-                        <span>Index nou</span>
-                        <strong>{formatDecimal(citire.index_nou)}</strong>
-                    </div>
-                    <div className="contor-config-citire-item">
-                        <span>Consum</span>
+                        <span>{isPausal ? 'Cantitate' : 'Consum'}</span>
                         <strong>{formatDecimal(citire.consum)} {contor.um || ''}</strong>
                     </div>
                 </div>
@@ -289,7 +294,7 @@ export default function Contor({
     return (
         <AppLayout
             title={contor.denumire}
-            subtitle={`${imobil.nume} · contor configurabil`}
+            subtitle={`${imobil.nume} · ${contor.tip_label || 'contor configurabil'}`}
             showGlobalSearch={false}
             topbarActions={(
                 <Link className="secondary-button" href={`/configurare-contoare/imobil/${imobil.id}`}>

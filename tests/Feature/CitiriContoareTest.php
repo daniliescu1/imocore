@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\CitireContor;
+use App\Support\ContorConfigurabilSync;
 use App\Models\ConfigurareAnexaImobil;
 use App\Models\ConfigurareAnexaLinie;
 use App\Models\Imobil;
@@ -207,15 +208,18 @@ class CitiriContoareTest extends TestCase
         $imobil = $this->creeazaImobil();
         $configurare = $this->creeazaConfigurare($imobil);
         $liniePausal = $this->creeazaLiniePausal($configurare, 'Servicii Gunoi Menajer');
-        $spatiu = $this->creeazaSpatiu($imobil, $configurare);
+        $this->creeazaSpatiu($imobil, $configurare);
+        ContorConfigurabilSync::syncForConfigurare($configurare);
 
         $this->get(route('citiri-contoare.imobil', ['imobil' => $imobil->id, 'mode' => 'new']))
             ->assertOk()
             ->assertInertia(fn (Assert $page) => $page
                 ->component('CitiriContoare/Imobil')
-                ->where('spatii.0.liniiContor.0.configurare_anexa_linie_id', $liniePausal->id)
-                ->where('spatii.0.liniiContor.0.tip_calcul', 'pausal')
-                ->has('spatii.0.liniiContor', 1)
+                ->has('contoareConfigurabile', 1)
+                ->where('contoareConfigurabile.0.configurare_anexa_linie_id', $liniePausal->id)
+                ->where('contoareConfigurabile.0.tip_calcul', 'pausal')
+                ->where('contoareConfigurabile.0.is_pausal', true)
+                ->has('spatii', 0)
             );
     }
 
@@ -224,21 +228,22 @@ class CitiriContoareTest extends TestCase
         $imobil = $this->creeazaImobil();
         $configurare = $this->creeazaConfigurare($imobil);
         $linie = $this->creeazaLiniePausal($configurare, 'Gunoi menajer');
-        $spatiu = $this->creeazaSpatiu($imobil, $configurare);
+        $this->creeazaSpatiu($imobil, $configurare);
+        ContorConfigurabilSync::syncForConfigurare($configurare);
 
         $this->post(route('citiri-contoare.store'), [
             'imobil_id' => $imobil->id,
             'luna' => '2026-06',
             'data_citire' => '2026-06-20T14:30',
             'citiri' => [[
-                'spatiu_id' => $spatiu->id,
+                'spatiu_id' => null,
                 'configurare_anexa_linie_id' => $linie->id,
                 'consum' => 3,
             ]],
         ])->assertRedirect();
 
         $this->assertDatabaseHas('citiri_contoare', [
-            'spatiu_id' => $spatiu->id,
+            'spatiu_id' => null,
             'configurare_anexa_linie_id' => $linie->id,
             'luna' => '2026-06',
             'consum' => 3,
@@ -278,6 +283,7 @@ class CitiriContoareTest extends TestCase
         $linieNouaContor = $this->creeazaLinieContor($configurareNoua, 'Energie Electrica');
         $linieNouaPausal = $this->creeazaLiniePausal($configurareNoua, 'Consum apa - mc / pers');
         $spatiuNou = $this->creeazaSpatiu($imobil, $configurareNoua, 'S2');
+        ContorConfigurabilSync::syncForConfigurare($configurareNoua);
 
         $this->get(route('citiri-contoare.imobil', [
             'imobil' => $imobil->id,
@@ -289,7 +295,9 @@ class CitiriContoareTest extends TestCase
                 ->where('mode', 'history')
                 ->where('spatii.1.id', $spatiuNou->id)
                 ->where('spatii.1.liniiContor.0.editabila', true)
-                ->where('spatii.1.liniiContor.1.editabila', true)
+                ->has('spatii.1.liniiContor', 1)
+                ->where('contoareConfigurabile.0.editabila', true)
+                ->where('contoareConfigurabile.0.configurare_anexa_linie_id', $linieNouaPausal->id)
                 ->where('spatii.0.liniiContor.0.editabila', false)
             );
 
@@ -304,7 +312,7 @@ class CitiriContoareTest extends TestCase
                     'index_nou' => 55.5,
                 ],
                 [
-                    'spatiu_id' => $spatiuNou->id,
+                    'spatiu_id' => null,
                     'configurare_anexa_linie_id' => $linieNouaPausal->id,
                     'consum' => 2,
                 ],
@@ -319,7 +327,7 @@ class CitiriContoareTest extends TestCase
         ]);
 
         $this->assertDatabaseHas('citiri_contoare', [
-            'spatiu_id' => $spatiuNou->id,
+            'spatiu_id' => null,
             'configurare_anexa_linie_id' => $linieNouaPausal->id,
             'luna' => '2026-06',
             'consum' => 2,

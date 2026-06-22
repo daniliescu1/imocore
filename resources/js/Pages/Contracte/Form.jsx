@@ -141,6 +141,11 @@ const fieldLabels = {
     'chirias_pj.administrator.cnp': 'CNP administrator',
     'chirias_pj.administrator.domiciliu': 'Domiciliu administrator',
     'chirias_pj.administrator.email': 'Email administrator',
+    'chirias_pj.administrator_2.nume_complet': 'Nume al doilea reprezentant',
+    'chirias_pj.administrator_2.serie_ci': 'Serie CI al doilea reprezentant',
+    'chirias_pj.administrator_2.cnp': 'CNP al doilea reprezentant',
+    'chirias_pj.administrator_2.domiciliu': 'Domiciliu al doilea reprezentant',
+    'chirias_pj.administrator_2.email': 'Email al doilea reprezentant',
 };
 
 const emptyPf = {
@@ -179,7 +184,53 @@ const emptyPj = {
     banca: '',
     cont_bancar: '',
     administrator: { ...emptyAdministrator },
+    administrator_2: { ...emptyAdministrator },
 };
+
+function administratorHasData(administrator) {
+    if (!administrator) {
+        return false;
+    }
+
+    return Object.entries(administrator).some(([key, value]) => {
+        if (key === 'calitate' && (value === 'administrator' || isBlank(value))) {
+            return false;
+        }
+
+        return !isBlank(value);
+    });
+}
+
+function LegalRepresentativeFields({
+    administrator,
+    errorPrefix,
+    errors,
+    fieldIncomplete,
+    onUpdate,
+    requiredNume = false,
+}) {
+    return (
+        <div className="form-grid form-grid-chirias">
+            <PfField label="Nume complet" value={administrator.nume_complet} onChange={(value) => onUpdate('nume_complet', value)} error={errors[`${errorPrefix}.nume_complet`]} required={requiredNume} incomplete={fieldIncomplete(`${errorPrefix}.nume_complet`)} gridSpan={1} />
+            <label className="form-field form-grid-span-1">
+                <span>În calitate de</span>
+                <select value={administrator.calitate || 'administrator'} onChange={(event) => onUpdate('calitate', event.target.value)}>
+                    <option value="administrator">Administrator</option>
+                    <option value="asociat">Asociat</option>
+                    <option value="presedinte">Președinte</option>
+                    <option value="reprezentant_legal">Reprezentant legal</option>
+                    <option value="imputernicit_notarial">Împuternicit notarial</option>
+                </select>
+                {errors[`${errorPrefix}.calitate`] ? <small>{errors[`${errorPrefix}.calitate`]}</small> : null}
+            </label>
+            <PfField label="Serie CI Număr CI, eliberat de, la data." value={administrator.serie_ci} onChange={(value) => onUpdate('serie_ci', value)} error={errors[`${errorPrefix}.serie_ci`]} incomplete={fieldIncomplete(`${errorPrefix}.serie_ci`)} />
+            <PfField label="Domiciliu" value={administrator.domiciliu} onChange={(value) => onUpdate('domiciliu', value)} error={errors[`${errorPrefix}.domiciliu`]} incomplete={fieldIncomplete(`${errorPrefix}.domiciliu`)} />
+            <PfField label="CNP" value={administrator.cnp} onChange={(value) => onUpdate('cnp', value)} error={errors[`${errorPrefix}.cnp`]} incomplete={fieldIncomplete(`${errorPrefix}.cnp`)} gridSpan={1} />
+            <PfField label="Email" value={administrator.email} onChange={(value) => onUpdate('email', value)} error={errors[`${errorPrefix}.email`]} type="email" incomplete={fieldIncomplete(`${errorPrefix}.email`)} gridSpan={1} />
+            <PfField label="Telefon" value={administrator.telefon} onChange={(value) => onUpdate('telefon', value)} error={errors[`${errorPrefix}.telefon`]} gridSpan={1} formatter={formatPhoneNumber} incomplete={fieldIncomplete(`${errorPrefix}.telefon`)} />
+        </div>
+    );
+}
 
 function PfField({ label, value, onChange, error, type = 'text', required = false, incomplete = false, gridSpan = 2, formatter = null }) {
     function handleChange(event) {
@@ -246,6 +297,7 @@ export default function Form({
 }) {
     const isEditing = Boolean(contract);
     const [anexaEditDialogOpen, setAnexaEditDialogOpen] = useState(false);
+    const [showSecondRepresentative, setShowSecondRepresentative] = useState(() => administratorHasData(contract?.chirias_pj?.administrator_2));
     const initialSpatiu = spatiuInfo(spatii, initialSpatiuId);
     const { data, setData, post, put, processing, errors, transform } = useForm({
         imobil_id: contract?.imobil_id || initialImobilId || initialSpatiu?.imobil_id || '',
@@ -263,6 +315,7 @@ export default function Form({
                 ? (contract?.chirias || initialSpatiu?.chirias || '')
                 : '',
             administrator: { ...emptyAdministrator },
+            administrator_2: { ...emptyAdministrator },
         },
         persoane_declarate: contract?.persoane_declarate ?? initialSpatiu?.persoane_declarate ?? '',
         data_start: contract?.data_start || '',
@@ -341,6 +394,31 @@ export default function Form({
         setData('chirias_pj', {
             ...data.chirias_pj,
             administrator: { ...data.chirias_pj.administrator, [field]: value },
+        });
+    }
+
+    function updateAdministrator2(field, value) {
+        setData('chirias_pj', {
+            ...data.chirias_pj,
+            administrator_2: { ...(data.chirias_pj.administrator_2 || emptyAdministrator), [field]: value },
+        });
+    }
+
+    function addSecondRepresentative() {
+        setShowSecondRepresentative(true);
+        if (!data.chirias_pj.administrator_2) {
+            setData('chirias_pj', {
+                ...data.chirias_pj,
+                administrator_2: { ...emptyAdministrator },
+            });
+        }
+    }
+
+    function removeSecondRepresentative() {
+        setShowSecondRepresentative(false);
+        setData('chirias_pj', {
+            ...data.chirias_pj,
+            administrator_2: { ...emptyAdministrator },
         });
     }
 
@@ -569,24 +647,37 @@ export default function Form({
 
                             <div className="contract-chirias-subsection">
                                 <h3>Reprezentată legal prin</h3>
-                                <div className="form-grid form-grid-chirias">
-                                    <PfField label="Nume complet" value={data.chirias_pj.administrator.nume_complet} onChange={(value) => updateAdministrator('nume_complet', value)} error={errors['chirias_pj.administrator.nume_complet']} required incomplete={fieldIncomplete('chirias_pj.administrator.nume_complet')} gridSpan={1} />
-                                    <label className="form-field form-grid-span-1">
-                                        <span>În calitate de</span>
-                                        <select value={data.chirias_pj.administrator.calitate || 'administrator'} onChange={(event) => updateAdministrator('calitate', event.target.value)}>
-                                            <option value="administrator">Administrator</option>
-                                            <option value="asociat">Asociat</option>
-                                            <option value="presedinte">Președinte</option>
-                                            <option value="imputernicit_notarial">Împuternicit notarial</option>
-                                        </select>
-                                        {errors['chirias_pj.administrator.calitate'] ? <small>{errors['chirias_pj.administrator.calitate']}</small> : null}
-                                    </label>
-                                    <PfField label="Serie CI Număr CI, eliberat de, la data." value={data.chirias_pj.administrator.serie_ci} onChange={(value) => updateAdministrator('serie_ci', value)} error={errors['chirias_pj.administrator.serie_ci']} />
-                                    <PfField label="Domiciliu" value={data.chirias_pj.administrator.domiciliu} onChange={(value) => updateAdministrator('domiciliu', value)} error={errors['chirias_pj.administrator.domiciliu']} />
-                                    <PfField label="CNP" value={data.chirias_pj.administrator.cnp} onChange={(value) => updateAdministrator('cnp', value)} error={errors['chirias_pj.administrator.cnp']} gridSpan={1} />
-                                    <PfField label="Email" value={data.chirias_pj.administrator.email} onChange={(value) => updateAdministrator('email', value)} error={errors['chirias_pj.administrator.email']} type="email" gridSpan={1} />
-                                    <PfField label="Telefon" value={data.chirias_pj.administrator.telefon} onChange={(value) => updateAdministrator('telefon', value)} error={errors['chirias_pj.administrator.telefon']} gridSpan={1} formatter={formatPhoneNumber} />
-                                </div>
+                                <LegalRepresentativeFields
+                                    administrator={data.chirias_pj.administrator}
+                                    errorPrefix="chirias_pj.administrator"
+                                    errors={errors}
+                                    fieldIncomplete={fieldIncomplete}
+                                    onUpdate={updateAdministrator}
+                                    requiredNume
+                                />
+                                {showSecondRepresentative ? (
+                                    <div className="contract-chirias-subsection contract-chirias-subsection-nested">
+                                        <div className="contract-subsection-title-row">
+                                            <h4>Al doilea reprezentant</h4>
+                                            <button type="button" className="secondary-button" onClick={removeSecondRepresentative}>
+                                                Elimină
+                                            </button>
+                                        </div>
+                                        <LegalRepresentativeFields
+                                            administrator={data.chirias_pj.administrator_2 || emptyAdministrator}
+                                            errorPrefix="chirias_pj.administrator_2"
+                                            errors={errors}
+                                            fieldIncomplete={fieldIncomplete}
+                                            onUpdate={updateAdministrator2}
+                                        />
+                                    </div>
+                                ) : (
+                                    <div className="contract-subsection-add-action">
+                                        <button type="button" className="secondary-button" onClick={addSecondRepresentative}>
+                                            + Adaugă al doilea reprezentant
+                                        </button>
+                                    </div>
+                                )}
                             </div>
                         </>
                     )}

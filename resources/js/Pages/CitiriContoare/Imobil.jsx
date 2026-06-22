@@ -65,13 +65,24 @@ function flattenCitiri(spatii, contoareConfigurabile = []) {
         };
     }));
 
-    const citiriConfigurabile = (contoareConfigurabile || []).map((linie) => ({
-        spatiu_id: null,
-        configurare_anexa_linie_id: linie.configurare_anexa_linie_id,
-        tip_calcul: linie.tip_calcul,
-        index_vechi: formatDecimalForInput(linie.index_vechi),
-        index_nou: formatDecimalForInput(linie.index_nou),
-    }));
+    const citiriConfigurabile = (contoareConfigurabile || []).map((linie) => {
+        if (isPausalTip(linie.tip_calcul) || linie.is_pausal) {
+            return {
+                spatiu_id: null,
+                configurare_anexa_linie_id: linie.configurare_anexa_linie_id,
+                tip_calcul: linie.tip_calcul,
+                consum: formatDecimalForInput(linie.consum),
+            };
+        }
+
+        return {
+            spatiu_id: null,
+            configurare_anexa_linie_id: linie.configurare_anexa_linie_id,
+            tip_calcul: linie.tip_calcul,
+            index_vechi: formatDecimalForInput(linie.index_vechi),
+            index_nou: formatDecimalForInput(linie.index_nou),
+        };
+    });
 
     return [...citiriConfigurabile, ...citiriSpatii];
 }
@@ -166,6 +177,12 @@ export default function Imobil({
 
             if (isPausalTip(tipCalcul)) {
                 entry.consum = value;
+            } else if (spatiuId === null || spatiuId === undefined || spatiuId === '') {
+                entry.index_vechi = field === 'index_vechi' ? value : '';
+                entry.index_nou = field === 'index_nou' ? value : '';
+                if (field === 'consum') {
+                    entry.consum = value;
+                }
             } else {
                 entry.index_vechi = field === 'index_vechi' ? value : '';
                 entry.index_nou = field === 'index_nou' ? value : '';
@@ -260,13 +277,13 @@ export default function Imobil({
                 {totalRanduri === 0 ? (
                     <div className="readonly-info-card">
                         <h2>Nu există contoare de citit</h2>
-                        <p>Niciun spațiu din acest imobil nu are anexă cu linii de tip Contor sau Pausal, iar nu există contoare configurabile. Alocă anexa pe spații și adaugă servicii cu tip calcul Contor, Pausal sau Contor configurabil.</p>
+                        <p>Niciun spațiu din acest imobil nu are anexă cu linii de tip Contor, iar nu există contoare configurabile sau pausale de configurat. Alocă anexa pe spații și adaugă servicii cu tip calcul Contor, Pausal sau Contor configurabil.</p>
                     </div>
                 ) : (
                     <div className="meter-reading-groups">
                         {randuriConfigurabile.length > 0 ? (
                             <div className="contor-config-citiri-block">
-                                <h2 className="contor-config-citiri-title">Contoare configurabile (imobil)</h2>
+                                <h2 className="contor-config-citiri-title">Contoare configurabile și pausale (imobil)</h2>
                                 <p className="contor-config-citiri-help">Citire unică la nivel de imobil; cantitatea se repartizează pe spațiile alocate din Configurare contoare.</p>
                                 <div className="responsive-table">
                                     <table className="citiri-contoare-table contor-config-citiri-table">
@@ -284,10 +301,15 @@ export default function Imobil({
                                         <tbody>
                                             {randuriConfigurabile.map(({ linie }) => {
                                                 const editable = isLineEditable(linie);
-                                                const citire = data.citiri[citireIndexFor(null, linie.configurare_anexa_linie_id)] || {
-                                                    index_vechi: formatDecimalForInput(linie.index_vechi),
-                                                    index_nou: formatDecimalForInput(linie.index_nou),
-                                                };
+                                                const pausal = isPausalTip(linie.tip_calcul) || linie.is_pausal;
+                                                const citire = data.citiri[citireIndexFor(null, linie.configurare_anexa_linie_id)] || (
+                                                    pausal
+                                                        ? { consum: formatDecimalForInput(linie.consum) }
+                                                        : {
+                                                            index_vechi: formatDecimalForInput(linie.index_vechi),
+                                                            index_nou: formatDecimalForInput(linie.index_nou),
+                                                        }
+                                                );
                                                 const indexVechiAfisat = citire.index_vechi ?? formatDecimalForInput(linie.index_vechi);
 
                                                 return (
@@ -296,43 +318,71 @@ export default function Imobil({
                                                         <td title={linie.denumire}>{linie.denumire}</td>
                                                         <td>{tipCitireLabel(linie.tip_calcul)}</td>
                                                         <td>{linie.um || '—'}</td>
-                                                        <td>
-                                                            <input
-                                                                className="table-input"
-                                                                type="text"
-                                                                inputMode="decimal"
-                                                                value={indexVechiAfisat}
-                                                                readOnly={!editable}
-                                                                tabIndex={!editable ? -1 : undefined}
-                                                                aria-readonly={!editable ? 'true' : undefined}
-                                                                onChange={(event) => updateCitire(
-                                                                    null,
-                                                                    linie.configurare_anexa_linie_id,
-                                                                    'index_vechi',
-                                                                    event.target.value,
-                                                                    linie.tip_calcul,
-                                                                )}
-                                                            />
-                                                        </td>
-                                                        <td>
-                                                            <input
-                                                                className="table-input"
-                                                                type="text"
-                                                                inputMode="decimal"
-                                                                value={citire.index_nou ?? ''}
-                                                                readOnly={!editable}
-                                                                tabIndex={!editable ? -1 : undefined}
-                                                                aria-readonly={!editable ? 'true' : undefined}
-                                                                onChange={(event) => updateCitire(
-                                                                    null,
-                                                                    linie.configurare_anexa_linie_id,
-                                                                    'index_nou',
-                                                                    event.target.value,
-                                                                    linie.tip_calcul,
-                                                                )}
-                                                            />
-                                                        </td>
-                                                        <td>{calculatedConsum(citire.index_vechi ?? indexVechiAfisat, citire.index_nou) || '—'}</td>
+                                                        {pausal ? (
+                                                            <>
+                                                                <td>—</td>
+                                                                <td>—</td>
+                                                                <td>
+                                                                    <input
+                                                                        className="table-input"
+                                                                        type="text"
+                                                                        inputMode="decimal"
+                                                                        value={citire.consum ?? ''}
+                                                                        readOnly={!editable}
+                                                                        tabIndex={!editable ? -1 : undefined}
+                                                                        aria-readonly={!editable ? 'true' : undefined}
+                                                                        aria-label="Cantitate pausal imobil"
+                                                                        onChange={(event) => updateCitire(
+                                                                            null,
+                                                                            linie.configurare_anexa_linie_id,
+                                                                            'consum',
+                                                                            event.target.value,
+                                                                            linie.tip_calcul,
+                                                                        )}
+                                                                    />
+                                                                </td>
+                                                            </>
+                                                        ) : (
+                                                            <>
+                                                                <td>
+                                                                    <input
+                                                                        className="table-input"
+                                                                        type="text"
+                                                                        inputMode="decimal"
+                                                                        value={indexVechiAfisat}
+                                                                        readOnly={!editable}
+                                                                        tabIndex={!editable ? -1 : undefined}
+                                                                        aria-readonly={!editable ? 'true' : undefined}
+                                                                        onChange={(event) => updateCitire(
+                                                                            null,
+                                                                            linie.configurare_anexa_linie_id,
+                                                                            'index_vechi',
+                                                                            event.target.value,
+                                                                            linie.tip_calcul,
+                                                                        )}
+                                                                    />
+                                                                </td>
+                                                                <td>
+                                                                    <input
+                                                                        className="table-input"
+                                                                        type="text"
+                                                                        inputMode="decimal"
+                                                                        value={citire.index_nou ?? ''}
+                                                                        readOnly={!editable}
+                                                                        tabIndex={!editable ? -1 : undefined}
+                                                                        aria-readonly={!editable ? 'true' : undefined}
+                                                                        onChange={(event) => updateCitire(
+                                                                            null,
+                                                                            linie.configurare_anexa_linie_id,
+                                                                            'index_nou',
+                                                                            event.target.value,
+                                                                            linie.tip_calcul,
+                                                                        )}
+                                                                    />
+                                                                </td>
+                                                                <td>{calculatedConsum(citire.index_vechi ?? indexVechiAfisat, citire.index_nou) || '—'}</td>
+                                                            </>
+                                                        )}
                                                     </tr>
                                                 );
                                             })}

@@ -265,18 +265,32 @@ class AnexaController extends Controller
                 $indexNou = $calcul['index_nou'];
                 $cantitate = $calcul['cantitate'];
             }
+        } elseif (TipCalculAnexa::isPausal($tipCalcul)) {
+            $regula = ContorConfigurabil::query()
+                ->where('configurare_anexa_linie_id', $linieConfigurata->id)
+                ->first();
+
+            if ($regula) {
+                $calcul = ContorConfigurabilCalculator::cantitatePentruSpatiu(
+                    $regula,
+                    $spatiuId,
+                    $lunaUtilitati,
+                    $lunaFacturare,
+                );
+                $cantitate = $calcul['cantitate'];
+            } else {
+                $citire = $this->citirePentruAnexa($spatiuId, $linieConfigurata->id, $lunaUtilitati, $lunaFacturare);
+
+                if ($citire) {
+                    $cantitate = $citire->consum;
+                }
+            }
         } elseif ($tipCalcul === 'contor') {
             $citire = $this->citirePentruAnexa($spatiuId, $linieConfigurata->id, $lunaUtilitati, $lunaFacturare);
 
             if ($citire) {
                 $indexVechi = $citire->index_vechi;
                 $indexNou = $citire->index_nou;
-                $cantitate = $citire->consum;
-            }
-        } elseif (TipCalculAnexa::isPausal($tipCalcul)) {
-            $citire = $this->citirePentruAnexa($spatiuId, $linieConfigurata->id, $lunaUtilitati, $lunaFacturare);
-
-            if ($citire) {
                 $cantitate = $citire->consum;
             }
         } elseif (TipCalculAnexa::folosesteFacturatDinTemplate($tipCalcul)) {

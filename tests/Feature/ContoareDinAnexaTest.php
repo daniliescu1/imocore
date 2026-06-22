@@ -6,6 +6,7 @@ use App\Models\ConfigurareAnexaImobil;
 use App\Models\ConfigurareAnexaLinie;
 use App\Models\Imobil;
 use App\Models\Spatiu;
+use App\Support\ContorConfigurabilSync;
 use App\Support\SincronizareContoareDinAnexa;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -57,12 +58,16 @@ class ContoareDinAnexaTest extends TestCase
 
         SincronizareContoareDinAnexa::syncForSpatiu($spatiu);
 
-        $this->assertDatabaseCount('contoare', 1);
+        $this->assertDatabaseCount('contoare', 0);
+
+        ContorConfigurabilSync::syncForConfigurare($configurare);
+
         $this->assertDatabaseHas('contoare', [
-            'spatiu_id' => $spatiu->id,
+            'imobil_id' => $imobil->id,
+            'spatiu_id' => null,
             'configurare_anexa_linie_id' => $linieGunoi->id,
             'tip_utilitate' => 'Gunoi menajer',
-            'cod_contor' => 'A1 · Gunoi menajer',
+            'nivel' => 'imobil_configurabil',
         ]);
     }
 

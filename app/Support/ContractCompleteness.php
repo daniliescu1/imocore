@@ -42,6 +42,13 @@ class ContractCompleteness
             'chirias_pj.administrator.domiciliu' => 'Domiciliu administrator',
             'chirias_pj.administrator.email' => 'Email administrator',
             'chirias_pj.administrator.email_2' => 'Al doilea email administrator',
+            'chirias_pj.administrator_2.nume_complet' => 'Nume al doilea reprezentant',
+            'chirias_pj.administrator_2.serie_ci' => 'Serie CI al doilea reprezentant',
+            'chirias_pj.administrator_2.numar_ci' => 'Număr CI al doilea reprezentant',
+            'chirias_pj.administrator_2.cnp' => 'CNP al doilea reprezentant',
+            'chirias_pj.administrator_2.domiciliu' => 'Domiciliu al doilea reprezentant',
+            'chirias_pj.administrator_2.email' => 'Email al doilea reprezentant',
+            'chirias_pj.administrator_2.email_2' => 'Al doilea email al doilea reprezentant',
         ];
     }
 
@@ -132,6 +139,7 @@ class ContractCompleteness
             'chirias_pj.administrator.domiciliu' => ['nullable', 'string', 'max:500'],
             'chirias_pj.administrator.email' => ['nullable', 'email', 'max:255'],
             'chirias_pj.administrator.email_2' => ['nullable', 'email', 'max:255'],
+            ...ContractChiriasData::administratorValidationRulesForCompleteness('chirias_pj.administrator_2'),
         ];
     }
 

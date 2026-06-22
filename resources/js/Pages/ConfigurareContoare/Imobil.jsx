@@ -17,7 +17,7 @@ export default function Imobil({
     return (
         <AppLayout
             title={`Configurare contoare ${imobil.nume}`}
-            subtitle={`Contoare configurabile · ${imobil.localitate}`}
+            subtitle={`Contoare configurabile și pausale · ${imobil.localitate}`}
             showGlobalSearch={false}
             topbarActions={(
                 <Link className="secondary-button" href="/configurare-contoare">Înapoi la imobile</Link>
@@ -25,8 +25,8 @@ export default function Imobil({
         >
             {contoare.length === 0 ? (
                 <div className="readonly-info-card">
-                    <h2>Nu există contoare configurabile</h2>
-                    <p>Niciun spațiu al acestui imobil nu are anexă alocată cu linii de tip „Contor configurabil”.</p>
+                    <h2>Nu există contoare de configurat</h2>
+                    <p>Niciun spațiu al acestui imobil nu are anexă alocată cu linii de tip „Contor configurabil” sau „Pausal”.</p>
                 </div>
             ) : (
                 <section className="table-card module-table-card contor-config-list-table-card">
@@ -35,6 +35,7 @@ export default function Imobil({
                             <thead>
                                 <tr>
                                     <th>Serviciu</th>
+                                    <th>Tip</th>
                                     <th>Anexă</th>
                                     <th>UM</th>
                                     <th>Ultima lună</th>
@@ -57,6 +58,7 @@ export default function Imobil({
                                             onClick={() => router.visit(rowHref)}
                                         >
                                             <td title={contor.denumire}><strong>{contor.denumire}</strong></td>
+                                            <td>{contor.tip_label || '—'}</td>
                                             <td title={contor.anexa}>{contor.anexa}</td>
                                             <td>{contor.um || '—'}</td>
                                             <td>{citire?.luna_label || '—'}</td>

@@ -3094,6 +3094,29 @@ tr:last-child td {
     font-size: 16px;
 }
 
+.contract-chirias-subsection-nested {
+    margin-top: 18px;
+    padding-top: 14px;
+}
+
+.contract-subsection-title-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 16px;
+}
+
+.contract-subsection-title-row h4 {
+    margin: 0;
+    color: var(--green-dark);
+    font-size: 15px;
+}
+
+.contract-subsection-add-action {
+    margin-top: 14px;
+}
+
 .contract-chirias-persoane {
     margin-bottom: 16px;
 }

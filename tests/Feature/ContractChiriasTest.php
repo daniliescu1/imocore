@@ -141,6 +141,114 @@ class ContractChiriasTest extends TestCase
         $this->assertSame('SC Exemplu SRL', $spatiu->fresh()->chirias);
     }
 
+    public function test_contract_pj_salveaza_al_doilea_reprezentant_legal(): void
+    {
+        $imobil = Imobil::query()->create([
+            'nume' => '700 Office',
+            'strada' => 'Strada Test',
+            'numar' => '1',
+            'localitate' => 'Timișoara',
+        ]);
+
+        $spatiu = Spatiu::query()->create([
+            'imobil_id' => $imobil->id,
+            'identificator' => 'D205A',
+            'status' => 'liber',
+            'ordine' => 1,
+        ]);
+
+        $this->post('/contracte', [
+            'spatiu_id' => $spatiu->id,
+            ...$this->contractRequiredFields(),
+            'numar_contract' => 'C-PJ-2REP',
+            'chirias_tip' => 'pj',
+            'chirias_pj' => [
+                'denumire' => 'SC Doi Reprezentanti SRL',
+                'sediu_social' => 'Timișoara, str. Firma 2',
+                'telefon' => '0256000000',
+                'email' => 'office@doi-rep.ro',
+                'nr_reg_comert' => 'J35/123/2020',
+                'cui' => 'RO12345678',
+                'administrator' => [
+                    'nume_complet' => 'Maria Ionescu',
+                    'calitate' => 'administrator',
+                ],
+                'administrator_2' => [
+                    'nume_complet' => 'Mihai Laurentiu',
+                    'calitate' => 'reprezentant_legal',
+                    'serie_ci' => 'CI seria TZ nr. 514304, eliberat de SPCLEP Timisoara, la data de 07.05.20',
+                    'cnp' => '1840703350157',
+                    'domiciliu' => 'Timisoara, str. Meziad, nr.5',
+                ],
+            ],
+            'data_start' => '2025-01-01',
+            'chirie' => 1200,
+            'moneda' => 'EUR',
+        ])->assertRedirect('/contracte');
+
+        $contract = Contract::query()->firstOrFail();
+
+        $this->assertSame('activ', $contract->status);
+        $this->assertSame('Maria Ionescu', $contract->chirias_date['administrator']['nume_complet']);
+        $this->assertSame('Mihai Laurentiu', $contract->chirias_date['administrator_2']['nume_complet']);
+        $this->assertSame('reprezentant_legal', $contract->chirias_date['administrator_2']['calitate']);
+        $this->assertSame('1840703350157', $contract->chirias_date['administrator_2']['cnp']);
+
+        $this->get(route('contracte.edit', $contract))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('Contracte/Form')
+                ->where('contract.chirias_pj.administrator_2.nume_complet', 'Mihai Laurentiu')
+                ->where('contract.chirias_pj.administrator_2.calitate', 'reprezentant_legal')
+            );
+    }
+
+    public function test_contract_pj_fara_al_doilea_reprezentant_nu_persista_administrator_2(): void
+    {
+        $imobil = Imobil::query()->create([
+            'nume' => '700 Office',
+            'strada' => 'Strada Test',
+            'numar' => '1',
+            'localitate' => 'Timișoara',
+        ]);
+
+        $spatiu = Spatiu::query()->create([
+            'imobil_id' => $imobil->id,
+            'identificator' => 'D205A2',
+            'status' => 'liber',
+            'ordine' => 1,
+        ]);
+
+        $this->post('/contracte', [
+            'spatiu_id' => $spatiu->id,
+            ...$this->contractRequiredFields(),
+            'numar_contract' => 'C-PJ-1REP',
+            'chirias_tip' => 'pj',
+            'chirias_pj' => [
+                'denumire' => 'SC Un Reprezentant SRL',
+                'sediu_social' => 'Timișoara',
+                'telefon' => '0256000000',
+                'email' => 'office@un-rep.ro',
+                'nr_reg_comert' => 'J35/123/2020',
+                'cui' => 'RO12345678',
+                'administrator' => [
+                    'nume_complet' => 'Maria Ionescu',
+                ],
+                'administrator_2' => [
+                    'nume_complet' => '',
+                    'calitate' => 'administrator',
+                ],
+            ],
+            'data_start' => '2025-01-01',
+            'chirie' => 1200,
+            'moneda' => 'EUR',
+        ])->assertRedirect('/contracte');
+
+        $contract = Contract::query()->firstOrFail();
+
+        $this->assertNull($contract->chirias_date['administrator_2'] ?? null);
+    }
+
     public function test_contract_pj_are_obligatoriu_doar_numele_reprezentantului_legal(): void
     {
         $imobil = Imobil::query()->create([

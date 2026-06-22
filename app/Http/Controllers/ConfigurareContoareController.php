@@ -133,7 +133,7 @@ class ConfigurareContoareController extends Controller
         return Imobil::query()
             ->whereHas('spatii', function ($query): void {
                 $query->whereNotNull('configurare_anexa_id')
-                    ->whereHas('configurareAnexa.linii', fn ($linii) => TipCalculAnexa::applyLiniiContorConfigurabilScope($linii));
+                    ->whereHas('configurareAnexa.linii', fn ($linii) => TipCalculAnexa::applyLiniiConfigurareContoareScope($linii));
             })
             ->orderBy('nume')
             ->get(['id', 'nume', 'localitate'])
@@ -155,7 +155,7 @@ class ConfigurareContoareController extends Controller
                 ->where('imobil_id', $imobilId)
                 ->whereHas('spatii'))
             ->where(function ($query): void {
-                TipCalculAnexa::applyLiniiContorConfigurabilScope($query);
+                TipCalculAnexa::applyLiniiConfigurareContoareScope($query);
             })
             ->count();
     }
@@ -172,9 +172,11 @@ class ConfigurareContoareController extends Controller
             'denumire' => $linie?->denumire ?: '—',
             'anexa' => $anexa?->denumire ?: '—',
             'um' => $linie?->um ?: '—',
+            'tip_calcul' => $linie?->tip_calcul ?: '—',
+            'tip_label' => $this->tipCalculLabel($linie?->tip_calcul),
             'configurata' => $alocari !== [],
             'alocari_count' => count($alocari),
-            'ultima_citire' => $this->ultimaCitirePentruRegula($regula->configurare_anexa_linie_id),
+            'ultima_citire' => $this->ultimaCitirePentruRegula($regula->configurare_anexa_linie_id, $linie?->tip_calcul),
         ];
     }
 
@@ -185,13 +187,16 @@ class ConfigurareContoareController extends Controller
         $spatiiAnexaIds = $this->spatiiIdsForAnexa($regula->configurare_anexa_id);
         $liniiContorIds = $this->liniiContorIdsForAnexa($regula->configurare_anexa_id);
 
-        $ultimaCitire = $this->ultimaCitirePentruRegula($regula->configurare_anexa_linie_id);
+        $ultimaCitire = $this->ultimaCitirePentruRegula($regula->configurare_anexa_linie_id, $linie?->tip_calcul);
 
         return [
             'id' => $regula->id,
             'denumire' => $linie?->denumire ?: '—',
             'anexa' => $anexa?->denumire ?: '—',
             'um' => $linie?->um ?: '—',
+            'tip_calcul' => $linie?->tip_calcul ?: '—',
+            'tip_label' => $this->tipCalculLabel($linie?->tip_calcul),
+            'is_pausal' => TipCalculAnexa::isPausal($linie?->tip_calcul),
             'configurare_anexa_id' => $regula->configurare_anexa_id,
             'configurare_anexa_linie_id' => $regula->configurare_anexa_linie_id,
             'foloseste_scaderi' => (bool) $regula->foloseste_scaderi,
@@ -203,8 +208,12 @@ class ConfigurareContoareController extends Controller
             'alocari' => array_values(array_intersect($regula->alocariIds(), $spatiiAnexaIds)),
             'configurata' => array_intersect($regula->alocariIds(), $spatiiAnexaIds) !== [],
             'formula' => $regula->foloseste_scaderi
-                ? '(consum contor − sumă scăderi) / nr. spații alocate'
-                : 'consum contor / nr. spații anexă',
+                ? (TipCalculAnexa::isPausal($linie?->tip_calcul)
+                    ? '(cantitate pausal − sumă scăderi) / nr. spații alocate'
+                    : '(consum contor − sumă scăderi) / nr. spații alocate')
+                : (TipCalculAnexa::isPausal($linie?->tip_calcul)
+                    ? 'cantitate pausal / nr. spații anexă'
+                    : 'consum contor / nr. spații anexă'),
             'spatiiOptions' => $this->spatiiOptionsForAnexa($regula->configurare_anexa_id),
             'liniiScadereOptions' => $this->liniiScadereOptionsForAnexa($regula->configurare_anexa_id),
             'citiriScadere' => $this->citiriScaderePentruAnexa($regula->configurare_anexa_id, $ultimaCitire['luna'] ?? null),
@@ -245,7 +254,7 @@ class ConfigurareContoareController extends Controller
     /**
      * @return array<string, mixed>|null
      */
-    private function ultimaCitirePentruRegula(int $linieId): ?array
+    private function ultimaCitirePentruRegula(int $linieId, ?string $tipCalcul = null): ?array
     {
         $citire = CitireContor::query()
             ->whereNull('spatiu_id')
@@ -257,13 +266,16 @@ class ConfigurareContoareController extends Controller
             return null;
         }
 
+        $isPausal = TipCalculAnexa::isPausal($tipCalcul);
+
         return [
             'luna' => $citire->luna,
             'luna_label' => substr($citire->luna, 5, 2).'.'.substr($citire->luna, 0, 4),
-            'index_vechi' => $citire->index_vechi,
-            'index_nou' => $citire->index_nou,
+            'index_vechi' => $isPausal ? null : $citire->index_vechi,
+            'index_nou' => $isPausal ? null : $citire->index_nou,
             'consum' => $citire->consum,
             'data_citire' => $citire->data_citire?->format('d.m.Y H:i'),
+            'is_pausal' => $isPausal,
         ];
     }
 

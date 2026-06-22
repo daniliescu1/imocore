@@ -39,6 +39,8 @@ class ContorConfigurabilCalculator
             ];
         }
 
+        $regula->loadMissing('configurareAnexaLinie');
+        $isPausal = TipCalculAnexa::isPausal($regula->configurareAnexaLinie?->tip_calcul);
         $consumBrut = (float) $citire->consum;
         $scaderi = 0.0;
 
@@ -57,8 +59,8 @@ class ContorConfigurabilCalculator
         $cantitate = round($rest / count($alocari), 3);
 
         return [
-            'index_vechi' => (float) $citire->index_vechi,
-            'index_nou' => (float) $citire->index_nou,
+            'index_vechi' => $isPausal ? null : (float) $citire->index_vechi,
+            'index_nou' => $isPausal ? null : (float) $citire->index_nou,
             'consum_brut' => $consumBrut,
             'cantitate' => $cantitate,
         ];

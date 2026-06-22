@@ -6,7 +6,7 @@ export default function Index({ imobile = [] }) {
     return (
         <AppLayout
             title="Configurare contoare"
-            subtitle="Imobile cu anexe alocate care conțin linii de tip „Contor configurabil”."
+            subtitle="Imobile cu anexe alocate care conțin linii de tip „Contor configurabil” sau „Pausal”."
             showGlobalSearch={false}
         >
             <section className="table-card module-table-card">
@@ -15,7 +15,7 @@ export default function Index({ imobile = [] }) {
                         <thead>
                             <tr>
                                 <th>Imobil</th>
-                                <th>Contoare configurabile</th>
+                                <th>Contoare de configurat</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -37,8 +37,8 @@ export default function Index({ imobile = [] }) {
                             {imobile.length === 0 ? (
                                 <tr>
                                     <td colSpan="2">
-                                        Nu există imobile cu anexe alocate care conțin contoare configurabile.
-                                        Adaugă tipul „Contor configurabil” pe o linie de anexă și alocă anexa pe spații.
+                                        Nu există imobile cu anexe alocate care conțin contoare configurabile sau pausale.
+                                        Adaugă tipul „Contor configurabil” sau „Pausal” pe o linie de anexă și alocă anexa pe spații.
                                     </td>
                                 </tr>
                             ) : null}

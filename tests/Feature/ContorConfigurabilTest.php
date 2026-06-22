@@ -232,6 +232,54 @@ class ContorConfigurabilTest extends TestCase
         ])->assertStatus(422);
     }
 
+    public function test_configurare_contoare_listeaza_si_contoarele_pausale(): void
+    {
+        $imobil = Imobil::query()->create([
+            'nume' => '700 Office',
+            'strada' => 'Strada Test',
+            'numar' => '1',
+            'localitate' => 'Timisoara',
+        ]);
+
+        $configurare = ConfigurareAnexaImobil::query()->create([
+            'imobil_id' => $imobil->id,
+            'denumire' => 'Anexa servicii',
+            'implicit' => true,
+            'activ' => true,
+        ]);
+
+        $liniePausal = ConfigurareAnexaLinie::query()->create([
+            'configurare_anexa_id' => $configurare->id,
+            'denumire' => 'Gunoi menajer',
+            'tip_calcul' => 'pausal',
+            'um' => 'Pers',
+            'activ' => true,
+            'ordine' => 1,
+        ]);
+
+        Spatiu::query()->create([
+            'imobil_id' => $imobil->id,
+            'identificator' => 'S1',
+            'status' => 'liber',
+            'configurare_anexa_id' => $configurare->id,
+        ]);
+
+        ContorConfigurabilSync::syncForConfigurare($configurare);
+
+        $regula = ContorConfigurabil::query()
+            ->where('configurare_anexa_linie_id', $liniePausal->id)
+            ->firstOrFail();
+
+        $this->get(route('configurare-contoare.imobil', $imobil))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('ConfigurareContoare/Imobil')
+                ->has('contoare', 1)
+                ->where('contoare.0.id', $regula->id)
+                ->where('contoare.0.tip_label', 'Pausal')
+            );
+    }
+
     public function test_scaderile_accepta_doar_servicii_de_tip_contor(): void
     {
         [

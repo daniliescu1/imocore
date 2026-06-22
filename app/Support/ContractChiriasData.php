@@ -69,8 +69,10 @@ class ContractChiriasData
     {
         $pjInput = $request->input('chirias_pj', []);
         $adminInput = is_array($pjInput['administrator'] ?? null) ? $pjInput['administrator'] : [];
+        $admin2Input = is_array($pjInput['administrator_2'] ?? null) ? $pjInput['administrator_2'] : [];
         $pj = self::trimStrings(array_merge(self::emptyPj(), $pjInput));
         $admin = self::trimStrings(array_merge(self::emptyAdministrator(), $adminInput));
+        $admin2 = self::trimStrings(array_merge(self::emptyAdministrator(), $admin2Input));
         $denumire = $pj['denumire'] ?: '';
 
         return [
@@ -85,17 +87,8 @@ class ContractChiriasData
                 'cui' => $pj['cui'] ?: null,
                 'banca' => $pj['banca'] ?: null,
                 'cont_bancar' => $pj['cont_bancar'] ?: null,
-                'administrator' => [
-                    'nume_complet' => $admin['nume_complet'] ?: null,
-                    'calitate' => ($admin['calitate'] ?? null) ?: 'administrator',
-                    'serie_ci' => $admin['serie_ci'] ?: null,
-                    'numar_ci' => $admin['numar_ci'] ?: null,
-                    'cnp' => $admin['cnp'] ?: null,
-                    'domiciliu' => $admin['domiciliu'] ?: null,
-                    'email' => $admin['email'] ?: null,
-                    'email_2' => ($admin['email_2'] ?? null) ?: null,
-                    'telefon' => $admin['telefon'] ?: null,
-                ],
+                'administrator' => self::administratorPayload($admin),
+                'administrator_2' => self::administratorPayload($admin2, nullWhenEmpty: true),
             ],
         ];
     }
@@ -125,7 +118,7 @@ class ContractChiriasData
         if ($tip === 'pj') {
             $emptyPj = array_merge($emptyPj, self::onlyKeys($date ?? [], array_keys(array_merge(
                 $emptyPj,
-                ['administrator' => self::emptyAdministrator()]
+                ['administrator' => self::emptyAdministrator(), 'administrator_2' => self::emptyAdministrator()]
             ))));
 
             if (isset($date['administrator']) && is_array($date['administrator'])) {
@@ -134,6 +127,16 @@ class ContractChiriasData
                     self::onlyKeys($date['administrator'], array_keys(self::emptyAdministrator()))
                 );
                 self::splitLegacyEmailField($emptyPj['administrator']);
+            }
+
+            if (isset($date['administrator_2']) && is_array($date['administrator_2'])) {
+                $emptyPj['administrator_2'] = array_merge(
+                    self::emptyAdministrator(),
+                    self::onlyKeys($date['administrator_2'], array_keys(self::emptyAdministrator()))
+                );
+                self::splitLegacyEmailField($emptyPj['administrator_2']);
+            } else {
+                $emptyPj['administrator_2'] = self::emptyAdministrator();
             }
 
             self::splitLegacyEmailField($emptyPj);
@@ -210,20 +213,13 @@ class ContractChiriasData
             'chirias_pj.cui' => ['required', 'string', 'max:20'],
             'chirias_pj.banca' => ['nullable', 'string', 'max:255'],
             'chirias_pj.cont_bancar' => ['nullable', 'string', 'max:100'],
-            'chirias_pj.administrator' => ['required', 'array'],
-            'chirias_pj.administrator.nume_complet' => ['required', 'string', 'max:255'],
-            'chirias_pj.administrator.calitate' => ['nullable', 'in:administrator,asociat,presedinte,imputernicit_notarial'],
-            'chirias_pj.administrator.serie_ci' => ['nullable', 'string', 'max:500'],
-            'chirias_pj.administrator.numar_ci' => ['nullable', 'string', 'max:20'],
-            'chirias_pj.administrator.cnp' => ['nullable', 'string', 'max:13'],
-            'chirias_pj.administrator.domiciliu' => ['nullable', 'string', 'max:500'],
-            'chirias_pj.administrator.email' => ['nullable', 'email', 'max:255'],
-            'chirias_pj.administrator.email_2' => ['nullable', 'email', 'max:255'],
-            'chirias_pj.administrator.telefon' => ['nullable', 'string', 'max:50'],
+            ...self::administratorValidationRules('chirias_pj.administrator', requireNume: true),
+            ...self::administratorValidationRules('chirias_pj.administrator_2'),
         ]);
 
         $pj = self::trimStrings($validated['chirias_pj']);
         $admin = self::trimStrings($pj['administrator']);
+        $admin2 = self::trimStrings($pj['administrator_2'] ?? []);
 
         return [
             'chirias_tip' => 'pj',
@@ -237,17 +233,8 @@ class ContractChiriasData
                 'cui' => $pj['cui'],
                 'banca' => ($pj['banca'] ?? null) ?: null,
                 'cont_bancar' => ($pj['cont_bancar'] ?? null) ?: null,
-                'administrator' => [
-                    'nume_complet' => $admin['nume_complet'],
-                    'calitate' => ($admin['calitate'] ?? null) ?: 'administrator',
-                    'serie_ci' => ($admin['serie_ci'] ?? null) ?: null,
-                    'numar_ci' => ($admin['numar_ci'] ?? null) ?: null,
-                    'cnp' => ($admin['cnp'] ?? null) ?: null,
-                    'domiciliu' => ($admin['domiciliu'] ?? null) ?: null,
-                    'email' => ($admin['email'] ?? null) ?: null,
-                    'email_2' => ($admin['email_2'] ?? null) ?: null,
-                    'telefon' => ($admin['telefon'] ?? null) ?: null,
-                ],
+                'administrator' => self::administratorPayload($admin),
+                'administrator_2' => self::administratorPayload($admin2, nullWhenEmpty: true),
             ],
         ];
     }
@@ -287,6 +274,7 @@ class ContractChiriasData
             'banca' => '',
             'cont_bancar' => '',
             'administrator' => self::emptyAdministrator(),
+            'administrator_2' => self::emptyAdministrator(),
         ];
     }
 
@@ -305,6 +293,57 @@ class ContractChiriasData
             'email' => '',
             'email_2' => '',
             'telefon' => '',
+        ];
+    }
+
+    /**
+     * @return array<string, mixed>|null
+     */
+    private static function administratorPayload(array $admin, bool $nullWhenEmpty = false): ?array
+    {
+        $payload = [
+            'nume_complet' => ($admin['nume_complet'] ?? null) ?: null,
+            'calitate' => ($admin['calitate'] ?? null) ?: 'administrator',
+            'serie_ci' => ($admin['serie_ci'] ?? null) ?: null,
+            'numar_ci' => ($admin['numar_ci'] ?? null) ?: null,
+            'cnp' => ($admin['cnp'] ?? null) ?: null,
+            'domiciliu' => ($admin['domiciliu'] ?? null) ?: null,
+            'email' => ($admin['email'] ?? null) ?: null,
+            'email_2' => ($admin['email_2'] ?? null) ?: null,
+            'telefon' => ($admin['telefon'] ?? null) ?: null,
+        ];
+
+        if ($nullWhenEmpty && blank($payload['nume_complet'])) {
+            return null;
+        }
+
+        return $payload;
+    }
+
+    /**
+     * @return array<string, list<string>>
+     */
+    public static function administratorValidationRulesForCompleteness(string $prefix): array
+    {
+        return self::administratorValidationRules($prefix, requireNume: false);
+    }
+
+    /**
+     * @return array<string, list<string>>
+     */
+    private static function administratorValidationRules(string $prefix, bool $requireNume = false): array
+    {
+        return [
+            $prefix => [$requireNume ? 'required' : 'nullable', 'array'],
+            "{$prefix}.nume_complet" => [$requireNume ? 'required' : 'nullable', 'string', 'max:255'],
+            "{$prefix}.calitate" => ['nullable', 'in:administrator,asociat,presedinte,reprezentant_legal,imputernicit_notarial'],
+            "{$prefix}.serie_ci" => ['nullable', 'string', 'max:500'],
+            "{$prefix}.numar_ci" => ['nullable', 'string', 'max:20'],
+            "{$prefix}.cnp" => ['nullable', 'string', 'max:13'],
+            "{$prefix}.domiciliu" => ['nullable', 'string', 'max:500'],
+            "{$prefix}.email" => ['nullable', 'email', 'max:255'],
+            "{$prefix}.email_2" => ['nullable', 'email', 'max:255'],
+            "{$prefix}.telefon" => ['nullable', 'string', 'max:50'],
         ];
     }
 
@@ -339,7 +378,7 @@ class ContractChiriasData
         $result = [];
 
         foreach ($keys as $key) {
-            if ($key === 'administrator') {
+            if ($key === 'administrator' || $key === 'administrator_2') {
                 continue;
             }
 

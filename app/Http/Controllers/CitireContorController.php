@@ -239,10 +239,32 @@ class CitireContorController extends Controller
 
             $spatiuId = $citireData['spatiu_id'] ?? null;
             $esteConfigurabilImobil = ($spatiuId === null || $spatiuId === '')
-                && TipCalculAnexa::isContorConfigurabil($linie->tip_calcul);
+                && TipCalculAnexa::needsConfigurareContoare($linie->tip_calcul);
 
             if ($esteConfigurabilImobil) {
                 if ($this->linieAreCitireLunaUlterioaraImobil((int) $linie->id, $luna)) {
+                    continue;
+                }
+
+                if (TipCalculAnexa::isPausal($linie->tip_calcul)) {
+                    $consum = (float) ($citireData['consum'] ?? 0);
+
+                    CitireContor::query()->updateOrCreate(
+                        [
+                            'spatiu_id' => null,
+                            'configurare_anexa_linie_id' => $linie->id,
+                            'luna' => $luna,
+                        ],
+                        [
+                            'contor_id' => null,
+                            'spatiu_id' => null,
+                            'data_citire' => $dataCitire,
+                            'index_vechi' => 0,
+                            'index_nou' => 0,
+                            'consum' => max(0, $consum),
+                        ]
+                    );
+
                     continue;
                 }
 
@@ -605,6 +627,7 @@ class CitireContorController extends Controller
             ->get()
             ->map(function (ContorConfigurabil $regula) use ($luna, $lunaInchisa): array {
                 $linie = $regula->configurareAnexaLinie;
+                $isPausal = TipCalculAnexa::isPausal($linie?->tip_calcul);
                 $citire = CitireContor::query()
                     ->whereNull('spatiu_id')
                     ->where('configurare_anexa_linie_id', $regula->configurare_anexa_linie_id)
@@ -620,10 +643,13 @@ class CitireContorController extends Controller
                     'anexa' => $regula->configurareAnexa?->denumire ?: '—',
                     'tip_calcul' => $linie?->tip_calcul ?: 'Contor configurabil',
                     'um' => $linie?->um,
-                    'index_vechi' => $citire
-                        ? ($citire->index_vechi ?? '')
-                        : $ultimulIndexNou,
-                    'index_nou' => $citire?->index_nou ?? '',
+                    'is_pausal' => $isPausal,
+                    'index_vechi' => $isPausal
+                        ? ''
+                        : ($citire
+                            ? ($citire->index_vechi ?? '')
+                            : $ultimulIndexNou),
+                    'index_nou' => $isPausal ? '' : ($citire?->index_nou ?? ''),
                     'consum' => $citire?->consum ?? '',
                     'citire_salvata' => $citire !== null,
                     'editabila' => $editabila,

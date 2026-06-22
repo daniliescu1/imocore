@@ -89,6 +89,11 @@ class TipCalculAnexa
         return self::normalize($tipCalcul) === 'contor_configurabil';
     }
 
+    public static function needsConfigurareContoare(?string $tipCalcul): bool
+    {
+        return self::isContorConfigurabil($tipCalcul) || self::isPausal($tipCalcul);
+    }
+
     public static function isCitire(?string $tipCalcul): bool
     {
         return self::isContor($tipCalcul)
@@ -115,7 +120,20 @@ class TipCalculAnexa
     {
         return $query
             ->where(function ($query): void {
-                $query->whereRaw('lower(trim(tip_calcul)) = ?', ['contor'])
+                $query->whereRaw('lower(trim(tip_calcul)) = ?', ['contor']);
+            })
+            ->where(function ($query): void {
+                $query->whereNull('tip_linie')
+                    ->orWhere('tip_linie', '!=', 'header');
+            })
+            ->where('activ', true);
+    }
+
+    public static function applyLiniiConfigurareContoareScope($query)
+    {
+        return $query
+            ->where(function ($query): void {
+                $query->whereRaw('lower(trim(tip_calcul)) = ?', ['contor configurabil'])
                     ->orWhereRaw('lower(trim(tip_calcul)) = ?', ['pausal']);
             })
             ->where(function ($query): void {
@@ -127,14 +145,6 @@ class TipCalculAnexa
 
     public static function applyLiniiContorConfigurabilScope($query)
     {
-        return $query
-            ->where(function ($query): void {
-                $query->whereRaw('lower(trim(tip_calcul)) = ?', ['contor configurabil']);
-            })
-            ->where(function ($query): void {
-                $query->whereNull('tip_linie')
-                    ->orWhere('tip_linie', '!=', 'header');
-            })
-            ->where('activ', true);
+        return self::applyLiniiConfigurareContoareScope($query);
     }
 }

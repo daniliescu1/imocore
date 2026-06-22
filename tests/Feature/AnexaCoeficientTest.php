@@ -7,6 +7,7 @@ use App\Models\CitireContor;
 use App\Models\Contract;
 use App\Models\Imobil;
 use App\Models\Spatiu;
+use App\Support\ContorConfigurabilSync;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Inertia\Testing\AssertableInertia as Assert;
 use Tests\TestCase;
@@ -258,8 +259,10 @@ class AnexaCoeficientTest extends TestCase
             'configurare_anexa_id' => $configurare->id,
         ]);
 
+        ContorConfigurabilSync::syncForConfigurare($configurare);
+
         CitireContor::query()->create([
-            'spatiu_id' => $spatiu->id,
+            'spatiu_id' => null,
             'configurare_anexa_linie_id' => $linieConfig->id,
             'luna' => '2026-05',
             'consum' => 4,
