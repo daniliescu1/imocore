@@ -144,6 +144,40 @@ class Spatiu extends Model
         return $query->where('status', 'inchiriat');
     }
 
+    public function scopeAlocateAnexei($query, int $configurareAnexaId)
+    {
+        return $query->where('configurare_anexa_id', $configurareAnexaId);
+    }
+
+    /**
+     * @return list<int>
+     */
+    public static function idsInchiriateForAnexa(int $configurareAnexaId): array
+    {
+        return self::query()
+            ->alocateAnexei($configurareAnexaId)
+            ->inchiriat()
+            ->orderBy('identificator')
+            ->pluck('id')
+            ->map(fn ($id): int => (int) $id)
+            ->all();
+    }
+
+    public static function countInchiriateForAnexa(int $configurareAnexaId): int
+    {
+        return self::query()
+            ->alocateAnexei($configurareAnexaId)
+            ->inchiriat()
+            ->count();
+    }
+
+    public static function countAlocateForAnexa(int $configurareAnexaId): int
+    {
+        return self::query()
+            ->where('configurare_anexa_id', $configurareAnexaId)
+            ->count();
+    }
+
     public function chirieCurenta(): float
     {
         return (float) ($this->indexare_2026 ?: $this->pret_lunar ?: 0);

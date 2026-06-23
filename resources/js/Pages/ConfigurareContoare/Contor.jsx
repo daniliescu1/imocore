@@ -252,7 +252,7 @@ function ContorConfigurabilForm({ contor }) {
 
             <div className="contor-config-section">
                 <h3 className="contor-config-alocari-title">
-                    {alocariCount} spații alocate
+                    {alocariCount} spații închiriate alocate
                     {' — '}
                     rezultând un consum calculat / spațiu:{' '}
                     <strong>
@@ -261,7 +261,7 @@ function ContorConfigurabilForm({ contor }) {
                     </strong>
                 </h3>
                 {!data.foloseste_scaderi ? (
-                    <p className="contor-config-help">Fără scăderi, consumul se împarte egal la toate spațiile din anexă.</p>
+                    <p className="contor-config-help">Fără scăderi, consumul se împarte egal la toate spațiile închiriate din anexă.</p>
                 ) : null}
                 <div className="contor-config-alocari">
                     {spatiiOptions.map((spatiu) => (

@@ -144,7 +144,33 @@ class CitireContorController extends Controller
             'spatii' => $spatii,
             'contoareConfigurabile' => $contoareConfigurabile,
             'searchSpatiu' => trim($request->string('search')->toString()),
+            'searchMatchingSpatiuIds' => $this->searchMatchingSpatiuIds(
+                $imobil,
+                trim($request->string('search')->toString())
+            ),
         ];
+    }
+
+    /**
+     * @return list<int>
+     */
+    private function searchMatchingSpatiuIds(Imobil $imobil, string $search): array
+    {
+        if ($search === '') {
+            return [];
+        }
+
+        return Spatiu::query()
+            ->where('imobil_id', $imobil->id)
+            ->where(function ($query) use ($search): void {
+                $query->where('identificator', 'like', "%{$search}%")
+                    ->orWhere('locator', 'like', "%{$search}%")
+                    ->orWhere('chirias', 'like', "%{$search}%");
+            })
+            ->pluck('id')
+            ->map(fn ($id): int => (int) $id)
+            ->values()
+            ->all();
     }
 
     /**
@@ -718,6 +744,7 @@ class CitireContorController extends Controller
                     'denumire' => $linie?->denumire ?: '—',
                     'anexa' => $regula->configurareAnexa?->denumire ?: '—',
                     'alocari_spatiu_ids' => $regula->alocariEfectiveIds(),
+                    'alocari_count' => count($regula->alocariEfectiveIds()),
                     'tip_calcul' => $linie?->tip_calcul ?: 'Contor configurabil',
                     'um' => $linie?->um,
                     'is_pausal' => $isPausal,

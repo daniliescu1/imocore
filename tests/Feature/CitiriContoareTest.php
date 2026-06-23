@@ -530,6 +530,7 @@ class CitiriContoareTest extends TestCase
         $linieCanal = $this->creeazaLiniePausal($configurare, 'Canalizare mc / pers');
         $this->creeazaLinieContor($configurare, 'Energie Electrica');
         $spatiu = $this->creeazaSpatiu($imobil, $configurare, 'C 307');
+        $spatiu->update(['status' => 'inchiriat']);
         ContorConfigurabilSync::syncForConfigurare($configurare);
 
         $this->get(route('citiri-contoare.imobil', [
@@ -544,9 +545,57 @@ class CitiriContoareTest extends TestCase
                 ->where('contoareConfigurabile.0.index_vechi', '')
                 ->where('contoareConfigurabile.0.index_nou', '')
                 ->where('contoareConfigurabile.1.is_pausal', true)
+                ->where('searchMatchingSpatiuIds', [$spatiu->id])
+                ->where('contoareConfigurabile.0.alocari_spatiu_ids', [$spatiu->id])
                 ->has('spatii', 1)
                 ->has('spatii.0.liniiContor', 1)
                 ->where('spatii.0.liniiContor.0.denumire', 'Energie Electrica')
+            );
+    }
+
+    public function test_cautarea_dupa_spatiu_leaga_contoarele_pausale_chiar_fara_linii_contor_pe_spatiu(): void
+    {
+        $imobil = $this->creeazaImobil();
+        $configurare = $this->creeazaConfigurare($imobil, 'Anexa Pers < 50 mp · Curent Pausal');
+        $this->creeazaLiniePausal($configurare, 'Consum apa - mc / pers');
+        $this->creeazaLiniePausal($configurare, 'Canalizare mc / pers');
+        $linieCurent = ConfigurareAnexaLinie::query()->create([
+            'configurare_anexa_id' => $configurare->id,
+            'denumire' => 'Energie electrica spatii comune',
+            'tip_calcul' => 'Contor configurabil',
+            'um' => 'Kw',
+            'activ' => true,
+        ]);
+        $spatiu = Spatiu::query()->create([
+            'imobil_id' => $imobil->id,
+            'identificator' => 'C 307',
+            'status' => 'inchiriat',
+            'configurare_anexa_id' => $configurare->id,
+        ]);
+        ContorConfigurabilSync::syncForConfigurare($configurare);
+
+        $regula = \App\Models\ContorConfigurabil::query()
+            ->where('configurare_anexa_linie_id', $linieCurent->id)
+            ->firstOrFail();
+        $regula->update([
+            'foloseste_scaderi' => true,
+            'alocari' => [$spatiu->id],
+            'scaderi' => [],
+        ]);
+
+        $this->get(route('citiri-contoare.imobil', [
+            'imobil' => $imobil->id,
+            'mode' => 'new',
+            'search' => 'C 307',
+        ]))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('searchMatchingSpatiuIds', [$spatiu->id])
+                ->has('spatii', 0)
+                ->has('contoareConfigurabile', 3)
+                ->where('contoareConfigurabile', fn ($contoare) => collect($contoare)
+                    ->contains(fn (array $linie): bool => (int) $linie['configurare_anexa_linie_id'] === (int) $linieCurent->id
+                        && in_array($spatiu->id, $linie['alocari_spatiu_ids'], true)))
             );
     }
 

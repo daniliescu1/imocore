@@ -26,6 +26,18 @@ const emptyHeaderLine = {
     tip_linie: 'header',
 };
 
+const SPATIU_STATUS_LABELS = {
+    liber: 'Liber',
+    rezervat: 'Rezervat',
+    inchiriat: 'Închiriat',
+    comun: 'Spațiu comun',
+    administrativ: 'Administrativ',
+};
+
+function spatiuStatusLabel(status) {
+    return SPATIU_STATUS_LABELS[status] || status || '—';
+}
+
 const emptyCoeficientLine = {
     tip_linie: 'serviciu',
     nr_crt: '',
@@ -604,9 +616,9 @@ export default function Form({
                 <div className="spatiu-context-banner spatiu-context-banner-compact">
                     Personalizarea creează o anexă nouă doar pentru acest spațiu. Pune un nume, apoi ajustează liniile dacă e nevoie.
                 </div>
-            ) : context?.spatii_count > 1 ? (
+            ) : (context?.spatii_inchiriate_count ?? context?.spatii_count) > 1 ? (
                 <div className="spatiu-context-banner spatiu-context-banner-compact">
-                    Această anexă e alocată la {context.spatii_count} spații. Modificările se aplică tuturor spațiilor care o folosesc.
+                    Această anexă e alocată la {context.spatii_inchiriate_count ?? context.spatii_count} spații închiriate. Modificările se aplică tuturor spațiilor care o folosesc.
                 </div>
             ) : null}
             <form className="cf-card module-table-card page-compact-annex-form" onSubmit={submit}>
@@ -824,6 +836,31 @@ export default function Form({
                     ) : null}
                     <button className="primary-button" type="submit" disabled={processing}>{processing ? 'Se salvează...' : 'Salvează anexa'}</button>
                 </div>
+
+                {isEditing && !isPersonalizare ? (
+                    <section className="readonly-info-card annex-spatii-alocate-card">
+                        <h2>Spații alocate anexei</h2>
+                        <p className="annex-spatii-alocate-summary">
+                            Total: <strong>{context?.spatii_count ?? context?.spatii_alocate?.length ?? 0}</strong> spații alocate
+                            {typeof context?.spatii_inchiriate_count === 'number'
+                                ? ` · ${context.spatii_inchiriate_count} închiriate (folosite la repartizarea contoarelor)`
+                                : ''}
+                        </p>
+                        {(context?.spatii_alocate || []).length > 0 ? (
+                            <ul className="annex-spatii-alocate-list">
+                                {(context?.spatii_alocate || []).map((spatiu) => (
+                                    <li key={spatiu.id}>
+                                        <Link className="table-name-link" href={spatiu.edit_url}>{spatiu.identificator}</Link>
+                                        <span>{spatiu.chirias}</span>
+                                        <span className="annex-spatiu-status">{spatiuStatusLabel(spatiu.status)}</span>
+                                    </li>
+                                ))}
+                            </ul>
+                        ) : (
+                            <p>Niciun spațiu nu folosește încă această anexă.</p>
+                        )}
+                    </section>
+                ) : null}
             </form>
         </AppLayout>
     );

@@ -859,8 +859,8 @@ export default function Form({
                                 {anexaAlocataCurenta ? (
                                     <span className="spatiu-documente-meta">
                                         {anexaAlocataCurenta.linii_count ?? '—'} servicii
-                                        {(anexaAlocataCurenta.spatii_count ?? 0) > 1
-                                            ? ` · folosită de ${anexaAlocataCurenta.spatii_count} spații`
+                                        {(anexaAlocataCurenta.spatii_inchiriate_count ?? anexaAlocataCurenta.spatii_count ?? 0) > 1
+                                            ? ` · ${anexaAlocataCurenta.spatii_inchiriate_count ?? anexaAlocataCurenta.spatii_count} spații închiriate`
                                             : ' · doar acest spațiu'}
                                     </span>
                                 ) : (
@@ -899,9 +899,12 @@ export default function Form({
             {anexaEditDialogOpen && anexaAlocataCurenta ? (
                 <div className="spatiu-dialog-backdrop" onClick={() => setAnexaEditDialogOpen(false)}>
                     <div className="spatiu-dialog-card" onClick={(event) => event.stopPropagation()} role="dialog" aria-modal="true" aria-labelledby="contract-anexa-edit-dialog-title">
-                        <h3 id="contract-anexa-edit-dialog-title">Anexa e folosită de {anexaAlocataCurenta.spatii_count} spații</h3>
+                        <h3 id="contract-anexa-edit-dialog-title">Anexa e alocată la {anexaAlocataCurenta.spatii_count} spații</h3>
                         <p>
-                            Anexa «{anexaAlocataCurenta.denumire}» e alocată la mai multe spații.
+                            Anexa «{anexaAlocataCurenta.denumire}» e alocată la {anexaAlocataCurenta.spatii_inchiriate_count ?? anexaAlocataCurenta.spatii_count} spații închiriate
+                            {anexaAlocataCurenta.spatii_count !== (anexaAlocataCurenta.spatii_inchiriate_count ?? anexaAlocataCurenta.spatii_count)
+                                ? ` (${anexaAlocataCurenta.spatii_count} alocate în total)`
+                                : ''}.
                             Modificările se pot aplica tuturor sau doar acestui spațiu.
                         </p>
                         <div className="spatiu-dialog-actions">

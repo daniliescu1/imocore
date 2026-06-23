@@ -65,7 +65,7 @@ export default function Imobil({
                                             <td>{formatDecimal(citire?.index_vechi)}</td>
                                             <td>{formatDecimal(citire?.index_nou)}</td>
                                             <td>{formatDecimal(citire?.consum)}</td>
-                                            <td>{contor.configurata ? `${contor.alocari_count} spații` : 'Neconfigurată'}</td>
+                                            <td>{contor.configurata ? `${contor.spatii_inchiriate_count ?? contor.alocari_count} spații închiriate` : 'Neconfigurată'}</td>
                                         </tr>
                                     );
                                 })}

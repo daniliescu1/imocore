@@ -451,7 +451,8 @@ class ContractController extends Controller
                 'implicit' => $configurare->implicit,
                 'denumire' => $configurare->implicit ? "{$configurare->denumire} (implicită)" : $configurare->denumire,
                 'linii_count' => $configurare->linii()->count(),
-                'spatii_count' => Spatiu::query()->where('configurare_anexa_id', $configurare->id)->count(),
+                'spatii_count' => Spatiu::countAlocateForAnexa($configurare->id),
+                'spatii_inchiriate_count' => Spatiu::countInchiriateForAnexa($configurare->id),
             ])->values());
     }
 }

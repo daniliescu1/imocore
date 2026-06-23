@@ -148,7 +148,7 @@ export default function Index({
                                 <th>Implicită</th>
                                 <th>Activă</th>
                                 <th>Servicii</th>
-                                <th>Spații</th>
+                                <th>Spații închiriate</th>
                                 <th aria-label="Acțiuni" />
                             </tr>
                         </thead>
@@ -168,9 +168,9 @@ export default function Index({
                                     <td>{anexa.activ ? 'Da' : 'Nu'}</td>
                                     <td>{anexa.linii_count}</td>
                                     <td onClick={(event) => event.stopPropagation()}>
-                                        {anexa.spatii_count > 0 ? (
+                                        {anexa.spatii_inchiriate_count > 0 ? (
                                             <Link className="table-name-link" href={`/contracte?configurare_anexa_id=${anexa.id}`}>
-                                                {anexa.spatii_count}
+                                                {anexa.spatii_inchiriate_count}
                                             </Link>
                                         ) : (
                                             '0'

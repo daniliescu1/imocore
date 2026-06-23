@@ -631,6 +631,39 @@ a {
     margin-top: 10px;
 }
 
+.annex-spatii-alocate-card {
+    margin-top: 14px;
+}
+
+.annex-spatii-alocate-summary {
+    margin-bottom: 12px;
+}
+
+.annex-spatii-alocate-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    gap: 8px;
+}
+
+.annex-spatii-alocate-list li {
+    display: grid;
+    grid-template-columns: minmax(88px, 120px) minmax(0, 1fr) auto;
+    gap: 12px;
+    align-items: center;
+    padding: 8px 10px;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    background: var(--card);
+    font-size: 13px;
+}
+
+.annex-spatii-alocate-list .annex-spatiu-status {
+    color: var(--text-secondary);
+    white-space: nowrap;
+}
+
 .spatiu-context-banner-compact {
     margin-bottom: 8px;
     padding: 8px 12px;

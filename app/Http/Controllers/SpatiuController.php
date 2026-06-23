@@ -969,7 +969,11 @@ class SpatiuController extends Controller
     {
         return ConfigurareAnexaImobil::query()
             ->where('activ', true)
-            ->withCount(['linii', 'spatii'])
+            ->withCount([
+                'linii',
+                'spatii',
+                'spatii as spatii_inchiriate_count' => fn ($query) => $query->where('status', 'inchiriat'),
+            ])
             ->orderByDesc('implicit')
             ->orderBy('denumire')
             ->get(['id', 'imobil_id', 'denumire', 'implicit'])
@@ -980,6 +984,7 @@ class SpatiuController extends Controller
                 'denumire' => $this->configurareAnexaLabelForSelect($configurare),
                 'linii_count' => $configurare->linii_count,
                 'spatii_count' => $configurare->spatii_count,
+                'spatii_inchiriate_count' => $configurare->spatii_inchiriate_count,
             ])->values());
     }
 

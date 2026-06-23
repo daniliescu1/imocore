@@ -34,9 +34,9 @@ class ContorConfigurabilSync
 
             $keepLinieIds[] = $linie->id;
 
-            $alocariDefault = Spatiu::query()
+            $alocariDefault = Spatiu::idsInchiriateForAnexa($configurare->id);
+            $spatiiAnexaIds = Spatiu::query()
                 ->where('configurare_anexa_id', $configurare->id)
-                ->orderBy('identificator')
                 ->pluck('id')
                 ->map(fn ($id): int => (int) $id)
                 ->all();
@@ -52,7 +52,7 @@ class ContorConfigurabilSync
                     ? array_values(array_intersect($regula->alocariIds(), $alocariDefault))
                     : $alocariDefault,
                 'scaderi' => collect($regula->scaderiNormalizate())
-                    ->filter(fn (array $scadere): bool => in_array($scadere['spatiu_id'], $alocariDefault, true))
+                    ->filter(fn (array $scadere): bool => in_array($scadere['spatiu_id'], $spatiiAnexaIds, true))
                     ->values()
                     ->all(),
             ]);

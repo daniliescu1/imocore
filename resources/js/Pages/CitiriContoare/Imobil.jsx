@@ -195,6 +195,7 @@ export default function Imobil({
     spatii = [],
     contoareConfigurabile = [],
     searchSpatiu = '',
+    searchMatchingSpatiuIds = [],
 }) {
     const serverStateKey = useMemo(() => JSON.stringify({
         imobilId: imobil?.id,
@@ -316,10 +317,19 @@ export default function Imobil({
         spatiu,
         linie,
     }))), [spatii]);
-    const matchingSpatiuIds = useMemo(
-        () => getMatchingSpatiuIds(spatii, search),
-        [spatii, search],
-    );
+    const matchingSpatiuIds = useMemo(() => {
+        const query = String(search || '').trim();
+
+        if (!query) {
+            return null;
+        }
+
+        if (searchMatchingSpatiuIds.length > 0) {
+            return new Set(searchMatchingSpatiuIds.map((spatiuId) => Number(spatiuId)));
+        }
+
+        return getMatchingSpatiuIds(spatii, search);
+    }, [searchMatchingSpatiuIds, spatii, search]);
     const filteredRanduriCitiri = useMemo(
         () => randuriCitiri.filter(({ spatiu, linie }) => matchesCitiriSearch(spatiu, linie, search)),
         [randuriCitiri, search],
@@ -385,7 +395,7 @@ export default function Imobil({
                         {filteredRanduriConfigurabile.length > 0 ? (
                             <div className="contor-config-citiri-block">
                                 <h2 className="contor-config-citiri-title">Contoare configurabile și pausale (imobil)</h2>
-                                <p className="contor-config-citiri-help">Citire unică la nivel de imobil; cantitatea se repartizează pe spațiile alocate din Configurare contoare.</p>
+                                <p className="contor-config-citiri-help">Citire unică la nivel de imobil; cantitatea se împarte la numărul de spații închiriate alocate în Configurare contoare.</p>
                                 <div className="responsive-table">
                                     <table className="citiri-contoare-table contor-config-citiri-table">
                                         <thead>
@@ -415,7 +425,12 @@ export default function Imobil({
 
                                                 return (
                                                     <tr key={`config-${linie.configurare_anexa_linie_id}`}>
-                                                        <td title={linie.anexa}>{linie.anexa || '—'}</td>
+                                                        <td title={linie.anexa}>
+                                                            {linie.anexa || '—'}
+                                                            {linie.alocari_count ? (
+                                                                <span className="spatiu-documente-meta">{` · ${linie.alocari_count} închiriate`}</span>
+                                                            ) : null}
+                                                        </td>
                                                         <td title={linie.denumire}>{linie.denumire}</td>
                                                         <td>{tipCitireLabel(linie.tip_calcul)}</td>
                                                         <td>{linie.um || '—'}</td>

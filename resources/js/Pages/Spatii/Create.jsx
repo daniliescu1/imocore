@@ -688,8 +688,8 @@ export default function Create({
                                 {anexaAlocataCurenta ? (
                                     <span className="spatiu-documente-meta">
                                         {anexaAlocataCurenta.linii_count ?? '—'} servicii
-                                        {(anexaAlocataCurenta.spatii_count ?? 0) > 1
-                                            ? ` · folosită de ${anexaAlocataCurenta.spatii_count} spații`
+                                        {(anexaAlocataCurenta.spatii_inchiriate_count ?? anexaAlocataCurenta.spatii_count ?? 0) > 1
+                                            ? ` · ${anexaAlocataCurenta.spatii_inchiriate_count ?? anexaAlocataCurenta.spatii_count} spații închiriate`
                                             : ' · doar acest spațiu'}
                                     </span>
                                 ) : (

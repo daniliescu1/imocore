@@ -31,7 +31,11 @@ class ConfigurareAnexaController extends Controller
 
         $query = ConfigurareAnexaImobil::query()
             ->with('imobil')
-            ->withCount(['linii', 'spatii'])
+            ->withCount([
+                'linii',
+                'spatii',
+                'spatii as spatii_inchiriate_count' => fn ($query) => $query->where('status', 'inchiriat'),
+            ])
             ->orderByDesc('implicit')
             ->orderBy('denumire');
 
@@ -90,6 +94,7 @@ class ConfigurareAnexaController extends Controller
                 'activ' => $configurare->activ,
                 'linii_count' => $configurare->linii_count,
                 'spatii_count' => $configurare->spatii_count,
+                'spatii_inchiriate_count' => $configurare->spatii_inchiriate_count,
             ]),
             'imobile' => $this->imobileForSelect(),
             'selectedImobilId' => $selectedImobilId,
@@ -171,7 +176,8 @@ class ConfigurareAnexaController extends Controller
     {
         $configurare->load(['imobil', 'linii']);
         $returnUrl = InternalReturnUrl::normalize($request->string('return_url')->toString());
-        $spatiiCount = Spatiu::query()->where('configurare_anexa_id', $configurare->id)->count();
+        $spatiiCount = Spatiu::countAlocateForAnexa($configurare->id);
+        $spatiiInchiriateCount = Spatiu::countInchiriateForAnexa($configurare->id);
         $spatiuId = $request->integer('spatiu_id') ?: null;
         $anexaAnterioaraId = $request->integer('anexa_anterioara_id') ?: null;
         $denumireSugestie = trim($request->string('denumire_sugestie')->toString());
@@ -187,6 +193,8 @@ class ConfigurareAnexaController extends Controller
             'previewSpatiu' => $this->previewSpatiuForForm($configurare, $spatiuId),
             'context' => [
                 'spatii_count' => $spatiiCount,
+                'spatii_inchiriate_count' => $spatiiInchiriateCount,
+                'spatii_alocate' => $this->spatiiAlocateForAnexa($configurare),
             ],
             'personalizare' => [
                 'activ' => $isPersonalizare,
@@ -256,7 +264,7 @@ class ConfigurareAnexaController extends Controller
 
     public function destroy(Request $request, ConfigurareAnexaImobil $configurare): RedirectResponse
     {
-        $spatiiCount = Spatiu::query()->where('configurare_anexa_id', $configurare->id)->count();
+        $spatiiCount = Spatiu::countAlocateForAnexa($configurare->id);
 
         if ($spatiiCount > 0) {
             throw ValidationException::withMessages([
@@ -683,6 +691,26 @@ class ConfigurareAnexaController extends Controller
             'cursImplicit' => Factura::query()->latest()->value('curs_eur') ?: 5,
             'cursSursa' => 'Ultimul curs salvat / fallback',
         ];
+    }
+
+    /**
+     * @return list<array{id: int, identificator: string, chirias: string, status: string, edit_url: string}>
+     */
+    private function spatiiAlocateForAnexa(ConfigurareAnexaImobil $configurare): array
+    {
+        return Spatiu::query()
+            ->where('configurare_anexa_id', $configurare->id)
+            ->orderBy('ordine')
+            ->orderBy('identificator')
+            ->get(['id', 'identificator', 'chirias', 'status'])
+            ->map(fn (Spatiu $spatiu): array => [
+                'id' => $spatiu->id,
+                'identificator' => $spatiu->identificator,
+                'chirias' => $spatiu->chirias ?: '—',
+                'status' => $spatiu->status,
+                'edit_url' => route('spatii.edit', $spatiu),
+            ])
+            ->all();
     }
 
     private function deleteConfigurareAnexa(ConfigurareAnexaImobil $configurare): void

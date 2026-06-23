@@ -589,6 +589,99 @@ class ContorConfigurabilTest extends TestCase
             ->firstOrFail();
 
         $this->assertSame([$spatiuInchiriat->id], $regula->alocariEfectiveIds());
-        $this->assertContains($spatiuLiber->id, $regula->alocariIds());
+        $this->assertSame([$spatiuInchiriat->id], $regula->alocariIds());
+        $this->assertNotContains($spatiuLiber->id, $regula->alocariIds());
+    }
+
+    public function test_pausal_repartizeaza_doar_pe_spatiile_inchiriate_si_afiseaza_numarul_corect(): void
+    {
+        $imobil = Imobil::query()->create([
+            'nume' => '700 Office',
+            'strada' => 'Strada Test',
+            'numar' => '1',
+            'localitate' => 'Timisoara',
+        ]);
+
+        $configurare = ConfigurareAnexaImobil::query()->create([
+            'imobil_id' => $imobil->id,
+            'denumire' => 'Anexa Pers < 50 mp',
+            'implicit' => true,
+            'activ' => true,
+        ]);
+
+        $linieApa = ConfigurareAnexaLinie::query()->create([
+            'configurare_anexa_id' => $configurare->id,
+            'denumire' => 'Consum apa - mc / pers',
+            'tip_calcul' => 'pausal',
+            'um' => 'MC',
+            'pret_unitar' => 9.74,
+            'activ' => true,
+            'ordine' => 1,
+        ]);
+
+        $spatiiInchiriate = collect(range(1, 3))->map(function (int $index) use ($imobil, $configurare): Spatiu {
+            $spatiu = Spatiu::query()->create([
+                'imobil_id' => $imobil->id,
+                'identificator' => "C30{$index}",
+                'status' => 'inchiriat',
+                'configurare_anexa_id' => $configurare->id,
+                'ordine' => $index,
+            ]);
+
+            Contract::query()->create([
+                'spatiu_id' => $spatiu->id,
+                'numar_contract' => "C-{$spatiu->identificator}",
+                'chirias' => 'Test SRL',
+                'data_start' => '2026-01-01',
+                'status' => 'activ',
+            ]);
+
+            return $spatiu;
+        });
+
+        foreach (range(1, 2) as $index) {
+            Spatiu::query()->create([
+                'imobil_id' => $imobil->id,
+                'identificator' => "L30{$index}",
+                'status' => 'liber',
+                'configurare_anexa_id' => $configurare->id,
+                'ordine' => 10 + $index,
+            ]);
+        }
+
+        ContorConfigurabilSync::syncForConfigurare($configurare);
+
+        $regula = ContorConfigurabil::query()
+            ->where('configurare_anexa_linie_id', $linieApa->id)
+            ->firstOrFail();
+
+        $this->assertSame($spatiiInchiriate->pluck('id')->sort()->values()->all(), collect($regula->alocariEfectiveIds())->sort()->values()->all());
+        $this->assertSame(3, Spatiu::countInchiriateForAnexa($configurare->id));
+        $this->assertSame(5, Spatiu::countAlocateForAnexa($configurare->id));
+
+        CitireContor::query()->create([
+            'spatiu_id' => null,
+            'configurare_anexa_linie_id' => $linieApa->id,
+            'luna' => '2026-05',
+            'consum' => 52.5,
+        ]);
+
+        $this->post('/anexe/generare', ['luna' => '2026-06', 'imobil_id' => $imobil->id])
+            ->assertRedirect();
+
+        $cantitatePerSpatiu = round(52.5 / 3, 3);
+
+        foreach (Anexa::query()->with('linii')->get() as $anexa) {
+            $linieGenerata = $anexa->linii->firstWhere('denumire', $linieApa->denumire);
+            $this->assertNotNull($linieGenerata);
+            $this->assertEquals($cantitatePerSpatiu, (float) $linieGenerata->cantitate);
+        }
+
+        $this->get('/configurare-anexa?imobil_id='.$imobil->id)
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('anexe.0.spatii_inchiriate_count', 3)
+                ->where('anexe.0.spatii_count', 5)
+            );
     }
 }

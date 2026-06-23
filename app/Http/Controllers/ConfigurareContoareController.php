@@ -82,13 +82,15 @@ class ConfigurareContoareController extends Controller
             ->map(fn ($id): int => (int) $id)
             ->all();
 
+        $spatiiInchiriateAnexa = Spatiu::idsInchiriateForAnexa((int) $contorConfigurabil->configurare_anexa_id);
+
         $folosesteScaderi = (bool) $validated['foloseste_scaderi'];
         $alocari = $folosesteScaderi
             ? array_values(array_unique(array_map('intval', $validated['alocari'] ?? [])))
-            : $spatiiAnexa;
+            : $spatiiInchiriateAnexa;
 
         foreach ($alocari as $spatiuId) {
-            abort_unless(in_array((int) $spatiuId, $spatiiAnexa, true), 422, 'Spațiile alocate trebuie să aibă aceeași anexă ca contorul configurabil.');
+            abort_unless(in_array((int) $spatiuId, $spatiiInchiriateAnexa, true), 422, 'Spațiile alocate trebuie să fie închiriate și să aibă aceeași anexă ca contorul configurabil.');
         }
 
         $scaderi = [];
@@ -175,6 +177,7 @@ class ConfigurareContoareController extends Controller
             'tip_label' => $this->tipCalculLabel($linie?->tip_calcul),
             'configurata' => $alocari !== [],
             'alocari_count' => count($alocari),
+            'spatii_inchiriate_count' => count($alocari),
             'ultima_citire' => $this->ultimaCitirePentruRegula($regula->configurare_anexa_linie_id, $linie?->tip_calcul),
         ];
     }
@@ -212,8 +215,8 @@ class ConfigurareContoareController extends Controller
                     ? '(cantitate pausal − sumă scăderi) / nr. spații alocate'
                     : '(consum contor − sumă scăderi) / nr. spații alocate')
                 : (TipCalculAnexa::isPausal($linie?->tip_calcul)
-                    ? 'cantitate pausal / nr. spații anexă'
-                    : 'consum contor / nr. spații anexă'),
+                    ? 'cantitate pausal / nr. spații închiriate din anexă'
+                    : 'consum contor / nr. spații închiriate din anexă'),
             'spatiiOptions' => $this->spatiiOptionsForAnexa($regula->configurare_anexa_id),
             'liniiScadereOptions' => $this->liniiScadereOptionsForAnexa($regula->configurare_anexa_id),
             'citiriScadere' => $this->citiriScaderePentruAnexa($regula->configurare_anexa_id, $ultimaCitire['luna'] ?? null),
@@ -299,6 +302,7 @@ class ConfigurareContoareController extends Controller
     {
         return Spatiu::query()
             ->where('configurare_anexa_id', $configurareAnexaId)
+            ->where('status', 'inchiriat')
             ->orderBy('identificator')
             ->get(['id', 'identificator', 'chirias'])
             ->map(fn (Spatiu $spatiu): array => [
