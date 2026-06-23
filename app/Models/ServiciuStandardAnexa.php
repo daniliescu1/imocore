@@ -31,6 +31,7 @@ class ServiciuStandardAnexa extends Model
         'valoare',
         'label',
         'coeficient',
+        'moneda',
         'tva',
         'um',
         'activ',
@@ -69,6 +70,9 @@ class ServiciuStandardAnexa extends Model
                         default => $item->label ?: $item->valoare,
                     },
                     'coeficient' => $item->coeficient,
+                    'moneda' => $item->tip === self::TIP_PRET
+                        ? \App\Support\PretServiciuStandard::normalizeMoneda($item->moneda)
+                        : null,
                     'tva' => $item->tip === self::TIP_PRET && $item->tva
                         ? self::normalizeValoare(self::TIP_TVA, (string) $item->tva)
                         : null,
@@ -218,6 +222,17 @@ class ServiciuStandardAnexa extends Model
             ->value('coeficient');
 
         return $pret !== null && $pret !== '' ? (string) $pret : null;
+    }
+
+    public static function monedaPentruDenumire(string $denumire): string
+    {
+        $moneda = static::query()
+            ->where('tip', self::TIP_PRET)
+            ->where('valoare', $denumire)
+            ->where('activ', true)
+            ->value('moneda');
+
+        return \App\Support\PretServiciuStandard::normalizeMoneda($moneda);
     }
 
     public static function tvaPentruDenumire(string $denumire): ?string

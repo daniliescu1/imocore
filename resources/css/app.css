@@ -3538,8 +3538,20 @@ tr:last-child td {
 }
 
 .preturi-grid-unit {
+    display: inline-flex;
+    align-items: center;
+    min-width: 4.5rem;
+}
+
+.preturi-grid-moneda {
+    width: 100%;
+    border: 0;
+    background: transparent;
     color: var(--text-secondary);
     font-size: 13px;
+    font-weight: 600;
+    padding: 0;
+    cursor: pointer;
 }
 
 .preturi-missing {

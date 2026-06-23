@@ -6,6 +6,8 @@ use App\Models\Anexa;
 use App\Models\CitireContor;
 use App\Models\Contract;
 use App\Models\Imobil;
+use App\Models\ServiciuStandardAnexa;
+use App\Models\SetareAplicatie;
 use App\Models\Spatiu;
 use App\Support\ContorConfigurabilSync;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -359,6 +361,49 @@ class AnexaCoeficientTest extends TestCase
                 ->component('Anexe/Imobil')
                 ->has('anexe', 0)
             );
+    }
+
+    public function test_generarea_anexei_calculeaza_serviciu_fix_in_eur(): void
+    {
+        SetareAplicatie::seteaza('curs_eur_facturare', '5');
+
+        ServiciuStandardAnexa::query()->create([
+            'tip' => ServiciuStandardAnexa::TIP_DENUMIRE,
+            'valoare' => 'Aer conditionat',
+            'label' => 'Aer conditionat',
+            'activ' => true,
+        ]);
+
+        ServiciuStandardAnexa::query()->create([
+            'tip' => ServiciuStandardAnexa::TIP_PRET,
+            'valoare' => 'Aer conditionat',
+            'label' => 'Aer conditionat',
+            'coeficient' => '50',
+            'moneda' => 'EUR',
+            'activ' => true,
+        ]);
+
+        $anexa = $this->genereazaAnexa([], [
+            [
+                'denumire' => 'Aer conditionat',
+                'tip_calcul' => 'fix',
+                'facturat' => '50',
+                'um' => 'buc',
+                'pret_unitar' => '250',
+                'moneda' => 'EUR',
+                'valoare' => '250',
+                'tva_21' => '21',
+                'ordine' => 1,
+                'nr_crt' => 1,
+            ],
+        ]);
+
+        $linie = $anexa->linii->first();
+
+        $this->assertSame('EUR', $linie->moneda);
+        $this->assertEquals(50.0, (float) $linie->cantitate);
+        $this->assertEquals(250.0, (float) $linie->pret_unitar);
+        $this->assertEquals(250.0, round((float) $linie->valoare, 2));
     }
 
     private function genereazaAnexa(array $spatiuAttributes, array $liniiConfigurare): Anexa

@@ -13,6 +13,7 @@ function PreturiGrid({ valori, tvaOptiuni = [], umOptiuni = [] }) {
     const [preturi, setPreturi] = useState(() => (
         Object.fromEntries(valori.map((item) => [item.id, {
             pret: formatDecimal(item.coeficient),
+            moneda: item.moneda || 'RON',
             tva: item.tva || '',
             um: item.um || '',
         }]))
@@ -22,6 +23,7 @@ function PreturiGrid({ valori, tvaOptiuni = [], umOptiuni = [] }) {
     useEffect(() => {
         setPreturi(Object.fromEntries(valori.map((item) => [item.id, {
             pret: formatDecimal(item.coeficient),
+            moneda: item.moneda || 'RON',
             tva: item.tva || '',
             um: item.um || '',
         }])));
@@ -48,6 +50,13 @@ function PreturiGrid({ valori, tvaOptiuni = [], umOptiuni = [] }) {
         }));
     }
 
+    function updateMoneda(id, value) {
+        setPreturi((current) => ({
+            ...current,
+            [id]: { ...current[id], moneda: value },
+        }));
+    }
+
     function blurPret(id) {
         setPreturi((current) => ({
             ...current,
@@ -61,6 +70,7 @@ function PreturiGrid({ valori, tvaOptiuni = [], umOptiuni = [] }) {
             preturi: valori.map((item) => ({
                 id: item.id,
                 coeficient: formatDecimal(preturi[item.id]?.pret) || '',
+                moneda: preturi[item.id]?.moneda || 'RON',
                 tva: preturi[item.id]?.tva || '',
                 um: preturi[item.id]?.um || '',
             })),
@@ -75,7 +85,7 @@ function PreturiGrid({ valori, tvaOptiuni = [], umOptiuni = [] }) {
         <form className="standard-values-grid-wrap" onSubmit={submit}>
             <div className="standard-values-grid">
                 {valori.map((item) => {
-                    const row = preturi[item.id] || { pret: '', tva: '', um: '' };
+                    const row = preturi[item.id] || { pret: '', moneda: 'RON', tva: '', um: '' };
                     const lipsestePret = !hasPret(row.pret);
                     const lipsesteTva = !hasPret(row.tva);
                     const lipsesteUm = !hasPret(row.um);
@@ -95,7 +105,17 @@ function PreturiGrid({ valori, tvaOptiuni = [], umOptiuni = [] }) {
                                         onChange={(event) => updatePret(item.id, event.target.value)}
                                         onBlur={() => blurPret(item.id)}
                                     />
-                                    <span className="preturi-grid-unit">lei</span>
+                                    <span className="preturi-grid-unit">
+                                        <select
+                                            className="preturi-grid-moneda"
+                                            value={row.moneda || 'RON'}
+                                            aria-label={`Monedă ${item.label}`}
+                                            onChange={(event) => updateMoneda(item.id, event.target.value)}
+                                        >
+                                            <option value="RON">lei</option>
+                                            <option value="EUR">EUR</option>
+                                        </select>
+                                    </span>
                                 </div>
                                 <div className="preturi-grid-meta-row">
                                     <select
@@ -267,7 +287,7 @@ export default function ServiciiStandard({ tipActiv, tipuri = [], valori = [], t
 
                 {isPret ? (
                     <>
-                        <p className="standard-values-note">Lista urmează denumirile din tab-ul Denumire serviciu. Setează prețul, UM și TVA pentru fiecare serviciu.</p>
+                        <p className="standard-values-note">Lista urmează denumirile din tab-ul Denumire serviciu. Setează prețul, moneda, UM și TVA pentru fiecare serviciu. Prețurile în EUR se convertesc automat la lei pe anexă folosind cursul valutar.</p>
                         {valori.length === 0 ? (
                             <p className="preturi-grid-empty">Nu există denumiri de serviciu. Adaugă servicii în tab-ul Denumire serviciu.</p>
                         ) : (

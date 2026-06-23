@@ -22,6 +22,7 @@ class AnexaLinie extends Model
         'cantitate',
         'coeficient',
         'pret_unitar',
+        'moneda',
         'valoare',
         'tva_21',
         'observatii',

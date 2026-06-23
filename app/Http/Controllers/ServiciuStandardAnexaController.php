@@ -6,6 +6,7 @@ use App\Models\ConfigurareAnexaLinie;
 use App\Models\Factura;
 use App\Models\ServiciuStandardAnexa;
 use App\Models\SetareAplicatie;
+use App\Support\PretServiciuStandard;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -55,6 +56,9 @@ class ServiciuStandardAnexaController extends Controller
                         default => $item->label ?: $item->valoare,
                     },
                     'coeficient' => $item->coeficient,
+                    'moneda' => $tip === ServiciuStandardAnexa::TIP_PRET
+                        ? PretServiciuStandard::normalizeMoneda($item->moneda)
+                        : null,
                     'tva' => $tip === ServiciuStandardAnexa::TIP_PRET && $item->tva
                         ? ServiciuStandardAnexa::normalizeValoare(ServiciuStandardAnexa::TIP_TVA, (string) $item->tva)
                         : null,
@@ -100,9 +104,12 @@ class ServiciuStandardAnexaController extends Controller
             'preturi' => ['required', 'array'],
             'preturi.*.id' => ['required', 'integer'],
             'preturi.*.coeficient' => ['nullable', 'string', 'max:32'],
+            'preturi.*.moneda' => ['nullable', 'string', 'in:RON,EUR'],
             'preturi.*.tva' => ['nullable', 'string', 'max:16'],
             'preturi.*.um' => ['nullable', 'string', 'max:32'],
         ]);
+
+        $curs = PretServiciuStandard::cursEur();
 
         foreach ($validated['preturi'] as $pret) {
             $item = ServiciuStandardAnexa::query()
@@ -128,20 +135,23 @@ class ServiciuStandardAnexaController extends Controller
 
             $um = trim((string) ($pret['um'] ?? ''));
             $um = $um === '' ? null : $um;
+            $moneda = PretServiciuStandard::normalizeMoneda($pret['moneda'] ?? $item->moneda);
 
             $item->update([
                 'coeficient' => $coeficient,
+                'moneda' => $moneda,
                 'tva' => $tva,
                 'um' => $um,
             ]);
 
-            ConfigurareAnexaLinie::query()
-                ->where('denumire', $item->valoare)
-                ->update([
-                    'pret_unitar' => $coeficient,
-                    'tva_21' => $tva,
-                    'um' => $um,
-                ]);
+            PretServiciuStandard::propagateToLinii(
+                $item->valoare,
+                $coeficient,
+                $moneda,
+                $tva,
+                $um,
+                $curs,
+            );
         }
 
         return redirect()
@@ -182,9 +192,13 @@ class ServiciuStandardAnexaController extends Controller
         );
 
         if ($tip === ServiciuStandardAnexa::TIP_PRET && $coeficient !== null) {
-            ConfigurareAnexaLinie::query()
-                ->where('denumire', $valoare)
-                ->update(['pret_unitar' => $coeficient]);
+            PretServiciuStandard::propagateToLinii(
+                $valoare,
+                $coeficient,
+                PretServiciuStandard::MONEDA_RON,
+                null,
+                null,
+            );
         }
 
         if ($tip === ServiciuStandardAnexa::TIP_DENUMIRE) {
@@ -211,6 +225,7 @@ class ServiciuStandardAnexaController extends Controller
             'valoare' => ['required', 'string', 'max:255'],
             'label' => ['nullable', 'string', 'max:255'],
             'coeficient' => [$tip === ServiciuStandardAnexa::TIP_PRET ? 'required' : 'nullable', 'numeric', 'min:0'],
+            'moneda' => [$tip === ServiciuStandardAnexa::TIP_PRET ? 'nullable' : 'prohibited', 'string', 'in:RON,EUR'],
             'tva' => [$tip === ServiciuStandardAnexa::TIP_PRET ? 'nullable' : 'prohibited', 'string', 'max:16'],
             'um' => [$tip === ServiciuStandardAnexa::TIP_PRET ? 'nullable' : 'prohibited', 'string', 'max:32'],
             'activ' => ['nullable', 'boolean'],
@@ -225,6 +240,9 @@ class ServiciuStandardAnexaController extends Controller
         $um = $tip === ServiciuStandardAnexa::TIP_PRET
             ? $this->umForPretStore($validated['um'] ?? null)
             : null;
+        $moneda = $tip === ServiciuStandardAnexa::TIP_PRET
+            ? PretServiciuStandard::normalizeMoneda($validated['moneda'] ?? $serviciuStandard->moneda)
+            : null;
 
         if ($valoareNoua !== $valoareVeche && $this->esteFolosit($tip, $valoareVeche)) {
             $this->actualizeazaLiniiConfigurate($tip, $valoareVeche, $valoareNoua);
@@ -237,17 +255,13 @@ class ServiciuStandardAnexaController extends Controller
         }
 
         if ($tip === ServiciuStandardAnexa::TIP_PRET) {
-            $linieUpdates = array_filter([
-                'pret_unitar' => $coeficient,
-                'tva_21' => $tva,
-                'um' => $um,
-            ], fn ($value) => $value !== null);
-
-            if ($linieUpdates !== []) {
-                ConfigurareAnexaLinie::query()
-                    ->where('denumire', $valoareNoua)
-                    ->update($linieUpdates);
-            }
+            PretServiciuStandard::propagateToLinii(
+                $valoareNoua,
+                $coeficient,
+                $moneda,
+                $tva,
+                $um,
+            );
         }
 
         if ($tip === ServiciuStandardAnexa::TIP_DENUMIRE && $valoareNoua !== $valoareVeche) {
@@ -264,6 +278,7 @@ class ServiciuStandardAnexaController extends Controller
             'valoare' => $valoareNoua,
             'label' => $this->labelForStore($tip, $valoareNoua, $validated['label'] ?? null),
             'coeficient' => $coeficient,
+            'moneda' => $moneda,
             'tva' => $tva,
             'um' => $um,
             'activ' => (bool) ($validated['activ'] ?? $serviciuStandard->activ),

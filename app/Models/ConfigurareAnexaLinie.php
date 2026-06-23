@@ -21,6 +21,7 @@ class ConfigurareAnexaLinie extends Model
         'coeficient',
         'um',
         'pret_unitar',
+        'moneda',
         'valoare',
         'tva_21',
         'tip_calcul',

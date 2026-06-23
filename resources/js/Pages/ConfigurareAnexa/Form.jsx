@@ -13,6 +13,7 @@ const emptyAnexaLine = {
     coeficient: '',
     um: '',
     pret_unitar: '',
+    moneda: 'RON',
     valoare: '',
     tva_21: '',
     tip_calcul: 'manual',
@@ -108,6 +109,25 @@ function tvaForDenumire(denumire, serviciiStandard) {
     return standardForDenumire(denumire, serviciiStandard)?.tva ?? null;
 }
 
+function usesEurFacturat(tipCalcul) {
+    return tipCalcul === 'fix'
+        || isAdministrareValue(tipCalcul)
+        || tipCalcul === 'manual'
+        || tipCalcul === 'zero';
+}
+
+function pretUnitarFromStandard(standard, cursEur) {
+    if (!standard?.pret) {
+        return null;
+    }
+
+    if (standard.moneda === 'EUR') {
+        return formatDecimalForInput((Number(standard.pret) * Number(cursEur)).toFixed(4));
+    }
+
+    return standard.pret;
+}
+
 function standardForDenumire(denumire, serviciiStandard) {
     if (!denumire) return null;
 
@@ -126,26 +146,37 @@ function standardForDenumire(denumire, serviciiStandard) {
         : formatDecimalForInput(pretStandard.coeficient);
     const tva = pretStandard.tva ? normalizeTvaValue(pretStandard.tva) : null;
     const um = pretStandard.um ? String(pretStandard.um).trim() : null;
+    const moneda = pretStandard.moneda || 'RON';
 
-    return { pret, tva, um };
+    return { pret, tva, um, moneda };
 }
 
-function applyStandardValuesToLine(line, serviciiStandard) {
+function applyStandardValuesToLine(line, serviciiStandard, cursEur = 5) {
     const standard = standardForDenumire(line.denumire, serviciiStandard);
 
     if (!standard) {
         return line;
     }
 
-    return {
+    const moneda = standard.moneda || 'RON';
+    const pretUnitar = pretUnitarFromStandard(standard, cursEur);
+    const nextLine = {
         ...line,
-        ...(standard.pret !== null ? { pret_unitar: standard.pret } : {}),
+        moneda,
+        ...(pretUnitar !== null ? { pret_unitar: pretUnitar } : {}),
         ...(standard.tva !== null && standard.tva !== '' ? { tva_21: standard.tva } : {}),
         ...(standard.um ? { um: standard.um } : {}),
     };
+
+    if (moneda === 'EUR' && standard.pret !== null && usesEurFacturat(line.tip_calcul)) {
+        nextLine.facturat = standard.pret;
+        nextLine.valoare = formatDecimalForInput((Number(standard.pret) * Number(cursEur)).toFixed(2));
+    }
+
+    return nextLine;
 }
 
-function buildFormState(anexa, selectedImobilId, serviciiStandard = {}, personalizare = null) {
+function buildFormState(anexa, selectedImobilId, serviciiStandard = {}, personalizare = null, cursEur = 5) {
     const denumire = String(anexa?.denumire || '').trim()
         ? anexa.denumire
         : (personalizare?.denumire_sugestie || '');
@@ -158,7 +189,7 @@ function buildFormState(anexa, selectedImobilId, serviciiStandard = {}, personal
         observatii: anexa?.observatii || '',
         linii: renumberLines(
             anexa?.linii?.length
-                ? anexa.linii.map((line) => applyStandardValuesToLine(formatLineForForm(line), serviciiStandard))
+                ? anexa.linii.map((line) => applyStandardValuesToLine(formatLineForForm(line), serviciiStandard, cursEur))
                 : [{ ...emptyAnexaLine }],
         ),
     };
@@ -199,7 +230,11 @@ function calculatedFacturat(indexVechi, indexNou) {
     return String(Number((nou - vechi).toFixed(3)));
 }
 
-function calculatedValoare(facturat, pretUnitar) {
+function calculatedValoare(facturat, pretUnitar, moneda = 'RON', tipCalcul = '') {
+    if (moneda === 'EUR' && usesEurFacturat(tipCalcul)) {
+        return pretUnitar ?? '';
+    }
+
     const cantitate = numericValue(facturat);
     const pret = numericValue(pretUnitar);
 
@@ -261,6 +296,7 @@ function formatLineForForm(line) {
         index_nou: stripIndex ? '' : formatDecimalForInput(line.index_nou),
         facturat: stripQuantities ? '' : formatDecimalForInput(line.facturat),
         pret_unitar: formatDecimalForInput(line.pret_unitar),
+        moneda: line.moneda || 'RON',
         valoare: stripQuantities ? '' : formatDecimalForInput(line.valoare),
         coeficient: isCoeficient
             ? (coeficientFallback(line.coeficient) || coeficientFallback(line.index_nou) || '0.09')
@@ -314,6 +350,7 @@ export default function Form({
     previewSpatiu = null,
     context = null,
     personalizare = null,
+    cursImplicit = 5,
 }) {
     const isEditing = Boolean(anexa);
     const isPersonalizare = Boolean(personalizare?.activ);
@@ -322,7 +359,7 @@ export default function Form({
         && personalizare?.anexa_anterioara_id
         && anexa?.id;
     const denumireInputRef = useRef(null);
-    const { data, setData, post, put, processing, errors, transform } = useForm(buildFormState(anexa, selectedImobilId, serviciiStandard, personalizare));
+    const { data, setData, post, put, processing, errors, transform } = useForm(buildFormState(anexa, selectedImobilId, serviciiStandard, personalizare, cursImplicit));
 
     useEffect(() => {
         if (!isPersonalizare || !denumireInputRef.current) {
@@ -358,12 +395,15 @@ export default function Form({
             }
 
             if (linie.tip_calcul === 'fix' || isAdministrareValue(tipCalcul)) {
+                const moneda = linie.moneda || 'RON';
+
                 return {
                     ...base,
                     index_vechi: '',
                     index_nou: '',
+                    moneda,
                     facturat: linie.facturat ?? '',
-                    valoare: calculatedValoare(linie.facturat, linie.pret_unitar),
+                    valoare: calculatedValoare(linie.facturat, linie.pret_unitar, moneda, tipCalcul),
                 };
             }
 
@@ -429,21 +469,11 @@ export default function Form({
             const nextLine = { ...linie, [field]: field === 'nr_crt' ? lineIndex + 1 : value };
 
             if (field === 'denumire') {
-                const standard = standardForDenumire(value, serviciiStandard);
-                nextLine.pret_unitar = standard?.pret ?? '';
-                nextLine.tva_21 = standard?.tva ?? '';
-                nextLine.um = standard?.um ?? '';
-            } else if (field === 'tip_calcul' && nextLine.denumire) {
-                const standard = standardForDenumire(nextLine.denumire, serviciiStandard);
-                if (standard?.pret !== null && standard?.pret !== undefined) {
-                    nextLine.pret_unitar = standard.pret;
-                }
-                if (standard?.tva) {
-                    nextLine.tva_21 = standard.tva;
-                }
-                if (standard?.um) {
-                    nextLine.um = standard.um;
-                }
+                return applyStandardValuesToLine(nextLine, serviciiStandard, cursImplicit);
+            }
+
+            if (field === 'tip_calcul' && nextLine.denumire) {
+                return applyStandardValuesToLine(nextLine, serviciiStandard, cursImplicit);
             }
 
             if (field === 'tip_calcul') {
@@ -494,7 +524,12 @@ export default function Form({
             }
 
             if (['index_vechi', 'index_nou', 'facturat', 'pret_unitar', 'denumire', 'tip_calcul'].includes(field)) {
-                nextLine.valoare = calculatedValoare(nextLine.facturat, nextLine.pret_unitar);
+                nextLine.valoare = calculatedValoare(
+                    nextLine.facturat,
+                    nextLine.pret_unitar,
+                    nextLine.moneda,
+                    nextLine.tip_calcul,
+                );
             }
 
             return nextLine;
@@ -516,7 +551,7 @@ export default function Form({
             applyStandardValuesToLine({
                 ...emptyCoeficientLine,
                 denumire,
-            }, serviciiStandard),
+            }, serviciiStandard, cursImplicit),
         ]));
     }
 

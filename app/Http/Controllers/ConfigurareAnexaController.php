@@ -26,6 +26,7 @@ class ConfigurareAnexaController extends Controller
     public function index(Request $request): Response
     {
         $selectedImobilId = $request->integer('imobil_id') ?: null;
+        $search = trim($request->string('search')->toString());
 
         $query = ConfigurareAnexaImobil::query()
             ->with('imobil')
@@ -35,6 +36,47 @@ class ConfigurareAnexaController extends Controller
 
         if ($selectedImobilId) {
             $query->where('imobil_id', $selectedImobilId);
+        }
+
+        $spatiiCautate = [];
+
+        if ($search !== '') {
+            $spatiiQuery = Spatiu::query()
+                ->with(['imobil', 'configurareAnexa'])
+                ->when($selectedImobilId, fn ($query) => $query->where('imobil_id', $selectedImobilId))
+                ->where(function ($query) use ($search) {
+                    $query->where('identificator', 'like', "%{$search}%")
+                        ->orWhere('locator', 'like', "%{$search}%")
+                        ->orWhere('chirias', 'like', "%{$search}%");
+                });
+
+            $spatiiCautate = $spatiiQuery
+                ->orderBy('ordine')
+                ->orderBy('id')
+                ->get()
+                ->map(fn (Spatiu $spatiu): array => [
+                    'id' => $spatiu->id,
+                    'identificator' => $spatiu->identificator,
+                    'chirias' => $spatiu->chirias,
+                    'imobil' => $spatiu->imobil?->nume ?: '—',
+                    'configurare_anexa_id' => $spatiu->configurare_anexa_id,
+                    'anexa' => $spatiu->configurareAnexa?->denumire,
+                ])
+                ->values()
+                ->all();
+
+            $configurareIds = collect($spatiiCautate)
+                ->pluck('configurare_anexa_id')
+                ->filter()
+                ->unique()
+                ->values()
+                ->all();
+
+            if ($configurareIds === []) {
+                $query->whereRaw('0 = 1');
+            } else {
+                $query->whereIn('id', $configurareIds);
+            }
         }
 
         return Inertia::render('ConfigurareAnexa/Index', [
@@ -50,6 +92,10 @@ class ConfigurareAnexaController extends Controller
             ]),
             'imobile' => $this->imobileForSelect(),
             'selectedImobilId' => $selectedImobilId,
+            'spatiiCautate' => $spatiiCautate,
+            'filters' => [
+                'search' => $search,
+            ],
             ...$this->cursEurForm(),
         ]);
     }
@@ -78,6 +124,7 @@ class ConfigurareAnexaController extends Controller
             'returnUrl' => $returnUrl,
             'spatiuId' => $request->integer('spatiu_id') ?: null,
             'previewSpatiu' => $this->previewSpatiuForForm(null, $request->integer('spatiu_id') ?: null),
+            ...$this->cursEurForm(),
         ]);
     }
 
@@ -146,6 +193,7 @@ class ConfigurareAnexaController extends Controller
                 'spatiu_id' => $spatiuId ?: null,
                 'anexa_anterioara_id' => $anexaAnterioaraId ?: null,
             ],
+            ...$this->cursEurForm(),
         ]);
     }
 
@@ -308,6 +356,7 @@ class ConfigurareAnexaController extends Controller
                     'coeficient' => $coeficient,
                     'um' => $linie->um,
                     'pret_unitar' => $linie->pret_unitar,
+                    'moneda' => \App\Support\PretServiciuStandard::normalizeMoneda($linie->moneda),
                     'valoare' => $this->valoareForForm($linie, $tipCalcul),
                     'tva_21' => $this->tvaForForm($linie->tva_21),
                     'tip_calcul' => $tipCalcul,
@@ -338,6 +387,7 @@ class ConfigurareAnexaController extends Controller
             'linii.*.coeficient' => ['nullable', 'numeric'],
             'linii.*.um' => ['nullable', 'string', 'max:50'],
             'linii.*.pret_unitar' => ['nullable', 'numeric'],
+            'linii.*.moneda' => ['nullable', 'string', 'in:RON,EUR'],
             'linii.*.valoare' => ['nullable', 'numeric'],
             'linii.*.tva_21' => ['nullable', 'numeric'],
             'linii.*.tip_calcul' => ['nullable', 'string', 'max:255'],
@@ -394,6 +444,9 @@ class ConfigurareAnexaController extends Controller
                 'coeficient' => $tipLinie === 'header' ? null : ($linieData['coeficient'] ?? null),
                 'um' => $tipLinie === 'header' ? null : ($linieData['um'] ?? null),
                 'pret_unitar' => $tipLinie === 'header' ? null : ($linieData['pret_unitar'] ?? null),
+                'moneda' => $tipLinie === 'header'
+                    ? null
+                    : \App\Support\PretServiciuStandard::normalizeMoneda($linieData['moneda'] ?? null),
                 'valoare' => $tipLinie === 'header' ? null : ($linieData['valoare'] ?? null),
                 'tva_21' => $tipLinie === 'header' ? null : $this->normalizeTvaForSave($linieData['tva_21'] ?? null),
                 'tip_calcul' => $tipCalcul,

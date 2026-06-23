@@ -7,6 +7,7 @@ use App\Models\ConfigurareAnexaImobil;
 use App\Models\Contract;
 use App\Models\Imobil;
 use App\Models\ServiciuStandardAnexa;
+use App\Models\SetareAplicatie;
 use App\Models\Spatiu;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Inertia\Testing\AssertableInertia as Assert;
@@ -835,5 +836,138 @@ class ConfigurareAnexaPageTest extends TestCase
 
         $this->assertNull(ConfigurareAnexaImobil::query()->find($implicita->id));
         $this->assertTrue((bool) $alta->fresh()->implicit);
+    }
+
+    public function test_preturile_standard_in_eur_se_propaga_la_linii_cu_conversie(): void
+    {
+        SetareAplicatie::seteaza('curs_eur_facturare', '5');
+
+        ServiciuStandardAnexa::query()->create([
+            'tip' => ServiciuStandardAnexa::TIP_DENUMIRE,
+            'valoare' => 'Aer conditionat',
+            'label' => 'Aer conditionat',
+            'activ' => true,
+        ]);
+
+        ServiciuStandardAnexa::syncPreturiFromDenumire();
+
+        $pret = ServiciuStandardAnexa::query()
+            ->where('tip', ServiciuStandardAnexa::TIP_PRET)
+            ->where('valoare', 'Aer conditionat')
+            ->firstOrFail();
+
+        $imobil = Imobil::query()->create([
+            'nume' => 'Imobil aer conditionat',
+            'strada' => 'Strada Test',
+            'numar' => '1',
+            'localitate' => 'Timisoara',
+        ]);
+
+        $configurare = $imobil->configurariAnexe()->create([
+            'denumire' => 'Anexa aer',
+            'implicit' => true,
+        ]);
+
+        $configurare->linii()->create([
+            'denumire' => 'Aer conditionat',
+            'tip_calcul' => 'fix',
+            'um' => 'buc',
+            'pret_unitar' => '1',
+            'activ' => true,
+        ]);
+
+        $this->put(route('configurare-anexa.servicii-standard.pret.bulk'), [
+            'preturi' => [
+                [
+                    'id' => $pret->id,
+                    'coeficient' => '50',
+                    'moneda' => 'EUR',
+                    'tva' => '21',
+                    'um' => 'buc',
+                ],
+            ],
+        ])->assertRedirect(route('configurare-anexa.servicii-standard.index', ['tip' => ServiciuStandardAnexa::TIP_PRET]));
+
+        $pret->refresh();
+        $linie = $configurare->linii()->first()->fresh();
+
+        $this->assertSame('EUR', $pret->moneda);
+        $this->assertSame('50.0000', (string) $pret->coeficient);
+        $this->assertSame('EUR', $linie->moneda);
+        $this->assertSame('250.0000', (string) $linie->pret_unitar);
+        $this->assertSame('50.000', (string) $linie->facturat);
+        $this->assertSame('250.00', (string) $linie->valoare);
+    }
+
+    public function test_indexul_configurare_anexa_filtreaza_anexele_dupa_spatiu(): void
+    {
+        $imobil = Imobil::query()->create([
+            'nume' => '700 Office',
+            'strada' => 'Strada A',
+            'numar' => '1',
+            'localitate' => 'Timisoara',
+        ]);
+
+        $anexaPrincipala = $imobil->configurariAnexe()->create([
+            'denumire' => 'Anexa principala',
+            'implicit' => true,
+        ]);
+
+        $anexaSecundara = $imobil->configurariAnexe()->create([
+            'denumire' => 'Anexa secundara',
+            'implicit' => false,
+        ]);
+
+        Spatiu::query()->create([
+            'imobil_id' => $imobil->id,
+            'identificator' => 'HQC118',
+            'chirias' => 'Supermedical SRL',
+            'status' => 'inchiriat',
+            'configurare_anexa_id' => $anexaPrincipala->id,
+        ]);
+
+        Spatiu::query()->create([
+            'imobil_id' => $imobil->id,
+            'identificator' => 'E306',
+            'chirias' => 'Alt chiriaș',
+            'status' => 'inchiriat',
+            'configurare_anexa_id' => $anexaSecundara->id,
+        ]);
+
+        $this->get(route('configurare-anexa.index', ['search' => 'HQC118']))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('ConfigurareAnexa/Index')
+                ->where('filters.search', 'HQC118')
+                ->has('anexe', 1)
+                ->where('anexe.0.denumire', 'Anexa principala')
+                ->has('spatiiCautate', 1)
+                ->where('spatiiCautate.0.identificator', 'HQC118')
+            );
+    }
+
+    public function test_indexul_configurare_anexa_afiseaza_mesaj_cand_spatiul_nu_are_anexa(): void
+    {
+        $imobil = Imobil::query()->create([
+            'nume' => '700 Office',
+            'strada' => 'Strada A',
+            'numar' => '1',
+            'localitate' => 'Timisoara',
+        ]);
+
+        Spatiu::query()->create([
+            'imobil_id' => $imobil->id,
+            'identificator' => 'HQC118',
+            'chirias' => 'Supermedical SRL',
+            'status' => 'liber',
+        ]);
+
+        $this->get(route('configurare-anexa.index', ['search' => 'Supermedical']))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('ConfigurareAnexa/Index')
+                ->has('anexe', 0)
+                ->has('spatiiCautate', 1)
+            );
     }
 }

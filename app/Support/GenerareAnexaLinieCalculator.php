@@ -5,6 +5,7 @@ namespace App\Support;
 use App\Models\CitireContor;
 use App\Models\ConfigurareAnexaLinie;
 use App\Models\ContorConfigurabil;
+use App\Models\ServiciuStandardAnexa;
 use App\Models\Spatiu;
 
 class GenerareAnexaLinieCalculator
@@ -106,8 +107,25 @@ class GenerareAnexaLinieCalculator
 
         $pretUnitar = $linieConfigurata->pret_unitar;
         $valoare = $linieConfigurata->valoare;
+        $moneda = PretServiciuStandard::normalizeMoneda($linieConfigurata->moneda);
 
-        if ($cantitate !== null && $pretUnitar !== null) {
+        if ($moneda === PretServiciuStandard::MONEDA_EUR) {
+            $pretEur = ServiciuStandardAnexa::pretPentruDenumire((string) $linieConfigurata->denumire)
+                ?? $linieConfigurata->facturat;
+            $curs = PretServiciuStandard::cursEur();
+            $pretUnitar = PretServiciuStandard::pretUnitarLei($pretEur, $moneda, $curs);
+
+            if (TipCalculAnexa::folosesteFacturatDinTemplate($tipCalcul)) {
+                $cantitate = $pretEur !== null && $pretEur !== ''
+                    ? (float) $pretEur
+                    : $cantitate;
+                $valoare = (float) (PretServiciuStandard::valoareLeiDinPretEur($pretEur, $curs) ?? 0);
+            }
+        }
+
+        if ($cantitate !== null && $pretUnitar !== null && $moneda !== PretServiciuStandard::MONEDA_EUR) {
+            $valoare = (float) $cantitate * (float) $pretUnitar;
+        } elseif ($cantitate !== null && $pretUnitar !== null && $moneda === PretServiciuStandard::MONEDA_EUR && ! TipCalculAnexa::folosesteFacturatDinTemplate($tipCalcul)) {
             $valoare = (float) $cantitate * (float) $pretUnitar;
         }
 
@@ -127,6 +145,7 @@ class GenerareAnexaLinieCalculator
             'cantitate' => $cantitate,
             'coeficient' => $coeficient,
             'pret_unitar' => $pretUnitar,
+            'moneda' => $moneda,
             'valoare' => $valoare,
             'tva_21' => $sumaTva,
         ];
