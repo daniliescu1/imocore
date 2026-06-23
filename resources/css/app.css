@@ -839,6 +839,52 @@ a {
     overflow-x: auto;
 }
 
+.responsive-table.keyboard-scroll-table:focus-visible {
+    outline: 2px solid rgba(43, 94, 58, 0.35);
+    outline-offset: 2px;
+}
+
+.citiri-imobil-embedded-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 16px 18px 0;
+}
+
+.citiri-imobil-embedded-header h2 {
+    margin: 0 0 4px;
+}
+
+.citiri-imobil-embedded-header p {
+    margin: 0;
+    color: var(--text-secondary);
+}
+
+.citiri-imobil-embedded-actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 10px;
+}
+
+.citiri-imobil-panel-controls {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px;
+}
+
+.citiri-search-results {
+    display: grid;
+    gap: 18px;
+}
+
+.citiri-imobil-embedded-form {
+    margin-top: 0;
+}
+
 table {
     width: 100%;
     border-collapse: collapse;

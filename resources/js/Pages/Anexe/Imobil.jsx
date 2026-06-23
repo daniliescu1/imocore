@@ -2,6 +2,7 @@ import React from 'react';
 import { Link, router, useForm } from '@inertiajs/react';
 import { Trash2 } from 'lucide-react';
 import AppLayout from '../../Layouts/AppLayout';
+import { useDebouncedSearch } from '../../lib/useDebouncedSearch';
 
 function formatMoney(value) {
     if (value === null || value === undefined || value === '') return '—';
@@ -23,7 +24,14 @@ const luni = [
     ['12', 'Decembrie'],
 ];
 
-export default function Imobil({ imobil, anexe = [], lunaImplicita = '', contracteEligibile = 0 }) {
+function buildFilters(filters, overrides = {}) {
+    return {
+        search: filters.search || '',
+        ...overrides,
+    };
+}
+
+export default function Imobil({ imobil, anexe = [], lunaImplicita = '', contracteEligibile = 0, filters = {} }) {
     const [anImplicit, lunaImplicit] = String(lunaImplicita || '').split('-');
     const { data, setData, processing } = useForm({
         luna: lunaImplicit || String(new Date().getMonth() + 1).padStart(2, '0'),
@@ -34,6 +42,17 @@ export default function Imobil({ imobil, anexe = [], lunaImplicita = '', contrac
     const anUtilitati = data.luna === '01' ? String(Number(data.an) - 1) : data.an;
     const lunaUtilitati = luni.find(([value]) => value === lunaUtilitatiValue)?.[1] || '—';
     const lunaPentruBackend = `${data.an}-${data.luna}`;
+
+    function updateFilters(overrides = {}) {
+        router.get(`/anexe/imobil/${imobil.id}`, buildFilters(filters, overrides), {
+            preserveState: true,
+            preserveScroll: true,
+        });
+    }
+
+    const [searchDraft, handleSearchChange] = useDebouncedSearch(filters.search, (value) => {
+        updateFilters({ search: value });
+    });
 
     function generate(event) {
         event.preventDefault();
@@ -52,22 +71,45 @@ export default function Imobil({ imobil, anexe = [], lunaImplicita = '', contrac
 
     function deleteAllAnexe() {
         if (anexe.length === 0) return;
-        if (!window.confirm(`Ștergi toate cele ${anexe.length} anexe generate pentru acest imobil?`)) return;
 
-        router.delete(`/anexe/imobil/${imobil.id}`, { preserveScroll: true });
+        const confirmMessage = hasActiveFilters
+            ? `Ștergi cele ${anexe.length} anexe afișate (filtrate)?`
+            : `Ștergi toate cele ${anexe.length} anexe generate pentru acest imobil?`;
+
+        if (!window.confirm(confirmMessage)) return;
+
+        router.delete(`/anexe/imobil/${imobil.id}`, {
+            data: buildFilters(filters),
+            preserveScroll: true,
+        });
     }
 
+    const hasActiveFilters = Boolean(filters.search);
+
     const topbarActions = (
-        <form className="topbar-actions" onSubmit={generate}>
-            <select className="filter-input topbar-filter" value={data.luna} onChange={(event) => setData('luna', event.target.value)}>
-                {luni.map(([value, label]) => <option value={value} key={value}>{value} - {label}</option>)}
-            </select>
-            <input className="filter-input topbar-filter" type="number" min="2000" max="2100" value={data.an} onChange={(event) => setData('an', event.target.value)} />
-            <button className="primary-button topbar-primary-button" type="submit" disabled={processing}>
-                {processing ? 'Se generează...' : 'Generează pentru imobil'}
-            </button>
-        </form>
+        <>
+            <input
+                className="filter-input topbar-search"
+                type="search"
+                value={searchDraft}
+                placeholder="Caută contract, spațiu, chiriaș..."
+                onChange={(event) => handleSearchChange(event.target.value)}
+            />
+            <form className="topbar-actions" onSubmit={generate}>
+                <select className="filter-input topbar-filter" value={data.luna} onChange={(event) => setData('luna', event.target.value)}>
+                    {luni.map(([value, label]) => <option value={value} key={value}>{value} - {label}</option>)}
+                </select>
+                <input className="filter-input topbar-filter" type="number" min="2000" max="2100" value={data.an} onChange={(event) => setData('an', event.target.value)} />
+                <button className="primary-button topbar-primary-button" type="submit" disabled={processing}>
+                    {processing ? 'Se generează...' : 'Generează pentru imobil'}
+                </button>
+            </form>
+        </>
     );
+
+    const emptyMessage = hasActiveFilters
+        ? 'Nu există anexe care să corespundă căutării.'
+        : 'Nu există anexe generate pentru acest imobil. Alege luna și apasă Generează pentru imobil.';
 
     return (
         <AppLayout title={`Anexe ${imobil.nume}`} showGlobalSearch={false} topbarActions={topbarActions}>
@@ -129,7 +171,7 @@ export default function Imobil({ imobil, anexe = [], lunaImplicita = '', contrac
                             })}
                             {anexe.length === 0 ? (
                                 <tr>
-                                    <td colSpan="7">Nu există anexe generate pentru acest imobil. Alege luna și apasă Generează pentru imobil.</td>
+                                    <td colSpan="7">{emptyMessage}</td>
                                 </tr>
                             ) : null}
                         </tbody>

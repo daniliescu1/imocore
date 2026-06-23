@@ -4,9 +4,30 @@ namespace App\Support;
 
 use App\Models\Imobil;
 use App\Models\Spatiu;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Collection;
 
 class SpatiuIndexSearch
 {
+    /**
+     * @param  Builder<Spatiu>  $query
+     * @return Collection<int, Spatiu>
+     */
+    public static function fetchOrdered(Builder $query): Collection
+    {
+        return $query
+            ->orderBy('spatii.ordine')
+            ->orderBy('spatii.id')
+            ->get()
+            ->sortBy([
+                fn (Spatiu $spatiu) => $spatiu->imobil?->ordine ?? PHP_INT_MAX,
+                fn (Spatiu $spatiu) => $spatiu->imobil?->id ?? PHP_INT_MAX,
+                fn (Spatiu $spatiu) => $spatiu->ordine ?? PHP_INT_MAX,
+                fn (Spatiu $spatiu) => $spatiu->id,
+            ])
+            ->values();
+    }
+
     /**
      * @return list<string>
      */
@@ -63,14 +84,7 @@ class SpatiuIndexSearch
                 ->orWhere('chirias', 'like', "%{$search}%");
         });
 
-        return $query
-            ->join('imobile', 'spatii.imobil_id', '=', 'imobile.id')
-            ->orderBy('imobile.ordine')
-            ->orderBy('imobile.id')
-            ->orderBy('spatii.ordine')
-            ->orderBy('spatii.id')
-            ->select('spatii.*')
-            ->get()
+        return self::fetchOrdered($query)
             ->map(fn (Spatiu $spatiu): array => self::mapSpatiuForList($spatiu))
             ->all();
     }

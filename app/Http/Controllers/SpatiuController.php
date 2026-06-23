@@ -15,6 +15,7 @@ use App\Support\ContorConfigurabilSync;
 use App\Support\DecimalInput;
 use App\Support\InternalReturnUrl;
 use App\Support\SincronizareContoareDinAnexa;
+use App\Support\SpatiuIndexSearch;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -123,14 +124,7 @@ class SpatiuController extends Controller
                 ->orWhere('chirias', 'like', "%{$search}%");
         });
 
-        $spatii = $query
-            ->join('imobile', 'spatii.imobil_id', '=', 'imobile.id')
-            ->orderBy('imobile.ordine')
-            ->orderBy('imobile.id')
-            ->orderBy('spatii.ordine')
-            ->orderBy('spatii.id')
-            ->select('spatii.*')
-            ->get()
+        $spatii = SpatiuIndexSearch::fetchOrdered($query)
             ->map(fn (Spatiu $spatiu): array => $this->mapSpatiuForList($spatiu));
 
         return Inertia::render('Spatii/Index', [
@@ -254,14 +248,7 @@ class SpatiuController extends Controller
             });
         }
 
-        $spatii = $query
-            ->join('imobile', 'spatii.imobil_id', '=', 'imobile.id')
-            ->orderBy('imobile.ordine')
-            ->orderBy('imobile.id')
-            ->orderBy('spatii.ordine')
-            ->orderBy('spatii.id')
-            ->select('spatii.*')
-            ->get()
+        $spatii = SpatiuIndexSearch::fetchOrdered($query)
             ->map(fn (Spatiu $spatiu): array => $this->mapSpatiuForList($spatiu));
 
         return Inertia::render('Spatii/Index', [

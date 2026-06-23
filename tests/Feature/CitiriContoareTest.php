@@ -33,6 +33,21 @@ class CitiriContoareTest extends TestCase
             );
     }
 
+    public function test_indexul_citiri_contoare_redirecteaza_la_imobil_cand_cauti_spatiu(): void
+    {
+        $imobil = $this->creeazaImobil();
+        $configurare = $this->creeazaConfigurare($imobil);
+        $this->creeazaLinieContor($configurare, 'Apă rece');
+        $this->creeazaSpatiu($imobil, $configurare, '105');
+
+        $this->get(route('citiri-contoare.index', ['search' => '105']))
+            ->assertRedirect(route('citiri-contoare.imobil', [
+                'imobil' => $imobil->id,
+                'mode' => 'new',
+                'search' => '105',
+            ]));
+    }
+
     public function test_prima_vizita_pe_imobil_deschide_modul_de_citire_noua(): void
     {
         $imobil = $this->creeazaImobil();

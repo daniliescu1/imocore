@@ -13,27 +13,54 @@ use App\Support\SpatiuIndexSearch;
 use App\Support\TipCalculAnexa;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 use Inertia\Inertia;
 use Inertia\Response;
 
 class CitireContorController extends Controller
 {
-    public function index(Request $request): Response
+    public function index(Request $request): Response|RedirectResponse
     {
-        $search = $request->string('search')->toString();
-        $localitate = $request->string('localitate')->toString();
+        $search = trim($request->string('search')->toString());
+        $localitate = trim($request->string('localitate')->toString());
+        $localitati = SpatiuIndexSearch::localitati();
 
-        if ($search !== '' && SpatiuIndexSearch::matchesSpatii($search, $localitate)) {
-            return Inertia::render('CitiriContoare/Index', [
-                'imobile' => [],
-                'spatii' => SpatiuIndexSearch::spatiiForSearch($search, $localitate),
-                'localitati' => SpatiuIndexSearch::localitati(),
-                'filters' => [
+        if ($search !== '') {
+            $imobilIds = $this->imobilIdsForCitiriSearch($search, $localitate);
+
+            if ($imobilIds->count() === 1) {
+                return redirect()->route('citiri-contoare.imobil', [
+                    'imobil' => $imobilIds->first(),
+                    'mode' => 'new',
                     'search' => $search,
-                    'localitate' => $localitate,
-                    'search_spatii' => true,
-                ],
-            ]);
+                ]);
+            }
+
+            if ($imobilIds->isNotEmpty()) {
+                $citiriGrupuri = $imobilIds
+                    ->map(function (int $imobilId) use ($request, $search): array {
+                        $imobil = Imobil::query()->findOrFail($imobilId);
+                        ContorConfigurabilSync::syncForImobil($imobil->id);
+
+                        return $this->buildImobilPageProps($imobil, $request->duplicate([
+                            'mode' => 'new',
+                            'search' => $search,
+                        ]));
+                    })
+                    ->values()
+                    ->all();
+
+                return Inertia::render('CitiriContoare/Index', [
+                    'imobile' => [],
+                    'citiriGrupuri' => $citiriGrupuri,
+                    'localitati' => $localitati,
+                    'filters' => [
+                        'search' => $search,
+                        'localitate' => $localitate,
+                        'search_citiri' => true,
+                    ],
+                ]);
+            }
         }
 
         $query = Imobil::query()
@@ -59,17 +86,27 @@ class CitireContorController extends Controller
 
         return Inertia::render('CitiriContoare/Index', [
             'imobile' => $imobile,
-            'spatii' => [],
-            'localitati' => SpatiuIndexSearch::localitati(),
+            'citiriGrupuri' => [],
+            'localitati' => $localitati,
             'filters' => [
                 'search' => $search,
                 'localitate' => $localitate,
-                'search_spatii' => false,
+                'search_citiri' => false,
             ],
         ]);
     }
 
     public function imobil(Request $request, Imobil $imobil): Response
+    {
+        ContorConfigurabilSync::syncForImobil($imobil->id);
+
+        return Inertia::render('CitiriContoare/Imobil', $this->buildImobilPageProps($imobil, $request));
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function buildImobilPageProps(Imobil $imobil, Request $request): array
     {
         $luniCitite = $this->luniCititePentruImobil($imobil);
         $mode = $request->string('mode')->toString() === 'new' ? 'new' : 'history';
@@ -87,12 +124,10 @@ class CitireContorController extends Controller
         $dataCitire = $request->string('data_citire')->toString()
             ?: ($mode === 'history' ? ($this->dataCitirePentruLuna($imobil, $luna) ?: "{$luna}-20T".now()->format('H:i')) : "{$luna}-20T".now()->format('H:i'));
         $lunaInchisa = $this->lunaInchisa($imobil->id, $luna);
-        ContorConfigurabilSync::syncForImobil($imobil->id);
         $spatii = $this->spatiiCuCitiriPentruImobil($imobil, $luna, $lunaInchisa);
         $contoareConfigurabile = $this->contoareConfigurabilePentruImobil($imobil, $luna, $lunaInchisa);
-        $searchSpatiu = $request->string('search')->toString();
 
-        return Inertia::render('CitiriContoare/Imobil', [
+        return [
             'imobil' => [
                 'id' => $imobil->id,
                 'nume' => $imobil->nume,
@@ -108,8 +143,27 @@ class CitireContorController extends Controller
             'luniSelectabile' => $this->luniSelectabile(),
             'spatii' => $spatii,
             'contoareConfigurabile' => $contoareConfigurabile,
-            'searchSpatiu' => $searchSpatiu,
-        ]);
+            'searchSpatiu' => trim($request->string('search')->toString()),
+        ];
+    }
+
+    /**
+     * @return Collection<int, int>
+     */
+    private function imobilIdsForCitiriSearch(string $search, string $localitate = ''): Collection
+    {
+        return Spatiu::query()
+            ->when($localitate !== '', fn ($query) => $query->whereHas(
+                'imobil',
+                fn ($imobilQuery) => $imobilQuery->where('localitate', $localitate)
+            ))
+            ->where(function ($query) use ($search) {
+                $query->where('identificator', 'like', "%{$search}%")
+                    ->orWhere('locator', 'like', "%{$search}%")
+                    ->orWhere('chirias', 'like', "%{$search}%");
+            })
+            ->distinct()
+            ->pluck('imobil_id');
     }
 
     public function store(Request $request): RedirectResponse

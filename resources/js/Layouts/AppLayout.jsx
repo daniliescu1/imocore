@@ -19,6 +19,7 @@ import {
     Zap,
 } from 'lucide-react';
 import { navigateTo } from '../navigation';
+import { useTableKeyboardScroll } from '../lib/useTableKeyboardScroll';
 
 const navigation = [
     { label: 'Imobile', icon: Building2, href: '/imobile' },
@@ -206,6 +207,8 @@ export default function AppLayout({
     const [sidebarOpen, setSidebarOpen] = useState(false);
     const { url, props } = usePage();
     const flash = props.flash || {};
+
+    useTableKeyboardScroll(url);
 
     return (
         <div className="app-shell">

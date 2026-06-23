@@ -183,6 +183,7 @@ function matchesContorConfigurabilSearch(linie, search, matchingSpatiuIds) {
 }
 
 export default function Imobil({
+    embedded = false,
     imobil,
     luna = '',
     dataCitire = '',
@@ -240,6 +241,7 @@ export default function Imobil({
             mode: modeForLuna,
             luna: lunaSelectata,
             data_citire: next.data_citire ?? data.data_citire,
+            search: searchSpatiu || undefined,
         }, { preserveScroll: true });
     }
 
@@ -340,7 +342,7 @@ export default function Imobil({
 
     const topbarActions = (
         <>
-            {(randuriCitiri.length > 0 || randuriConfigurabile.length > 0) ? (
+            {!embedded && (randuriCitiri.length > 0 || randuriConfigurabile.length > 0) ? (
                 <input
                     className="filter-input topbar-search"
                     type="search"
@@ -365,18 +367,14 @@ export default function Imobil({
         </>
     );
 
-    return (
-        <AppLayout
-            title={`Citiri contoare ${imobil.nume}`}
-            subtitle={lunaInchisa
-                ? `Citirile pentru ${formatLunaLabel(luna)} sunt închise și nu mai pot fi modificate.`
-                : isNewMode
-                    ? 'Completezi citirile, salvezi sau salvezi și închizi luna când ai terminat.'
-                    : 'Poți modifica citirile salvate până apeși „Salvează și închide”.'}
-            showGlobalSearch={false}
-            topbarActions={topbarActions}
-        >
-            <form className="form-card" onSubmit={submit}>
+    const panelControls = (
+        <div className="citiri-imobil-panel-controls">
+            {topbarActions}
+        </div>
+    );
+
+    const formContent = (
+        <form className={`form-card${embedded ? ' citiri-imobil-embedded-form' : ''}`} onSubmit={submit}>
                 {totalRanduri === 0 ? (
                     <div className="readonly-info-card">
                         <h2>Nu există contoare de citit</h2>
@@ -642,6 +640,46 @@ export default function Imobil({
                     </div>
                 ) : null}
             </form>
+    );
+
+    if (embedded) {
+        const imobilHref = `/citiri-contoare/imobil/${imobil.id}?mode=new${searchSpatiu ? `&search=${encodeURIComponent(searchSpatiu)}` : ''}`;
+
+        return (
+            <section className="table-card module-table-card citiri-imobil-embedded">
+                <div className="citiri-imobil-embedded-header">
+                    <div>
+                        <h2>{imobil.nume} ({imobil.localitate})</h2>
+                        <p>
+                            {lunaInchisa
+                                ? `Citirile pentru ${formatLunaLabel(luna)} sunt închise.`
+                                : isNewMode
+                                    ? 'Completezi citirile filtrate pentru acest imobil.'
+                                    : 'Poți modifica citirile salvate până închizi luna.'}
+                        </p>
+                    </div>
+                    <div className="citiri-imobil-embedded-actions">
+                        {panelControls}
+                        <a className="secondary-button button-link" href={imobilHref}>Deschide pagina imobil</a>
+                    </div>
+                </div>
+                {formContent}
+            </section>
+        );
+    }
+
+    return (
+        <AppLayout
+            title={`Citiri contoare ${imobil.nume}`}
+            subtitle={lunaInchisa
+                ? `Citirile pentru ${formatLunaLabel(luna)} sunt închise și nu mai pot fi modificate.`
+                : isNewMode
+                    ? 'Completezi citirile, salvezi sau salvezi și închizi luna când ai terminat.'
+                    : 'Poți modifica citirile salvate până apeși „Salvează și închide”.'}
+            showGlobalSearch={false}
+            topbarActions={topbarActions}
+        >
+            {formContent}
         </AppLayout>
     );
 }

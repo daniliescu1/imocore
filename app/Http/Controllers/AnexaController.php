@@ -13,7 +13,6 @@ use App\Support\AnexaDocumentPayload;
 use App\Support\ContorConfigurabilSync;
 use App\Support\DocumentFormatter;
 use App\Support\GenerareAnexaLinieCalculator;
-use App\Support\SpatiuIndexSearch;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\Carbon;
 use Illuminate\Http\RedirectResponse;
@@ -26,19 +25,24 @@ class AnexaController extends Controller
 {
     public function index(Request $request): Response
     {
-        $search = $request->string('search')->toString();
-        $localitate = $request->string('localitate')->toString();
+        $search = trim($request->string('search')->toString());
+        $localitate = trim($request->string('localitate')->toString());
         $contracteEligibile = $this->contracteEligibileQuery()->count();
+        $localitati = Imobil::query()->select('localitate')->distinct()->orderBy('localitate')->pluck('localitate');
 
-        if ($search !== '' && SpatiuIndexSearch::matchesSpatii($search, $localitate)) {
+        if ($search !== '') {
+            $anexe = $this->anexeQuery(null, $search, $localitate)
+                ->latest()
+                ->get()
+                ->map(fn (Anexa $anexa): array => $this->mapAnexaForList($anexa));
+
             return Inertia::render('Anexe/Index', [
                 'rezumatImobile' => [],
-                'spatii' => SpatiuIndexSearch::spatiiForSearch($search, $localitate),
-                'localitati' => SpatiuIndexSearch::localitati(),
+                'anexe' => $anexe,
+                'localitati' => $localitati,
                 'filters' => [
                     'search' => $search,
                     'localitate' => $localitate,
-                    'search_spatii' => true,
                 ],
                 'lunaImplicita' => now()->format('Y-m'),
                 'contracteEligibile' => $contracteEligibile,
@@ -46,23 +50,23 @@ class AnexaController extends Controller
         }
 
         return Inertia::render('Anexe/Index', [
-            'rezumatImobile' => Inertia::defer(fn () => $this->rezumatImobile($localitate, $search), 'summary'),
-            'spatii' => [],
-            'localitati' => SpatiuIndexSearch::localitati(),
+            'rezumatImobile' => Inertia::defer(fn () => $this->rezumatImobile($localitate, ''), 'summary'),
+            'anexe' => [],
+            'localitati' => $localitati,
             'filters' => [
-                'search' => $search,
+                'search' => '',
                 'localitate' => $localitate,
-                'search_spatii' => false,
             ],
             'lunaImplicita' => now()->format('Y-m'),
             'contracteEligibile' => $contracteEligibile,
         ]);
     }
 
-    public function imobil(Imobil $imobil): Response
+    public function imobil(Request $request, Imobil $imobil): Response
     {
+        $search = trim($request->string('search')->toString());
         $contracteEligibile = $this->contracteEligibileQuery($imobil->id)->count();
-        $anexe = $this->anexeQuery($imobil->id)->latest()->get()->map(fn (Anexa $anexa): array => $this->mapAnexaForList($anexa));
+        $anexe = $this->anexeQuery($imobil->id, $search)->latest()->get()->map(fn (Anexa $anexa): array => $this->mapAnexaForList($anexa));
 
         return Inertia::render('Anexe/Imobil', [
             'imobil' => [
@@ -73,6 +77,9 @@ class AnexaController extends Controller
             'anexe' => $anexe,
             'lunaImplicita' => now()->format('Y-m'),
             'contracteEligibile' => $contracteEligibile,
+            'filters' => [
+                'search' => $search,
+            ],
         ]);
     }
 
@@ -156,14 +163,28 @@ class AnexaController extends Controller
             ->with('success', "{$generated} anexe au fost generate.");
     }
 
-    private function anexeQuery(?int $imobilId = null)
+    private function anexeQuery(?int $imobilId = null, string $search = '', string $localitate = '')
     {
         return Anexa::query()
             ->with('contract.spatiu.imobil')
             ->when($imobilId, fn ($query) => $query->whereHas(
                 'contract.spatiu',
                 fn ($spatiuQuery) => $spatiuQuery->where('imobil_id', $imobilId)
-            ));
+            ))
+            ->when($localitate !== '', fn ($query) => $query->whereHas(
+                'contract.spatiu.imobil',
+                fn ($imobilQuery) => $imobilQuery->where('localitate', $localitate)
+            ))
+            ->when($search !== '', fn ($query) => $query->where(function ($query) use ($search) {
+                $query->where('luna', 'like', '%'.$search.'%')
+                    ->orWhereHas('contract', fn ($contractQuery) => $contractQuery
+                        ->where('numar_contract', 'like', '%'.$search.'%')
+                        ->orWhere('chirias', 'like', '%'.$search.'%'))
+                    ->orWhereHas('contract.spatiu', fn ($spatiuQuery) => $spatiuQuery
+                        ->where('identificator', 'like', '%'.$search.'%'))
+                    ->orWhereHas('contract.spatiu.imobil', fn ($imobilQuery) => $imobilQuery
+                        ->where('nume', 'like', '%'.$search.'%'));
+            }));
     }
 
     private function mapAnexaForList(Anexa $anexa): array
@@ -250,21 +271,31 @@ class AnexaController extends Controller
         return Pdf::loadView('documents.anexa', ['anexa' => $payload])->download($filename);
     }
 
-    public function destroyAllForImobil(Imobil $imobil): RedirectResponse
+    public function destroyAllForImobil(Request $request, Imobil $imobil): RedirectResponse
     {
-        $deleted = $this->anexeQuery($imobil->id)->count();
+        $search = trim($request->string('search')->toString());
+        $query = $this->anexeQuery($imobil->id, $search);
+        $deleted = (clone $query)->count();
+        $redirectParams = array_filter([
+            'imobil' => $imobil->id,
+            'search' => $search,
+        ], fn ($value) => $value !== '' && $value !== null);
 
         if ($deleted === 0) {
             return redirect()
-                ->route('anexe.imobil', ['imobil' => $imobil->id])
-                ->with('warning', 'Nu există anexe de șters pentru acest imobil.');
+                ->route('anexe.imobil', $redirectParams)
+                ->with('warning', 'Nu există anexe de șters.');
         }
 
-        $this->anexeQuery($imobil->id)->delete();
+        $query->delete();
+
+        $message = $search !== ''
+            ? "{$deleted} anexe filtrate au fost șterse."
+            : "{$deleted} anexe au fost șterse.";
 
         return redirect()
-            ->route('anexe.imobil', ['imobil' => $imobil->id])
-            ->with('success', "{$deleted} anexe au fost șterse.");
+            ->route('anexe.imobil', $redirectParams)
+            ->with('success', $message);
     }
 
     public function destroy(Anexa $anexa): RedirectResponse

@@ -13,8 +13,8 @@
             <tr class="generated-annex-section-total">
                 <td colspan="6"></td>
                 <td>Total</td>
-                <td class="{{ trim($numericClass) }}">{{ $moneyFormat ? DocumentFormatter::moneyValue($sectionTotal['valoare']) : DocumentFormatter::decimal($sectionTotal['valoare']) }}</td>
-                <td class="{{ trim($numericClass) }}">{{ $moneyFormat ? DocumentFormatter::moneyValue($sectionTotal['tva']) : DocumentFormatter::decimal($sectionTotal['tva']) }}</td>
+                <td class="{{ trim($numericClass) }}">{{ DocumentFormatter::moneyValue($sectionTotal['valoare']) }}</td>
+                <td class="{{ trim($numericClass) }}">{{ DocumentFormatter::moneyValue($sectionTotal['tva']) }}</td>
             </tr>
         @endif
         <tr class="generated-annex-section-header">
@@ -54,7 +54,7 @@
     <tr class="generated-annex-section-total">
         <td colspan="6"></td>
         <td>Total</td>
-        <td class="{{ trim($numericClass) }}">{{ $moneyFormat ? DocumentFormatter::moneyValue($sectionTotal['valoare']) : DocumentFormatter::decimal($sectionTotal['valoare']) }}</td>
-        <td class="{{ trim($numericClass) }}">{{ $moneyFormat ? DocumentFormatter::moneyValue($sectionTotal['tva']) : DocumentFormatter::decimal($sectionTotal['tva']) }}</td>
+        <td class="{{ trim($numericClass) }}">{{ DocumentFormatter::moneyValue($sectionTotal['valoare']) }}</td>
+        <td class="{{ trim($numericClass) }}">{{ DocumentFormatter::moneyValue($sectionTotal['tva']) }}</td>
     </tr>
 @endif

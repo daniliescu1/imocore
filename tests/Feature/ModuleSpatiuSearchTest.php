@@ -22,7 +22,23 @@ class ModuleSpatiuSearchTest extends TestCase
             'localitate' => 'Timișoara',
         ]);
 
-        $spatiu = Spatiu::query()->create([
+        $configurare = \App\Models\ConfigurareAnexaImobil::query()->create([
+            'imobil_id' => $imobil->id,
+            'denumire' => 'Anexa test',
+            'implicit' => true,
+            'activ' => true,
+        ]);
+
+        \App\Models\ConfigurareAnexaLinie::query()->create([
+            'configurare_anexa_id' => $configurare->id,
+            'denumire' => 'Apă rece',
+            'nr_crt' => 1,
+            'tip_calcul' => 'contor',
+            'um' => 'mc',
+            'activ' => true,
+        ]);
+
+        Spatiu::query()->create([
             'imobil_id' => $imobil->id,
             'identificator' => 'HQC118',
             'chirias' => 'Supermedical SRL',
@@ -30,22 +46,19 @@ class ModuleSpatiuSearchTest extends TestCase
             'suprafata_contractuala_mp' => 27,
             'pret_lunar' => 370,
             'moneda' => 'EUR',
+            'configurare_anexa_id' => $configurare->id,
         ]);
 
         $this->actingAs(User::factory()->create())
             ->get('/citiri-contoare?search=HQC118')
-            ->assertOk()
-            ->assertInertia(fn (Assert $page) => $page
-                ->component('CitiriContoare/Index')
-                ->where('filters.search', 'HQC118')
-                ->where('filters.search_spatii', true)
-                ->has('spatii', 1)
-                ->where('spatii.0.id', $spatiu->id)
-                ->has('imobile', 0)
-            );
+            ->assertRedirect(route('citiri-contoare.imobil', [
+                'imobil' => $imobil->id,
+                'mode' => 'new',
+                'search' => 'HQC118',
+            ]));
     }
 
-    public function test_anexe_index_afiseaza_spatiile_cautate(): void
+    public function test_anexe_index_afiseaza_anexele_generate_cautate(): void
     {
         $imobil = Imobil::query()->create([
             'nume' => '700 Office',
@@ -64,15 +77,29 @@ class ModuleSpatiuSearchTest extends TestCase
             'moneda' => 'EUR',
         ]);
 
+        $contract = \App\Models\Contract::query()->create([
+            'spatiu_id' => $spatiu->id,
+            'numar_contract' => 'C-118',
+            'chirias' => 'Supermedical SRL',
+            'status' => 'activ',
+        ]);
+
+        \App\Models\Anexa::query()->create([
+            'contract_id' => $contract->id,
+            'luna' => '2026-05',
+            'total' => 250,
+            'status' => 'draft',
+        ]);
+
         $this->actingAs(User::factory()->create())
             ->get('/anexe?search=Supermedical')
             ->assertOk()
             ->assertInertia(fn (Assert $page) => $page
                 ->component('Anexe/Index')
                 ->where('filters.search', 'Supermedical')
-                ->where('filters.search_spatii', true)
-                ->has('spatii', 1)
-                ->where('spatii.0.id', $spatiu->id)
+                ->has('anexe', 1)
+                ->where('anexe.0.chirias', 'Supermedical SRL')
+                ->where('anexe.0.spatiu', 'HQC118')
             );
     }
 
@@ -90,7 +117,7 @@ class ModuleSpatiuSearchTest extends TestCase
             ->assertOk()
             ->assertInertia(fn (Assert $page) => $page
                 ->component('CitiriContoare/Index')
-                ->where('filters.search_spatii', false)
+                ->where('filters.search_citiri', false)
                 ->has('imobile', 1)
                 ->where('imobile.0.id', $imobil->id)
             );

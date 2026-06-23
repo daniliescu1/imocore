@@ -1,4 +1,5 @@
 import React from 'react';
+import { formatAnnexMoney } from '../lib/formatDecimal';
 
 export function AnnexSectionHeaderRow() {
     return (
@@ -20,19 +21,17 @@ function zeroSectionTotal() {
     return { valoare: 0, tva: 0, count: 0 };
 }
 
-function sectionTotalRow(total, key, formatMoney) {
+function sectionTotalRow(total, key) {
     if (!total.count) {
         return null;
     }
-
-    const formatValue = formatMoney || ((value) => String(Number(value).toFixed(2)).replace(/(\.\d*?)0+$/, '$1').replace(/\.$/, ''));
 
     return (
         <tr className="generated-annex-section-total" key={key}>
             <td colSpan="6" />
             <td>Total</td>
-            <td>{formatValue(total.valoare)}</td>
-            <td>{formatValue(total.tva)}</td>
+            <td>{formatAnnexMoney(total.valoare)}</td>
+            <td>{formatAnnexMoney(total.tva)}</td>
         </tr>
     );
 }
@@ -44,7 +43,7 @@ export function AnnexTableBodyRows({ linii, formatDecimal, formatMoney = null })
 
     linii.forEach((linie, index) => {
         if (linie.tip_linie === 'header') {
-            rows.push(sectionTotalRow(sectionTotal, `section-total-${sectionIndex}`, formatMoney));
+            rows.push(sectionTotalRow(sectionTotal, `section-total-${sectionIndex}`));
             rows.push(<AnnexSectionHeaderRow key={`header-${index}`} />);
             sectionTotal = zeroSectionTotal();
             sectionIndex += 1;
@@ -70,7 +69,7 @@ export function AnnexTableBodyRows({ linii, formatDecimal, formatMoney = null })
         );
     });
 
-    rows.push(sectionTotalRow(sectionTotal, `section-total-${sectionIndex}`, formatMoney));
+    rows.push(sectionTotalRow(sectionTotal, `section-total-${sectionIndex}`));
 
     return rows;
 }

@@ -27,3 +27,18 @@ export function formatAnnexDecimal(value, emptyFallback = '—') {
 
     return String(rounded).replace(/(\.\d*?)0+$/, '$1').replace(/\.$/, '');
 }
+
+export function formatAnnexMoney(value, emptyFallback = '—') {
+    if (value === null || value === undefined || value === '') {
+        return emptyFallback;
+    }
+
+    const normalized = String(value).trim().replace(',', '.');
+    const num = Number(normalized);
+
+    if (Number.isNaN(num)) {
+        return String(value);
+    }
+
+    return (Math.round(num * 100) / 100).toFixed(2);
+}

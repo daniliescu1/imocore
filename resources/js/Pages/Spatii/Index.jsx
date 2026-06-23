@@ -30,7 +30,7 @@ function showFaraAnexaIndicator(spatiu) {
 }
 
 function showFaraContractIndicator(spatiu) {
-    return spatiu.status === 'inchiriat' && !spatiu.are_contract_inregistrat;
+    return spatiu.status === 'inchiriat' && !spatiu.are_contract_activ;
 }
 
 function showDocumentIndicator(spatiu) {
@@ -189,7 +189,7 @@ function SpatiuRow({
                             <span className="spatiu-indicator-stripe is-fara-anexa" title="Fără anexă" />
                         ) : null}
                         {showFaraContractIndicator(spatiu) ? (
-                            <span className="spatiu-indicator-stripe is-fara-contract" title="Fără contract înregistrat" />
+                            <span className="spatiu-indicator-stripe is-fara-contract" title="Fără contract activ" />
                         ) : null}
                     </div>
                 ) : null}
