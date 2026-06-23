@@ -17,7 +17,7 @@ class ContractChiriasTest extends TestCase
     use RefreshDatabase;
 
     /**
-     * @return array{locator_id: int, data_end: string}
+     * @return array{locator_id: int, data_end: string, persoane_declarate: int}
      */
     private function contractRequiredFields(?Locator $locator = null): array
     {
@@ -26,6 +26,7 @@ class ContractChiriasTest extends TestCase
         return [
             'locator_id' => $locator->id,
             'data_end' => '2025-12-31',
+            'persoane_declarate' => 1,
         ];
     }
 
@@ -249,7 +250,7 @@ class ContractChiriasTest extends TestCase
         $this->assertNull($contract->chirias_date['administrator_2'] ?? null);
     }
 
-    public function test_contract_pj_are_obligatoriu_doar_numele_reprezentantului_legal(): void
+    public function test_contract_pj_activ_fara_nume_administrator(): void
     {
         $imobil = Imobil::query()->create([
             'nume' => '700 Office',
@@ -278,7 +279,7 @@ class ContractChiriasTest extends TestCase
                 'nr_reg_comert' => 'J35/123/2020',
                 'cui' => 'RO12345678',
                 'administrator' => [
-                    'nume_complet' => 'Maria Ionescu',
+                    'nume_complet' => '',
                     'serie_ci' => '',
                     'numar_ci' => '',
                     'cnp' => '',
@@ -295,7 +296,7 @@ class ContractChiriasTest extends TestCase
         $contract = Contract::query()->firstOrFail();
 
         $this->assertSame('activ', $contract->status);
-        $this->assertSame('Maria Ionescu', $contract->chirias_date['administrator']['nume_complet']);
+        $this->assertNull($contract->chirias_date['administrator']['nume_complet'] ?? null);
         $this->assertSame('administrator', $contract->chirias_date['administrator']['calitate']);
         $this->assertNull($contract->chirias_date['administrator']['serie_ci']);
         $this->assertNull($contract->chirias_date['administrator']['cnp']);
@@ -498,6 +499,7 @@ class ContractChiriasTest extends TestCase
             'chirie' => 850,
             'moneda' => 'EUR',
             'configurare_anexa_id' => $configurare->id,
+            'persoane_declarate' => 1,
         ])->assertRedirect('/contracte');
 
         $this->assertSame($configurare->id, $spatiu->fresh()->configurare_anexa_id);
@@ -557,6 +559,7 @@ class ContractChiriasTest extends TestCase
             'chirie' => 900,
             'moneda' => 'EUR',
             'configurare_anexa_id' => '',
+            'persoane_declarate' => 1,
         ])->assertRedirect('/contracte');
 
         $spatiu->refresh();
@@ -633,6 +636,7 @@ class ContractChiriasTest extends TestCase
             'crestere_chirie_la' => 1800,
             'data_crestere_chirie' => '22/01/2028',
             'moneda' => 'EUR',
+            'persoane_declarate' => 1,
         ])->assertRedirect('/contracte');
 
         $contract->refresh();
@@ -891,6 +895,7 @@ class ContractChiriasTest extends TestCase
             'data_end' => null,
             'chirie' => 0,
             'chirias_tip' => 'pj',
+            'persoane_declarate' => null,
             'chirias_pj' => [
                 'denumire' => 'SC Parțial SRL',
                 'sediu_social' => '',
@@ -910,6 +915,9 @@ class ContractChiriasTest extends TestCase
 
         $this->assertNotContains('numar_contract', $missing);
         $this->assertContains('locator_id', $missing);
+        $this->assertContains('persoane_declarate', $missing);
+        $this->assertNotContains('chirias_pj.denumire', $missing);
+        $this->assertNotContains('chirias_pj.administrator.nume_complet', $missing);
         $this->assertNotContains('data_start', $missing);
         $this->assertNotContains('data_end', $missing);
     }

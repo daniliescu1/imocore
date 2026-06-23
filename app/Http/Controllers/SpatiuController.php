@@ -902,6 +902,7 @@ class SpatiuController extends Controller
             'coeficient' => $linie->coeficient,
             'um' => $linie->um,
             'pret_unitar' => $linie->pret_unitar,
+            'moneda' => \App\Support\PretServiciuStandard::normalizeMoneda($linie->moneda),
             'valoare' => $linie->valoare,
             'tva_21' => $linie->tva_21,
             'tip_calcul' => $linie->tip_calcul,

@@ -171,6 +171,61 @@ class ContoareDinAnexaTest extends TestCase
         ]);
     }
 
+    public function test_anexa_cu_doua_linii_contor_aceeasi_denumire_se_salveaza(): void
+    {
+        $imobil = $this->creeazaImobil();
+        $configurare = ConfigurareAnexaImobil::query()->create([
+            'imobil_id' => $imobil->id,
+            'denumire' => 'Anexa > 50 mp · D215',
+            'implicit' => false,
+            'activ' => true,
+        ]);
+        $linie1 = $this->creeazaLinieContor($configurare, 'Energie Electrica', 1);
+        $linie1->update(['pret_unitar' => 1.528, 'um' => 'Kw', 'tva_21' => 21]);
+
+        $spatiu = Spatiu::query()->create([
+            'imobil_id' => $imobil->id,
+            'identificator' => 'D215',
+            'status' => 'inchiriat',
+            'configurare_anexa_id' => $configurare->id,
+        ]);
+
+        SincronizareContoareDinAnexa::syncForSpatiu($spatiu);
+
+        $this->put(route('configurare-anexa.update', $configurare), [
+            'imobil_id' => $imobil->id,
+            'denumire' => 'Anexa > 50 mp · 2 contoare electrice',
+            'implicit' => false,
+            'activ' => true,
+            'linii' => [
+                [
+                    'id' => $linie1->id,
+                    'tip_linie' => 'serviciu',
+                    'denumire' => 'Energie Electrica',
+                    'nr_crt' => 1,
+                    'tip_calcul' => 'contor',
+                    'um' => 'Kw',
+                    'pret_unitar' => 1.528,
+                    'tva_21' => 21,
+                    'activ' => true,
+                ],
+                [
+                    'tip_linie' => 'serviciu',
+                    'denumire' => 'Energie Electrica',
+                    'nr_crt' => 2,
+                    'tip_calcul' => 'contor',
+                    'um' => 'Kw',
+                    'pret_unitar' => 1.528,
+                    'tva_21' => 21,
+                    'activ' => true,
+                ],
+            ],
+        ])->assertRedirect();
+
+        $this->assertDatabaseCount('contoare', 2);
+        $this->assertSame(2, $configurare->fresh()->linii()->where('tip_calcul', 'contor')->count());
+    }
+
     private function creeazaImobil(): Imobil
     {
         return Imobil::query()->create([

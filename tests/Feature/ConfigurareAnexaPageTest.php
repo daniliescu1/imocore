@@ -109,6 +109,81 @@ class ConfigurareAnexaPageTest extends TestCase
         $this->assertSame(1, $configurare->linii[2]->nr_crt);
     }
 
+    public function test_salvarea_anexei_cu_header_nu_seteaza_moneda_null(): void
+    {
+        $imobil = Imobil::query()->create([
+            'nume' => 'Imobil header moneda',
+            'strada' => 'Strada Test',
+            'numar' => '2',
+            'localitate' => 'Timisoara',
+        ]);
+
+        $configurare = $imobil->configurariAnexe()->create([
+            'denumire' => 'Anexa cu zone',
+            'implicit' => true,
+        ]);
+
+        $linieContor = $configurare->linii()->create([
+            'ordine' => 1,
+            'tip_linie' => 'serviciu',
+            'denumire' => 'Energie Electrica',
+            'nr_crt' => 1,
+            'tip_calcul' => 'contor',
+            'um' => 'Kw',
+            'pret_unitar' => 1.528,
+            'moneda' => 'RON',
+            'tva_21' => 21,
+            'activ' => true,
+        ]);
+
+        $header = $configurare->linii()->create([
+            'ordine' => 2,
+            'tip_linie' => 'header',
+            'denumire' => '',
+            'tip_calcul' => 'manual',
+            'moneda' => 'RON',
+            'activ' => true,
+        ]);
+
+        $this->put(route('configurare-anexa.update', $configurare), [
+            'imobil_id' => $imobil->id,
+            'denumire' => 'Anexa cu zone',
+            'implicit' => true,
+            'linii' => [
+                [
+                    'id' => $linieContor->id,
+                    'tip_linie' => 'serviciu',
+                    'denumire' => 'Energie Electrica',
+                    'nr_crt' => 1,
+                    'tip_calcul' => 'contor',
+                    'um' => 'Kw',
+                    'pret_unitar' => 1.528,
+                    'moneda' => 'RON',
+                    'tva_21' => 21,
+                    'activ' => true,
+                ],
+                [
+                    'tip_linie' => 'serviciu',
+                    'denumire' => 'Energie Electrica',
+                    'nr_crt' => 2,
+                    'tip_calcul' => 'contor',
+                    'um' => 'Kw',
+                    'pret_unitar' => 1.528,
+                    'moneda' => 'RON',
+                    'tva_21' => 21,
+                    'activ' => true,
+                ],
+                [
+                    'id' => $header->id,
+                    'tip_linie' => 'header',
+                ],
+            ],
+        ])->assertRedirect(route('configurare-anexa.edit', $configurare));
+
+        $this->assertSame('RON', $header->fresh()->moneda);
+        $this->assertSame(2, $configurare->fresh()->linii()->where('denumire', 'Energie Electrica')->count());
+    }
+
     public function test_configurarea_anexei_pastreaza_randul_cu_coeficient(): void
     {
         $imobil = Imobil::query()->create([

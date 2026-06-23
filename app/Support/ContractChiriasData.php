@@ -171,7 +171,7 @@ class ContractChiriasData
 
         $validated = $request->validate([
             'chirias_pf' => ['required', 'array'],
-            'chirias_pf.nume_complet' => ['required', 'string', 'max:255'],
+            'chirias_pf.nume_complet' => ['nullable', 'string', 'max:255'],
             'chirias_pf.serie_ci' => ['required', 'string', 'max:500'],
             'chirias_pf.cnp' => ['required', 'string', 'max:13'],
             'chirias_pf.domiciliu' => ['required', 'string', 'max:500'],
@@ -186,7 +186,7 @@ class ContractChiriasData
 
         return [
             'chirias_tip' => 'pf',
-            'chirias' => $pf['nume_complet'],
+            'chirias' => $pf['nume_complet'] ?: '',
             'chirias_date' => [
                 'serie_ci' => $pf['serie_ci'],
                 'numar_ci' => null,
@@ -212,7 +212,7 @@ class ContractChiriasData
 
         $validated = $request->validate([
             'chirias_pj' => ['required', 'array'],
-            'chirias_pj.denumire' => ['required', 'string', 'max:255'],
+            'chirias_pj.denumire' => ['nullable', 'string', 'max:255'],
             'chirias_pj.sediu_social' => ['required', 'string', 'max:500'],
             'chirias_pj.telefon' => ['nullable', 'string', 'max:50'],
             'chirias_pj.email' => ['nullable', 'string', 'max:255'],
@@ -221,7 +221,7 @@ class ContractChiriasData
             'chirias_pj.cui' => ['nullable', 'string', 'max:20'],
             'chirias_pj.banca' => ['nullable', 'string', 'max:255'],
             'chirias_pj.cont_bancar' => ['nullable', 'string', 'max:100'],
-            ...self::administratorValidationRules('chirias_pj.administrator', requireNume: true),
+            ...self::administratorValidationRules('chirias_pj.administrator', requireNume: false),
             ...self::administratorValidationRules('chirias_pj.administrator_2'),
         ]);
 
@@ -231,7 +231,7 @@ class ContractChiriasData
 
         return [
             'chirias_tip' => 'pj',
-            'chirias' => $pj['denumire'],
+            'chirias' => $pj['denumire'] ?: '',
             'chirias_date' => [
                 'sediu_social' => $pj['sediu_social'],
                 'telefon' => ($pj['telefon'] ?? null) ?: null,

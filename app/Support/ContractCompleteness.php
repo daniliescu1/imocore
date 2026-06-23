@@ -2,6 +2,7 @@
 
 namespace App\Support;
 
+use App\Models\Spatiu;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\MessageBag;
 
@@ -48,6 +49,7 @@ class ContractCompleteness
             'chirias_pj.administrator_2.domiciliu' => 'Domiciliu al doilea reprezentant',
             'chirias_pj.administrator_2.email' => 'Email al doilea reprezentant',
             'chirias_pj.administrator_2.email_2' => 'Al doilea email al doilea reprezentant',
+            'persoane_declarate' => 'Persoane declarate de chiriaș',
         ];
     }
 
@@ -108,8 +110,9 @@ class ContractCompleteness
         if ($tip === 'pf') {
             return [
                 ...$rules,
+                ...self::persoaneDeclarateRules($input),
                 'chirias_pf' => ['required', 'array'],
-                'chirias_pf.nume_complet' => ['required', 'string', 'max:255'],
+                'chirias_pf.nume_complet' => ['nullable', 'string', 'max:255'],
                 'chirias_pf.serie_ci' => ['required', 'string', 'max:500'],
                 'chirias_pf.cnp' => ['required', 'string', 'max:13'],
                 'chirias_pf.domiciliu' => ['required', 'string', 'max:500'],
@@ -121,8 +124,9 @@ class ContractCompleteness
 
         return [
             ...$rules,
+            ...self::persoaneDeclarateRules($input),
             'chirias_pj' => ['required', 'array'],
-            'chirias_pj.denumire' => ['required', 'string', 'max:255'],
+            'chirias_pj.denumire' => ['nullable', 'string', 'max:255'],
             'chirias_pj.sediu_social' => ['required', 'string', 'max:500'],
             'chirias_pj.email' => ['nullable', 'string', 'max:255'],
             'chirias_pj.email_2' => ['nullable', 'string', 'max:255'],
@@ -130,7 +134,7 @@ class ContractCompleteness
             'chirias_pj.nr_reg_comert' => ['nullable', 'string', 'max:100'],
             'chirias_pj.cui' => ['nullable', 'string', 'max:20'],
             'chirias_pj.administrator' => ['required', 'array'],
-            'chirias_pj.administrator.nume_complet' => ['required', 'string', 'max:255'],
+            'chirias_pj.administrator.nume_complet' => ['nullable', 'string', 'max:255'],
             'chirias_pj.administrator.serie_ci' => ['nullable', 'string', 'max:500'],
             'chirias_pj.administrator.numar_ci' => ['nullable', 'string', 'max:20'],
             'chirias_pj.administrator.cnp' => ['nullable', 'string', 'max:13'],
@@ -139,6 +143,39 @@ class ContractCompleteness
             'chirias_pj.administrator.email_2' => ['nullable', 'string', 'max:255'],
             ...ContractChiriasData::administratorValidationRulesForCompleteness('chirias_pj.administrator_2'),
         ];
+    }
+
+    /**
+     * @param  array<string, mixed>  $input
+     * @return array<string, list<string>>
+     */
+    private static function persoaneDeclarateRules(array $input): array
+    {
+        if (! self::persoaneDeclarateRequired($input)) {
+            return [
+                'persoane_declarate' => ['nullable', 'integer', 'min:0'],
+            ];
+        }
+
+        return [
+            'persoane_declarate' => ['required', 'integer', 'min:0'],
+        ];
+    }
+
+    /**
+     * @param  array<string, mixed>  $input
+     */
+    private static function persoaneDeclarateRequired(array $input): bool
+    {
+        $spatiuId = $input['spatiu_id'] ?? null;
+
+        if (! $spatiuId) {
+            return true;
+        }
+
+        $spatiu = Spatiu::query()->find($spatiuId);
+
+        return $spatiu !== null && $spatiu->status !== 'administrativ';
     }
 
     /**

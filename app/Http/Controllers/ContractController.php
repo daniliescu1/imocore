@@ -285,6 +285,7 @@ class ContractController extends Controller
             'chirias_tip' => $contract->chirias_tip ?? 'pj',
             'chirias_pf' => $chiriasForm['chirias_pf'] ?? [],
             'chirias_pj' => $chiriasForm['chirias_pj'] ?? [],
+            'persoane_declarate' => $contract->spatiu?->persoane_declarate,
         ]);
 
         return [

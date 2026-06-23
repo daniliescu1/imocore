@@ -127,23 +127,24 @@ function pfCiValue(chiriasPf) {
     return numar;
 }
 
-function missingFieldKeysForForm(data) {
+function missingFieldKeysForForm(data, spatiuAdministrativ = false) {
     const missing = [];
 
     if (!data.spatiu_id) missing.push('spatiu_id');
     if (!data.locator_id) missing.push('locator_id');
     if (isBlank(data.chirie) && data.chirie !== 0) missing.push('chirie');
 
+    if (!spatiuAdministrativ && isBlank(data.persoane_declarate)) {
+        missing.push('persoane_declarate');
+    }
+
     if (data.chirias_tip === 'pf') {
-        if (isBlank(data.chirias_pf?.nume_complet)) missing.push('chirias_pf.nume_complet');
         if (isBlank(pfCiValue(data.chirias_pf))) missing.push('chirias_pf.serie_ci');
         if (isBlank(data.chirias_pf?.cnp) || isInvalidCnp(data.chirias_pf?.cnp, true)) missing.push('chirias_pf.cnp');
         if (isBlank(data.chirias_pf?.domiciliu)) missing.push('chirias_pf.domiciliu');
         if (isBlank(data.chirias_pf?.telefon)) missing.push('chirias_pf.telefon');
     } else {
-        if (isBlank(data.chirias_pj?.denumire)) missing.push('chirias_pj.denumire');
         if (isBlank(data.chirias_pj?.sediu_social)) missing.push('chirias_pj.sediu_social');
-        if (isBlank(data.chirias_pj?.administrator?.nume_complet)) missing.push('chirias_pj.administrator.nume_complet');
         if (isInvalidCnp(data.chirias_pj?.administrator?.cnp)) missing.push('chirias_pj.administrator.cnp');
 
         const admin2 = data.chirias_pj?.administrator_2;
@@ -185,6 +186,7 @@ const fieldLabels = {
     'chirias_pj.administrator_2.cnp': 'CNP al doilea reprezentant',
     'chirias_pj.administrator_2.domiciliu': 'Domiciliu al doilea reprezentant',
     'chirias_pj.administrator_2.email': 'Email al doilea reprezentant',
+    persoane_declarate: 'Persoane declarate de chiriaș',
 };
 
 const emptyPf = {
@@ -413,8 +415,8 @@ export default function Form({
             return [];
         }
 
-        return missingFieldKeysForForm(data);
-    }, [data, isActiveContract]);
+        return missingFieldKeysForForm(data, spatiuAdministrativ);
+    }, [data, isActiveContract, spatiuAdministrativ]);
     const missingLabels = missingKeys.map((key) => fieldLabels[key] || key);
     const hasMissingFields = missingKeys.length > 0;
     const showIncompleteState = isIncompleteContract && hasMissingFields;
@@ -654,7 +656,7 @@ export default function Form({
 
                     {estePf ? (
                         <div className="form-grid form-grid-chirias">
-                            <PfField label="Nume complet" value={data.chirias_pf.nume_complet} onChange={(value) => updatePf('nume_complet', value)} error={errors['chirias_pf.nume_complet']} required incomplete={fieldIncomplete('chirias_pf.nume_complet')} />
+                            <PfField label="Nume complet" value={data.chirias_pf.nume_complet} onChange={(value) => updatePf('nume_complet', value)} error={errors['chirias_pf.nume_complet']} incomplete={fieldIncomplete('chirias_pf.nume_complet')} />
                             <PfField label="Serie CI Număr CI, eliberat de, la data." value={data.chirias_pf.serie_ci} onChange={(value) => updatePf('serie_ci', value)} error={errors['chirias_pf.serie_ci']} required incomplete={fieldIncomplete('chirias_pf.serie_ci')} />
                             <PfField label="Domiciliu" value={data.chirias_pf.domiciliu} onChange={(value) => updatePf('domiciliu', value)} error={errors['chirias_pf.domiciliu']} required incomplete={fieldIncomplete('chirias_pf.domiciliu')} />
                             <PfField label="CNP" value={data.chirias_pf.cnp} onChange={(value) => updatePf('cnp', value)} error={errors['chirias_pf.cnp']} required incomplete={fieldIncomplete('chirias_pf.cnp')} />
@@ -664,8 +666,8 @@ export default function Form({
                             <PfField label="Cont bancar" value={data.chirias_pf.cont_bancar} onChange={(value) => updatePf('cont_bancar', value)} error={errors['chirias_pf.cont_bancar']} formatter={formatBankAccount} normalize={normalizeBankAccount} />
                             <PfField label="Banca" value={data.chirias_pf.banca} onChange={(value) => updatePf('banca', value)} error={errors['chirias_pf.banca']} />
                             {!spatiuAdministrativ ? (
-                                <label className="form-field form-grid-span-2">
-                                    <span>Persoane declarate de chiriaș</span>
+                                <label className={fieldClassName('persoane_declarate', 'form-grid-span-2')}>
+                                    <span>Persoane declarate de chiriaș *</span>
                                     <input type="number" min="0" step="1" value={data.persoane_declarate} onChange={(event) => setData('persoane_declarate', event.target.value)} />
                                     {errors.persoane_declarate ? <small>{errors.persoane_declarate}</small> : null}
                                 </label>
@@ -675,7 +677,7 @@ export default function Form({
                         <>
                             <div className="form-grid form-grid-chirias">
                                 <div className="contract-chirias-pj-primary-row">
-                                    <PfField label="Denumire" value={data.chirias_pj.denumire} onChange={(value) => updatePj('denumire', value)} error={errors['chirias_pj.denumire']} required incomplete={fieldIncomplete('chirias_pj.denumire')} gridSpan={1} />
+                                    <PfField label="Denumire" value={data.chirias_pj.denumire} onChange={(value) => updatePj('denumire', value)} error={errors['chirias_pj.denumire']} incomplete={fieldIncomplete('chirias_pj.denumire')} gridSpan={1} />
                                     <PfField label="Sediul social" value={data.chirias_pj.sediu_social} onChange={(value) => updatePj('sediu_social', value)} error={errors['chirias_pj.sediu_social']} required incomplete={fieldIncomplete('chirias_pj.sediu_social')} gridSpan={1} />
                                 </div>
                                 <PfField label="Telefon" value={data.chirias_pj.telefon} onChange={(value) => updatePj('telefon', value)} error={errors['chirias_pj.telefon']} incomplete={fieldIncomplete('chirias_pj.telefon')} gridSpan={1} formatter={formatPhoneNumber} />
@@ -686,8 +688,8 @@ export default function Form({
                                 <PfField label="Cont bancar" value={data.chirias_pj.cont_bancar} onChange={(value) => updatePj('cont_bancar', value)} error={errors['chirias_pj.cont_bancar']} gridSpan={1} formatter={formatBankAccount} normalize={normalizeBankAccount} />
                                 <PfField label="Banca" value={data.chirias_pj.banca} onChange={(value) => updatePj('banca', value)} error={errors['chirias_pj.banca']} gridSpan={1} />
                                 {!spatiuAdministrativ ? (
-                                    <label className="form-field form-grid-span-1">
-                                        <span>Persoane declarate de chiriaș</span>
+                                    <label className={fieldClassName('persoane_declarate', 'form-grid-span-1')}>
+                                        <span>Persoane declarate de chiriaș *</span>
                                         <input type="number" min="0" step="1" value={data.persoane_declarate} onChange={(event) => setData('persoane_declarate', event.target.value)} />
                                         {errors.persoane_declarate ? <small>{errors.persoane_declarate}</small> : null}
                                     </label>
@@ -702,7 +704,6 @@ export default function Form({
                                     errors={errors}
                                     fieldIncomplete={fieldIncomplete}
                                     onUpdate={updateAdministrator}
-                                    requiredNume
                                 />
                                 {showSecondRepresentative ? (
                                     <div className="contract-chirias-subsection contract-chirias-subsection-nested">

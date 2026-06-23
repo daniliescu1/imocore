@@ -13,6 +13,7 @@ use App\Models\SetareAplicatie;
 use App\Models\Spatiu;
 use App\Support\InternalReturnUrl;
 use App\Support\ContorConfigurabilSync;
+use App\Support\PretServiciuStandard;
 use App\Support\SincronizareContoareDinAnexa;
 use App\Support\TipCalculAnexa;
 use Illuminate\Http\RedirectResponse;
@@ -445,8 +446,8 @@ class ConfigurareAnexaController extends Controller
                 'um' => $tipLinie === 'header' ? null : ($linieData['um'] ?? null),
                 'pret_unitar' => $tipLinie === 'header' ? null : ($linieData['pret_unitar'] ?? null),
                 'moneda' => $tipLinie === 'header'
-                    ? null
-                    : \App\Support\PretServiciuStandard::normalizeMoneda($linieData['moneda'] ?? null),
+                    ? PretServiciuStandard::MONEDA_RON
+                    : PretServiciuStandard::normalizeMoneda($linieData['moneda'] ?? null),
                 'valoare' => $tipLinie === 'header' ? null : ($linieData['valoare'] ?? null),
                 'tva_21' => $tipLinie === 'header' ? null : $this->normalizeTvaForSave($linieData['tva_21'] ?? null),
                 'tip_calcul' => $tipCalcul,
