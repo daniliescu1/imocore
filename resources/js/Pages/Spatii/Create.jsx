@@ -139,7 +139,17 @@ function applyStatusChange(status, data) {
         };
     }
 
-    if (status === 'liber' || status === 'inchiriat') {
+    if (status === 'liber') {
+        return {
+            ...data,
+            status,
+            regim_incalzire: 'integral',
+            procent_incalzire_override: '',
+            chirias: '',
+        };
+    }
+
+    if (status === 'inchiriat') {
         return {
             ...data,
             status,
@@ -229,15 +239,16 @@ export default function Create({
     const pretMpUltimaIndexare = ultimaIndexare !== null && suprafataPentruIndexare
         ? (ultimaIndexare / suprafataPentruIndexare).toFixed(2)
         : '';
-    const arataDocumente = isEditing && data.status === 'inchiriat';
+    const arataDocumente = isEditing && !esteAdministrativ && !esteComun && ['liber', 'inchiriat'].includes(data.status);
+    const contractAfisat = data.status === 'inchiriat' ? contractActiv : null;
     const spatiuEditUrl = isEditing ? `/spatii/${spatiu.id}/editare` : '';
     const encodedReturnUrl = spatiuEditUrl ? encodeURIComponent(spatiuEditUrl) : '';
     const showAnexaInMainForm = showField('configurare_anexa_id') && !esteAdministrativ && !esteComun && !etajFaraPersoane && !arataDocumente;
     const contractCreateUrl = arataDocumente
         ? `/contracte/adauga?imobil_id=${data.imobil_id}&spatiu_id=${spatiu.id}&return_url=${encodedReturnUrl}`
         : null;
-    const contractEditUrl = contractActiv && spatiuEditUrl
-        ? `/contracte/${contractActiv.id}/editare?return_url=${encodedReturnUrl}`
+    const contractEditUrl = contractAfisat && spatiuEditUrl
+        ? `/contracte/${contractAfisat.id}/editare?return_url=${encodedReturnUrl}`
         : null;
     const anexaAlocataCurenta = configurariPentruImobil.find(
         (configurare) => Number(configurare.id) === Number(data.configurare_anexa_id),
@@ -639,21 +650,21 @@ export default function Create({
                     <div className="spatiu-documente-zone">
                         <div className="spatiu-documente-row">
                             <span className="spatiu-documente-label">
-                                {contractActiv?.status === 'activ' ? 'Contract Activ. Date complete.' : 'Contract'}
+                                {contractAfisat?.status === 'activ' ? 'Contract Activ. Date complete.' : 'Contract'}
                             </span>
                             <div className="spatiu-documente-summary">
-                                {contractActiv ? (
+                                {contractAfisat ? (
                                     <>
-                                        <strong>{contractActiv.numar_contract}</strong>
-                                        <span>{contractActiv.chirias}</span>
-                                        <span>{contractActiv.perioada}</span>
+                                        <strong>{contractAfisat.numar_contract}</strong>
+                                        <span>{contractAfisat.chirias}</span>
+                                        <span>{contractAfisat.perioada}</span>
                                     </>
                                 ) : (
                                     <span className="spatiu-documente-empty">Niciun contract adăugat</span>
                                 )}
                             </div>
                             <div className="spatiu-documente-actions">
-                                {contractActiv ? (
+                                {contractAfisat ? (
                                     <Link className="secondary-button button-link" href={contractEditUrl}>Editează contract</Link>
                                 ) : (
                                     <Link className="secondary-button button-link" href={contractCreateUrl}>+ Adaugă contract</Link>

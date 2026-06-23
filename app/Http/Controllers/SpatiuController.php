@@ -384,6 +384,7 @@ class SpatiuController extends Controller
             ?? $spatiu->contracte()->orderByDesc('id')->first();
 
         $showDocumente = $this->showDocumenteForSpatiu($spatiu);
+        $contractPentruDocumente = $spatiu->status === 'inchiriat' ? $contract : null;
 
         return [
             'imobile' => $this->imobileForSelect(),
@@ -392,7 +393,7 @@ class SpatiuController extends Controller
             'campuriSpatiuVizibile' => $this->campuriSpatiuVizibileForSelect(),
             'canDeleteSpatii' => $this->isOwner($request),
             'showDocumente' => $showDocumente,
-            'contractActiv' => $contract ? [
+            'contractActiv' => $contractPentruDocumente ? [
                 'id' => $contract->id,
                 'numar_contract' => $contract->numar_contract,
                 'chirias' => $contract->chirias,
@@ -827,6 +828,10 @@ class SpatiuController extends Controller
         $becomingLiber = ($validated['status'] ?? '') === 'liber'
             && ($spatiu === null || $spatiu->status !== 'liber');
 
+        if (($validated['status'] ?? '') === 'liber') {
+            $validated['chirias'] = null;
+        }
+
         if ($becomingLiber) {
             $pretLunar = (float) ($validated['pret_lunar'] ?? $spatiu?->pret_lunar ?? 0);
             $indexare = (float) ($validated['indexare_2026'] ?? $spatiu?->indexare_2026 ?? 0);
@@ -883,7 +888,7 @@ class SpatiuController extends Controller
 
     private function showDocumenteForSpatiu(Spatiu $spatiu): bool
     {
-        return $spatiu->status === 'inchiriat';
+        return in_array($spatiu->status, ['liber', 'inchiriat'], true);
     }
 
     /**

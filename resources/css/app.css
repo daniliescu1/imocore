@@ -1991,6 +1991,10 @@ tr:last-child td {
     grid-column: span 1;
 }
 
+.form-grid-chirias > .form-grid-span-3 {
+    grid-column: span 3;
+}
+
 .form-grid-chirias > .form-grid-span-2,
 .form-grid-chirias > .form-field:not(.form-grid-span-1):not(.form-field-full) {
     grid-column: span 2;
@@ -3356,6 +3360,7 @@ tr:last-child td {
 
     .form-grid-chirias > .form-grid-span-1,
     .form-grid-chirias > .form-grid-span-2,
+    .form-grid-chirias > .form-grid-span-3,
     .form-grid-chirias > .form-field-full,
     .form-grid-spatii > .form-grid-span-2 {
         grid-column: span 1;

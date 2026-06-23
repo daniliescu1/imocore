@@ -178,6 +178,7 @@ class ContractController extends Controller
             'moneda' => ['nullable', 'string', 'size:3'],
             'observatii' => ['nullable', 'string', 'max:5000'],
             'configurare_anexa_id' => ['nullable', 'exists:configurari_anexe_imobil,id'],
+            'spatiu_status' => ['nullable', 'in:liber,rezervat,inchiriat,comun,administrativ'],
         ]);
 
         $spatiu = Spatiu::query()->findOrFail($baseValidated['spatiu_id']);
@@ -216,19 +217,53 @@ class ContractController extends Controller
     {
         $this->updateSpatiuLocator($contract->spatiu, $request->integer('locator_id') ?: null);
 
+        $spatiuStatus = $this->normalizeSpatiuStatusInput($request->input('spatiu_status'));
+
         $spatiuUpdates = [
             'configurare_anexa_id' => $this->resolveConfigurareAnexaIdForSpatiu($request, $contract->spatiu),
         ];
 
         if ($status === 'activ') {
-            $esteAdministrativ = $contract->spatiu->status === 'administrativ';
-            $spatiuUpdates['status'] = $esteAdministrativ ? 'administrativ' : 'inchiriat';
-            $spatiuUpdates['chirias'] = $contract->chirias;
-            $spatiuUpdates['persoane_declarate'] = $esteAdministrativ ? null : $persoaneDeclarate;
+            $effectiveStatus = $spatiuStatus
+                ?? ($contract->spatiu->status === 'administrativ' ? 'administrativ' : 'inchiriat');
+
+            $spatiuUpdates['status'] = $effectiveStatus;
+
+            if ($effectiveStatus === 'liber') {
+                $spatiuUpdates['chirias'] = null;
+                $spatiuUpdates['persoane_declarate'] = null;
+            } elseif ($effectiveStatus === 'administrativ') {
+                $spatiuUpdates['chirias'] = $contract->chirias;
+                $spatiuUpdates['persoane_declarate'] = null;
+            } elseif ($effectiveStatus === 'comun') {
+                $spatiuUpdates['persoane_declarate'] = 0;
+                $spatiuUpdates['chirias'] = $contract->chirias;
+            } else {
+                $spatiuUpdates['chirias'] = $contract->chirias;
+                $spatiuUpdates['persoane_declarate'] = $persoaneDeclarate;
+            }
+        } elseif ($spatiuStatus !== null) {
+            $spatiuUpdates['status'] = $spatiuStatus;
+
+            if ($spatiuStatus === 'liber') {
+                $spatiuUpdates['chirias'] = null;
+                $spatiuUpdates['persoane_declarate'] = null;
+            }
         }
 
         $contract->spatiu->update($spatiuUpdates);
         $contract->spatiu->imobil->recalculeazaSpatii();
+    }
+
+    private function normalizeSpatiuStatusInput(mixed $value): ?string
+    {
+        if (! is_string($value) || $value === '') {
+            return null;
+        }
+
+        return in_array($value, ['liber', 'rezervat', 'inchiriat', 'comun', 'administrativ'], true)
+            ? $value
+            : null;
     }
 
     private function resolveConfigurareAnexaIdForSpatiu(Request $request, Spatiu $spatiu): ?int
@@ -304,6 +339,7 @@ class ContractController extends Controller
             'status' => $contract->status,
             'observatii' => $contract->observatii,
             'configurare_anexa_id' => $contract->spatiu?->configurare_anexa_id,
+            'spatiu_status' => $contract->spatiu?->status,
             'missing_field_keys' => $contract->status === 'incomplet'
                 ? array_values(ContractCompleteness::missingFieldKeys($formInput))
                 : [],

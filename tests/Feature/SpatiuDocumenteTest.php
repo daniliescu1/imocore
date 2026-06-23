@@ -118,7 +118,7 @@ class SpatiuDocumenteTest extends TestCase
             );
     }
 
-    public function test_document_rows_are_hidden_for_liber_si_rezervat(): void
+    public function test_document_rows_appear_for_liber_fara_contract_activ(): void
     {
         $imobil = Imobil::query()->create([
             'nume' => '700 Office',
@@ -127,12 +127,74 @@ class SpatiuDocumenteTest extends TestCase
             'localitate' => 'Timișoara',
         ]);
 
-        $liber = Spatiu::query()->create([
+        $spatiu = Spatiu::query()->create([
             'imobil_id' => $imobil->id,
             'identificator' => 'L-1',
             'etaj' => 'Parter',
             'status' => 'liber',
+            'chirias' => 'Fost chiriaș',
             'ordine' => 1,
+        ]);
+
+        Contract::query()->create([
+            'spatiu_id' => $spatiu->id,
+            'numar_contract' => 'C-OLD',
+            'chirias' => 'Fost chiriaș',
+            'data_start' => '2025-01-01',
+            'chirie' => 500,
+            'moneda' => 'EUR',
+            'status' => 'activ',
+        ]);
+
+        $this->get(route('spatii.edit', $spatiu))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('showDocumente', true)
+                ->where('contractActiv', null)
+            );
+    }
+
+    public function test_salvarea_spatiului_liber_sterge_chiriasul(): void
+    {
+        $imobil = Imobil::query()->create([
+            'nume' => '700 Office',
+            'strada' => 'Strada Test',
+            'numar' => '1',
+            'localitate' => 'Timișoara',
+        ]);
+
+        $spatiu = Spatiu::query()->create([
+            'imobil_id' => $imobil->id,
+            'identificator' => 'C-302',
+            'etaj' => 'Parter',
+            'status' => 'inchiriat',
+            'chirias' => 'Golden Cube',
+            'ordine' => 1,
+        ]);
+
+        $this->put(route('spatii.update', $spatiu), [
+            'imobil_id' => $imobil->id,
+            'identificator' => 'C-302',
+            'etaj' => 'Parter',
+            'status' => 'liber',
+            'de_lamurit' => false,
+            'marcat_galben' => false,
+            'marcat_verde' => false,
+        ])->assertRedirect();
+
+        $spatiu->refresh();
+
+        $this->assertSame('liber', $spatiu->status);
+        $this->assertNull($spatiu->chirias);
+    }
+
+    public function test_document_rows_are_hidden_for_rezervat(): void
+    {
+        $imobil = Imobil::query()->create([
+            'nume' => '700 Office',
+            'strada' => 'Strada Test',
+            'numar' => '1',
+            'localitate' => 'Timișoara',
         ]);
 
         $rezervat = Spatiu::query()->create([
@@ -142,10 +204,6 @@ class SpatiuDocumenteTest extends TestCase
             'status' => 'rezervat',
             'ordine' => 2,
         ]);
-
-        $this->get(route('spatii.edit', $liber))
-            ->assertOk()
-            ->assertInertia(fn (Assert $page) => $page->where('showDocumente', false));
 
         $this->get(route('spatii.edit', $rezervat))
             ->assertOk()

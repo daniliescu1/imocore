@@ -1127,4 +1127,100 @@ class ContractChiriasTest extends TestCase
 
         $this->assertNotContains('chirias_pf.serie_ci', $missing);
     }
+
+    public function test_contract_edit_exposes_spatiu_status(): void
+    {
+        $imobil = Imobil::query()->create([
+            'nume' => '700 Office',
+            'strada' => 'Strada Test',
+            'numar' => '1',
+            'localitate' => 'Timișoara',
+        ]);
+
+        $spatiu = Spatiu::query()->create([
+            'imobil_id' => $imobil->id,
+            'identificator' => 'C 302',
+            'status' => 'inchiriat',
+            'ordine' => 1,
+        ]);
+
+        $contract = Contract::query()->create([
+            'spatiu_id' => $spatiu->id,
+            'numar_contract' => 'C-302',
+            'chirias' => 'Golden Cube',
+            'data_start' => '2025-01-01',
+            'chirie' => 169.96,
+            'moneda' => 'EUR',
+            'status' => 'activ',
+        ]);
+
+        $this->get(route('contracte.edit', $contract))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('Contracte/Form')
+                ->where('contract.spatiu_status', 'inchiriat')
+            );
+    }
+
+    public function test_contract_update_poate_seta_spatiul_liber(): void
+    {
+        $imobil = Imobil::query()->create([
+            'nume' => '700 Office',
+            'strada' => 'Strada Test',
+            'numar' => '1',
+            'localitate' => 'Timișoara',
+        ]);
+
+        $spatiu = Spatiu::query()->create([
+            'imobil_id' => $imobil->id,
+            'identificator' => 'C 302',
+            'status' => 'inchiriat',
+            'chirias' => 'Golden Cube',
+            'ordine' => 1,
+        ]);
+
+        $contract = Contract::query()->create([
+            'spatiu_id' => $spatiu->id,
+            'numar_contract' => 'C-302',
+            'chirias' => 'Golden Cube',
+            'data_start' => '2025-01-01',
+            'data_end' => '2026-12-31',
+            'chirie' => 169.96,
+            'moneda' => 'EUR',
+            'status' => 'activ',
+            'chirias_tip' => 'pj',
+            'chirias_date' => [
+                'denumire' => 'Golden Cube',
+                'administrator' => ['nume_complet' => 'Admin Test'],
+            ],
+        ]);
+
+        $this->put(route('contracte.update', $contract), [
+            'spatiu_id' => $spatiu->id,
+            'spatiu_status' => 'liber',
+            ...$this->contractRequiredFields(),
+            'numar_contract' => 'C-302',
+            'chirias_tip' => 'pj',
+            'chirias_pj' => [
+                'denumire' => 'Golden Cube',
+                'sediu_social' => 'Timișoara',
+                'telefon' => '0256000000',
+                'email' => 'office@golden-cube.ro',
+                'nr_reg_comert' => 'J35/123/2020',
+                'cui' => 'RO12345678',
+                'administrator' => [
+                    'nume_complet' => 'Admin Test',
+                ],
+            ],
+            'data_start' => '2025-01-01',
+            'data_end' => '2026-12-31',
+            'chirie' => 169.96,
+            'moneda' => 'EUR',
+        ])->assertRedirect('/contracte');
+
+        $spatiu->refresh();
+
+        $this->assertSame('liber', $spatiu->status);
+        $this->assertNull($spatiu->chirias);
+    }
 }

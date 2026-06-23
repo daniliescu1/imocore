@@ -350,6 +350,7 @@ export default function Form({
     const { data, setData, post, put, processing, errors, transform } = useForm({
         imobil_id: contract?.imobil_id || initialImobilId || initialSpatiu?.imobil_id || '',
         spatiu_id: contract?.spatiu_id || initialSpatiuId || '',
+        spatiu_status: contract?.spatiu_status || initialSpatiu?.status || 'inchiriat',
         locator_id: contract?.locator_id || initialSpatiu?.locator_id || '',
         numar_contract: contract?.numar_contract || '',
         chirias_tip: contract?.chirias_tip || 'pj',
@@ -471,6 +472,7 @@ export default function Form({
         setData({
             ...data,
             spatiu_id: spatiuId,
+            spatiu_status: spatiu?.status || 'inchiriat',
             locator_id: spatiu?.locator_id || data.locator_id,
             chirias_pf: {
                 ...data.chirias_pf,
@@ -566,19 +568,36 @@ export default function Form({
                 ) : null}
 
                 <div className="form-grid form-grid-chirias">
-                    <label className="form-field form-field-full">
+                    <label className="form-field form-grid-span-3">
                         <span>Imobil *</span>
                         <select value={data.imobil_id} onChange={(event) => {
                             setData({
                                 ...data,
                                 imobil_id: event.target.value,
                                 spatiu_id: '',
+                                spatiu_status: 'inchiriat',
                                 configurare_anexa_id: '',
                             });
                         }}>
                             <option value="">Alege imobilul</option>
                             {imobile.map((imobil) => <option value={imobil.id} key={imobil.id}>{imobil.label}</option>)}
                         </select>
+                    </label>
+
+                    <label className="form-field form-grid-span-1">
+                        <span>Status *</span>
+                        <select
+                            value={data.spatiu_status}
+                            onChange={(event) => setData('spatiu_status', event.target.value)}
+                            disabled={!data.spatiu_id}
+                        >
+                            <option value="liber">Liber</option>
+                            <option value="rezervat">Rezervat</option>
+                            <option value="inchiriat">Închiriat</option>
+                            <option value="comun">Spațiu comun</option>
+                            <option value="administrativ">Administrativ</option>
+                        </select>
+                        {errors.spatiu_status ? <small>{errors.spatiu_status}</small> : null}
                     </label>
 
                     <label className={`${fieldClassName('spatiu_id')} form-grid-span-1`.trim()}>
