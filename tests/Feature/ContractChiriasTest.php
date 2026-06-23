@@ -1225,5 +1225,6 @@ class ContractChiriasTest extends TestCase
         $this->assertSame('liber', $spatiu->status);
         $this->assertSame('Golden Cube', $spatiu->chirias);
         $this->assertSame(3, $spatiu->persoane_declarate);
+        $this->assertSame('inactiv', $contract->fresh()->status);
     }
 }

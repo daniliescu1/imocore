@@ -290,6 +290,54 @@ class AnexaCoeficientTest extends TestCase
         $this->assertEquals(38.96, round((float) $linie->valoare, 2));
     }
 
+    public function test_spatiu_liber_nu_genereaza_anexa(): void
+    {
+        $imobil = Imobil::query()->create([
+            'nume' => 'Imobil liber',
+            'strada' => 'Strada Test',
+            'numar' => '1',
+            'localitate' => 'Timisoara',
+        ]);
+
+        $configurare = $imobil->configurariAnexe()->create([
+            'denumire' => 'Anexa test',
+            'implicit' => true,
+        ]);
+
+        $configurare->linii()->create([
+            'denumire' => 'Energie Electrica',
+            'tip_calcul' => 'manual',
+            'um' => 'KW',
+            'valoare' => 100,
+            'ordine' => 1,
+            'nr_crt' => 1,
+        ]);
+
+        $spatiu = Spatiu::query()->create([
+            'imobil_id' => $imobil->id,
+            'identificator' => 'L1',
+            'status' => 'liber',
+            'configurare_anexa_id' => $configurare->id,
+        ]);
+
+        Contract::query()->create([
+            'spatiu_id' => $spatiu->id,
+            'numar_contract' => 'C-LIBER',
+            'chirias' => 'Fost chirias SRL',
+            'data_start' => '2026-01-01',
+            'status' => 'inactiv',
+        ]);
+
+        $this->post('/anexe/generare', [
+            'luna' => '2026-06',
+            'imobil_id' => $imobil->id,
+        ])
+            ->assertRedirect(route('anexe.imobil', $imobil))
+            ->assertSessionHas('warning');
+
+        $this->assertDatabaseCount('anexe', 0);
+    }
+
     public function test_generarea_anexei_poate_fi_limitata_la_un_imobil(): void
     {
         $imobilSelectat = $this->creeazaImobilEligibil('Imobil selectat', 'A1');

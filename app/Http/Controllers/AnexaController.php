@@ -121,7 +121,7 @@ class AnexaController extends Controller
             $spatiu = $contract->spatiu;
             $configurare = $spatiu?->configurareAnexa;
 
-            if (! $spatiu || ! $configurare) {
+            if (! $spatiu || ! $configurare || $spatiu->status !== 'inchiriat') {
                 continue;
             }
 
@@ -207,6 +207,7 @@ class AnexaController extends Controller
             ->with(['spatiu.configurareAnexa.linii', 'spatiu.imobil'])
             ->where('status', 'activ')
             ->whereHas('spatiu', fn ($query) => $query
+                ->where('status', 'inchiriat')
                 ->whereNotNull('configurare_anexa_id')
                 ->when($imobilId, fn ($spatiuQuery) => $spatiuQuery->where('imobil_id', $imobilId)));
     }

@@ -408,7 +408,7 @@ export default function Form({
     const { data, setData, post, put, processing, errors, transform } = useForm({
         imobil_id: contract?.imobil_id || initialImobilId || initialSpatiu?.imobil_id || '',
         spatiu_id: contract?.spatiu_id || initialSpatiuId || '',
-        spatiu_status: contract?.spatiu_status || initialSpatiu?.status || 'inchiriat',
+        spatiu_status: contract?.spatiu_status || (!contract ? 'inchiriat' : initialSpatiu?.status) || 'inchiriat',
         locator_id: contract?.locator_id || initialSpatiu?.locator_id || '',
         numar_contract: contract?.numar_contract || '',
         chirias_tip: contract?.chirias_tip || 'pj',
@@ -536,7 +536,7 @@ export default function Form({
         setData({
             ...data,
             spatiu_id: spatiuId,
-            spatiu_status: spatiu?.status || 'inchiriat',
+            spatiu_status: isEditing ? (spatiu?.status || 'inchiriat') : 'inchiriat',
             locator_id: spatiu?.locator_id || data.locator_id,
             ...chiriasFields,
             persoane_declarate: spatiu?.status === 'administrativ'
@@ -661,10 +661,20 @@ export default function Form({
 
                     <label className={`${fieldClassName('spatiu_id')} form-grid-span-1`.trim()}>
                         <span>Spațiu *</span>
-                        <select value={data.spatiu_id} onChange={(event) => applySpatiu(event.target.value)} disabled={!data.imobil_id || spatiuBlocat}>
-                            <option value="">{data.imobil_id ? 'Alege spațiul' : 'Alege mai întâi imobilul'}</option>
-                            {spatiiPentruImobil.map((spatiu) => <option value={spatiu.id} key={spatiu.id}>{spatiu.identificator}</option>)}
-                        </select>
+                        {spatiuBlocat ? (
+                            <input
+                                type="text"
+                                value={selectedSpatiu?.identificator || ''}
+                                readOnly
+                                tabIndex={-1}
+                                aria-readonly="true"
+                            />
+                        ) : (
+                            <select value={data.spatiu_id} onChange={(event) => applySpatiu(event.target.value)} disabled={!data.imobil_id}>
+                                <option value="">{data.imobil_id ? 'Alege spațiul' : 'Alege mai întâi imobilul'}</option>
+                                {spatiiPentruImobil.map((spatiu) => <option value={spatiu.id} key={spatiu.id}>{spatiu.identificator}</option>)}
+                            </select>
+                        )}
                         {errors.spatiu_id ? <small>{errors.spatiu_id}</small> : null}
                     </label>
 

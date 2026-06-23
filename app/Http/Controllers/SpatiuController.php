@@ -504,6 +504,7 @@ class SpatiuController extends Controller
         $spatiu->update($this->validatedData($request, $spatiu));
         $this->syncPersoaneForAdministrativ($spatiu->fresh());
         $this->syncPersoaneForComun($spatiu->fresh());
+        $this->deactivateContracteForSpatiuLiber($spatiu->fresh());
         SincronizareContoareDinAnexa::syncForSpatiu($spatiu->fresh());
         ContorConfigurabilSync::syncForImobil($spatiu->imobil_id);
 
@@ -846,6 +847,18 @@ class SpatiuController extends Controller
             : null;
 
         return $validated;
+    }
+
+    private function deactivateContracteForSpatiuLiber(Spatiu $spatiu): void
+    {
+        if ($spatiu->status !== 'liber') {
+            return;
+        }
+
+        Contract::query()
+            ->where('spatiu_id', $spatiu->id)
+            ->where('status', 'activ')
+            ->update(['status' => 'inactiv']);
     }
 
     private function syncPersoaneForAdministrativ(Spatiu $spatiu): void

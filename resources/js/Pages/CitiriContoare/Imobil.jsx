@@ -6,6 +6,28 @@ function isPausalTip(tipCalcul) {
     return String(tipCalcul || '').trim().toLowerCase() === 'pausal';
 }
 
+function pausalCitireManualCuIndex(denumire) {
+    const normalized = String(denumire || '').toLowerCase();
+
+    return normalized.includes('consum apa') || normalized.includes('canalizare');
+}
+
+function folosesteIndexLaCitire(tipCalcul, denumire, linieSauCitire = null) {
+    if (isPausalTip(tipCalcul)) {
+        if (pausalCitireManualCuIndex(denumire)) {
+            return true;
+        }
+
+        const indexVechi = Number(String(linieSauCitire?.index_vechi ?? '').replace(',', '.'));
+        const indexNou = Number(String(linieSauCitire?.index_nou ?? '').replace(',', '.'));
+
+        return (Number.isFinite(indexNou) && indexNou > 0)
+            || (Number.isFinite(indexVechi) && indexVechi > 0);
+    }
+
+    return true;
+}
+
 function isContorConfigurabilTip(tipCalcul) {
     const normalized = String(tipCalcul || '').toLowerCase().replace(/[\s_*-]/g, '');
 
@@ -51,7 +73,7 @@ function flattenCitiri(spatii, contoareConfigurabile = []) {
             tip_calcul: linie.tip_calcul,
         };
 
-        if (isPausalTip(linie.tip_calcul)) {
+        if (isPausalTip(linie.tip_calcul) && !folosesteIndexLaCitire(linie.tip_calcul, linie.denumire, linie)) {
             return {
                 ...base,
                 consum: formatDecimalForInput(linie.consum),
@@ -66,7 +88,7 @@ function flattenCitiri(spatii, contoareConfigurabile = []) {
     }));
 
     const citiriConfigurabile = (contoareConfigurabile || []).map((linie) => {
-        if (isPausalTip(linie.tip_calcul) || linie.is_pausal) {
+        if ((isPausalTip(linie.tip_calcul) || linie.is_pausal) && !folosesteIndexLaCitire(linie.tip_calcul, linie.denumire, linie)) {
             return {
                 spatiu_id: null,
                 configurare_anexa_linie_id: linie.configurare_anexa_linie_id,
@@ -245,7 +267,7 @@ export default function Imobil({
         }, { preserveScroll: true });
     }
 
-    function updateCitire(spatiuId, linieId, field, value, tipCalcul) {
+    function updateCitire(spatiuId, linieId, field, value, tipCalcul, denumire = '') {
         const index = citireIndexFor(spatiuId, linieId);
 
         if (index === -1) {
@@ -256,14 +278,10 @@ export default function Imobil({
                 [field]: value,
             };
 
-            if (isPausalTip(tipCalcul)) {
+            if (isPausalTip(tipCalcul) && !folosesteIndexLaCitire(tipCalcul, denumire) && field === 'consum') {
                 entry.consum = value;
-            } else if (spatiuId === null || spatiuId === undefined || spatiuId === '') {
-                entry.index_vechi = field === 'index_vechi' ? value : '';
-                entry.index_nou = field === 'index_nou' ? value : '';
-                if (field === 'consum') {
-                    entry.consum = value;
-                }
+            } else if (field === 'consum') {
+                entry.consum = value;
             } else {
                 entry.index_vechi = field === 'index_vechi' ? value : '';
                 entry.index_nou = field === 'index_nou' ? value : '';
@@ -403,8 +421,9 @@ export default function Imobil({
                                             {filteredRanduriConfigurabile.map(({ linie }) => {
                                                 const editable = isLineEditable(linie);
                                                 const pausal = isPausalTip(linie.tip_calcul) || linie.is_pausal;
+                                                const cuIndex = folosesteIndexLaCitire(linie.tip_calcul, linie.denumire, linie);
                                                 const citire = data.citiri[citireIndexFor(null, linie.configurare_anexa_linie_id)] || (
-                                                    pausal
+                                                    pausal && !cuIndex
                                                         ? { consum: formatDecimalForInput(linie.consum) }
                                                         : {
                                                             index_vechi: formatDecimalForInput(linie.index_vechi),
@@ -419,7 +438,7 @@ export default function Imobil({
                                                         <td title={linie.denumire}>{linie.denumire}</td>
                                                         <td>{tipCitireLabel(linie.tip_calcul)}</td>
                                                         <td>{linie.um || '—'}</td>
-                                                        {pausal ? (
+                                                        {pausal && !cuIndex ? (
                                                             <>
                                                                 <td>—</td>
                                                                 <td>—</td>
@@ -439,6 +458,7 @@ export default function Imobil({
                                                                             'consum',
                                                                             event.target.value,
                                                                             linie.tip_calcul,
+                                                                            linie.denumire,
                                                                         )}
                                                                     />
                                                                 </td>
@@ -460,6 +480,7 @@ export default function Imobil({
                                                                             'index_vechi',
                                                                             event.target.value,
                                                                             linie.tip_calcul,
+                                                                            linie.denumire,
                                                                         )}
                                                                     />
                                                                 </td>
@@ -478,6 +499,7 @@ export default function Imobil({
                                                                             'index_nou',
                                                                             event.target.value,
                                                                             linie.tip_calcul,
+                                                                            linie.denumire,
                                                                         )}
                                                                     />
                                                                 </td>
@@ -511,9 +533,10 @@ export default function Imobil({
                                 <tbody>
                                     {filteredRanduriCitiri.map(({ spatiu, linie }) => {
                                         const pausal = isPausalTip(linie.tip_calcul);
+                                        const cuIndex = folosesteIndexLaCitire(linie.tip_calcul, linie.denumire, linie);
                                         const editable = isLineEditable(linie);
                                         const citire = data.citiri[citireIndexFor(spatiu.id, linie.configurare_anexa_linie_id)] || (
-                                            pausal
+                                            pausal && !cuIndex
                                                 ? { consum: formatDecimalForInput(linie.consum) }
                                                 : {
                                                     index_vechi: formatDecimalForInput(linie.index_vechi),
@@ -529,7 +552,7 @@ export default function Imobil({
                                                 <td title={linie.denumire}>{linie.denumire}</td>
                                                 <td>{tipCitireLabel(linie.tip_calcul)}</td>
                                                 <td>{linie.um || '—'}</td>
-                                                {pausal ? (
+                                                {pausal && !cuIndex ? (
                                                     <>
                                                         <td>—</td>
                                                         <td>—</td>
@@ -549,6 +572,7 @@ export default function Imobil({
                                                                     'consum',
                                                                     event.target.value,
                                                                     linie.tip_calcul,
+                                                                    linie.denumire,
                                                                 )}
                                                             />
                                                         </td>
@@ -570,6 +594,7 @@ export default function Imobil({
                                                                     'index_vechi',
                                                                     event.target.value,
                                                                     linie.tip_calcul,
+                                                                    linie.denumire,
                                                                 )}
                                                             />
                                                         </td>
@@ -588,6 +613,7 @@ export default function Imobil({
                                                                     'index_nou',
                                                                     event.target.value,
                                                                     linie.tip_calcul,
+                                                                    linie.denumire,
                                                                 )}
                                                             />
                                                         </td>

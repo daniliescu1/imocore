@@ -143,7 +143,7 @@ class SpatiuDocumenteTest extends TestCase
             'data_start' => '2025-01-01',
             'chirie' => 500,
             'moneda' => 'EUR',
-            'status' => 'activ',
+            'status' => 'inactiv',
         ]);
 
         $this->get(route('spatii.edit', $spatiu))
@@ -173,6 +173,16 @@ class SpatiuDocumenteTest extends TestCase
             'ordine' => 1,
         ]);
 
+        $contract = Contract::query()->create([
+            'spatiu_id' => $spatiu->id,
+            'numar_contract' => 'C-302',
+            'chirias' => 'Golden Cube',
+            'data_start' => '2025-01-01',
+            'chirie' => 500,
+            'moneda' => 'EUR',
+            'status' => 'activ',
+        ]);
+
         $this->put(route('spatii.update', $spatiu), [
             'imobil_id' => $imobil->id,
             'identificator' => 'C-302',
@@ -188,6 +198,7 @@ class SpatiuDocumenteTest extends TestCase
         $this->assertSame('liber', $spatiu->status);
         $this->assertSame('Golden Cube', $spatiu->chirias);
         $this->assertSame(4, $spatiu->persoane_declarate);
+        $this->assertSame('inactiv', $contract->fresh()->status);
     }
 
     public function test_document_rows_are_hidden_for_rezervat(): void
@@ -514,6 +525,7 @@ class SpatiuDocumenteTest extends TestCase
 
         $this->post('/contracte', [
             'spatiu_id' => $spatiu->id,
+            'spatiu_status' => 'inchiriat',
             'locator_id' => $locator->id,
             'numar_contract' => 'C-NEW',
             'chirias_tip' => 'pf',
@@ -528,15 +540,16 @@ class SpatiuDocumenteTest extends TestCase
             ],
             'data_start' => '2025-01-01',
             'data_end' => '2026-01-01',
+            'persoane_declarate' => 2,
             'chirie' => 900,
             'moneda' => 'EUR',
-            'status' => 'activ',
             'return_url' => $returnUrl,
         ])->assertRedirect($returnUrl);
 
         $this->assertDatabaseHas('contracte', [
             'spatiu_id' => $spatiu->id,
             'numar_contract' => 'C-NEW',
+            'status' => 'activ',
         ]);
     }
 

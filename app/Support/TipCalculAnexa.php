@@ -89,6 +89,47 @@ class TipCalculAnexa
         return self::normalize($tipCalcul) === 'contor_configurabil';
     }
 
+    public static function pausalCitireManualCuIndex(?string $denumire): bool
+    {
+        $denumire = strtolower(trim((string) $denumire));
+
+        if ($denumire === '') {
+            return false;
+        }
+
+        return str_contains($denumire, 'consum apa')
+            || str_contains($denumire, 'canalizare');
+    }
+
+    public static function folosesteIndexLaCitire(?string $tipCalcul, ?string $denumire = null, mixed $citire = null): bool
+    {
+        if (self::isContor($tipCalcul) || self::isContorConfigurabil($tipCalcul)) {
+            return true;
+        }
+
+        if (! self::isPausal($tipCalcul)) {
+            return false;
+        }
+
+        if (self::pausalCitireManualCuIndex($denumire)) {
+            return true;
+        }
+
+        if ($citire === null) {
+            return false;
+        }
+
+        $indexVechi = is_array($citire)
+            ? ($citire['index_vechi'] ?? null)
+            : ($citire->index_vechi ?? null);
+        $indexNou = is_array($citire)
+            ? ($citire['index_nou'] ?? null)
+            : ($citire->index_nou ?? null);
+
+        return ($indexNou !== null && $indexNou !== '' && (float) $indexNou > 0)
+            || ($indexVechi !== null && $indexVechi !== '' && (float) $indexVechi > 0);
+    }
+
     public static function needsConfigurareContoare(?string $tipCalcul): bool
     {
         return self::isContorConfigurabil($tipCalcul) || self::isPausal($tipCalcul);
@@ -120,7 +161,14 @@ class TipCalculAnexa
     {
         return $query
             ->where(function ($query): void {
-                $query->whereRaw('lower(trim(tip_calcul)) = ?', ['contor']);
+                $query->whereRaw('lower(trim(tip_calcul)) = ?', ['contor'])
+                    ->orWhere(function ($query): void {
+                        $query->whereRaw('lower(trim(tip_calcul)) = ?', ['pausal'])
+                            ->where(function ($query): void {
+                                $query->whereRaw('lower(denumire) like ?', ['%consum apa%'])
+                                    ->orWhereRaw('lower(denumire) like ?', ['%canalizare%']);
+                            });
+                    });
             })
             ->where(function ($query): void {
                 $query->whereNull('tip_linie')

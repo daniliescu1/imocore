@@ -109,6 +109,10 @@ class ContractController extends Controller
                 ->with('warning', 'Contract incomplet — completează câmpurile marcate pentru activare.');
         }
 
+        if ($status === 'inactiv') {
+            return redirect($returnUrl ?: '/contracte')->with('success', 'Contract salvat ca inactiv.');
+        }
+
         return redirect($returnUrl ?: '/contracte')->with('success', 'Contract activ salvat.');
     }
 
@@ -144,6 +148,10 @@ class ContractController extends Controller
                     'return_url' => $returnUrl,
                 ])
                 ->with('warning', 'Contract incomplet — completează câmpurile marcate pentru activare.');
+        }
+
+        if ($status === 'inactiv') {
+            return redirect($returnUrl ?: '/contracte')->with('success', 'Contract salvat ca inactiv.');
         }
 
         return redirect($returnUrl ?: '/contracte')->with('success', 'Contract activ salvat.');
@@ -182,8 +190,16 @@ class ContractController extends Controller
         ]);
 
         $spatiu = Spatiu::query()->findOrFail($baseValidated['spatiu_id']);
+        $spatiuStatus = $this->normalizeSpatiuStatusInput($baseValidated['spatiu_status'] ?? null);
         $isComplete = ContractCompleteness::isComplete($request->all());
-        $status = $isComplete ? 'activ' : 'incomplet';
+
+        if (! $isComplete) {
+            $status = 'incomplet';
+        } elseif ($spatiuStatus === 'liber') {
+            $status = 'inactiv';
+        } else {
+            $status = 'activ';
+        }
 
         $chirias = $isComplete
             ? ContractChiriasData::validateAndNormalize($request)
@@ -229,9 +245,7 @@ class ContractController extends Controller
 
             $spatiuUpdates['status'] = $effectiveStatus;
 
-            if ($effectiveStatus === 'liber') {
-                $spatiuUpdates['chirias'] = $contract->chirias ?: $contract->spatiu->chirias;
-            } elseif ($effectiveStatus === 'administrativ') {
+            if ($effectiveStatus === 'administrativ') {
                 $spatiuUpdates['chirias'] = $contract->chirias;
                 $spatiuUpdates['persoane_declarate'] = null;
             } elseif ($effectiveStatus === 'comun') {
@@ -240,6 +254,13 @@ class ContractController extends Controller
             } else {
                 $spatiuUpdates['chirias'] = $contract->chirias;
                 $spatiuUpdates['persoane_declarate'] = $persoaneDeclarate;
+            }
+        } elseif ($status === 'inactiv') {
+            $effectiveStatus = $spatiuStatus ?? 'liber';
+            $spatiuUpdates['status'] = $effectiveStatus;
+
+            if ($effectiveStatus === 'liber') {
+                $spatiuUpdates['chirias'] = $contract->chirias ?: $contract->spatiu->chirias;
             }
         } elseif ($spatiuStatus !== null) {
             $spatiuUpdates['status'] = $spatiuStatus;
