@@ -127,7 +127,7 @@ class ContractCompleteness
             ...self::persoaneDeclarateRules($input),
             'chirias_pj' => ['required', 'array'],
             'chirias_pj.denumire' => ['nullable', 'string', 'max:255'],
-            'chirias_pj.sediu_social' => ['required', 'string', 'max:500'],
+            'chirias_pj.sediu_social' => ['nullable', 'string', 'max:500'],
             'chirias_pj.email' => ['nullable', 'string', 'max:255'],
             'chirias_pj.email_2' => ['nullable', 'string', 'max:255'],
             'chirias_pj.telefon' => ['nullable', 'string', 'max:50'],

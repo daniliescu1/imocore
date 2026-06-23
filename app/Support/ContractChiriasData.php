@@ -213,7 +213,7 @@ class ContractChiriasData
         $validated = $request->validate([
             'chirias_pj' => ['required', 'array'],
             'chirias_pj.denumire' => ['nullable', 'string', 'max:255'],
-            'chirias_pj.sediu_social' => ['required', 'string', 'max:500'],
+            'chirias_pj.sediu_social' => ['nullable', 'string', 'max:500'],
             'chirias_pj.telefon' => ['nullable', 'string', 'max:50'],
             'chirias_pj.email' => ['nullable', 'string', 'max:255'],
             'chirias_pj.email_2' => ['nullable', 'string', 'max:255'],
@@ -233,7 +233,7 @@ class ContractChiriasData
             'chirias_tip' => 'pj',
             'chirias' => $pj['denumire'] ?: '',
             'chirias_date' => [
-                'sediu_social' => $pj['sediu_social'],
+                'sediu_social' => ($pj['sediu_social'] ?? null) ?: null,
                 'telefon' => ($pj['telefon'] ?? null) ?: null,
                 'email' => ($pj['email'] ?? null) ?: null,
                 'email_2' => ($pj['email_2'] ?? null) ?: null,

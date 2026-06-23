@@ -144,7 +144,6 @@ function missingFieldKeysForForm(data, spatiuAdministrativ = false) {
         if (isBlank(data.chirias_pf?.domiciliu)) missing.push('chirias_pf.domiciliu');
         if (isBlank(data.chirias_pf?.telefon)) missing.push('chirias_pf.telefon');
     } else {
-        if (isBlank(data.chirias_pj?.sediu_social)) missing.push('chirias_pj.sediu_social');
         if (isInvalidCnp(data.chirias_pj?.administrator?.cnp)) missing.push('chirias_pj.administrator.cnp');
 
         const admin2 = data.chirias_pj?.administrator_2;
@@ -678,7 +677,7 @@ export default function Form({
                             <div className="form-grid form-grid-chirias">
                                 <div className="contract-chirias-pj-primary-row">
                                     <PfField label="Denumire" value={data.chirias_pj.denumire} onChange={(value) => updatePj('denumire', value)} error={errors['chirias_pj.denumire']} incomplete={fieldIncomplete('chirias_pj.denumire')} gridSpan={1} />
-                                    <PfField label="Sediul social" value={data.chirias_pj.sediu_social} onChange={(value) => updatePj('sediu_social', value)} error={errors['chirias_pj.sediu_social']} required incomplete={fieldIncomplete('chirias_pj.sediu_social')} gridSpan={1} />
+                                    <PfField label="Sediul social" value={data.chirias_pj.sediu_social} onChange={(value) => updatePj('sediu_social', value)} error={errors['chirias_pj.sediu_social']} incomplete={fieldIncomplete('chirias_pj.sediu_social')} gridSpan={1} />
                                 </div>
                                 <PfField label="Telefon" value={data.chirias_pj.telefon} onChange={(value) => updatePj('telefon', value)} error={errors['chirias_pj.telefon']} incomplete={fieldIncomplete('chirias_pj.telefon')} gridSpan={1} formatter={formatPhoneNumber} />
                                 <PfField label="Email" value={data.chirias_pj.email} onChange={(value) => updatePj('email', value)} error={errors['chirias_pj.email']} incomplete={fieldIncomplete('chirias_pj.email')} gridSpan={1} />

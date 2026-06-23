@@ -303,6 +303,50 @@ class ContractChiriasTest extends TestCase
         $this->assertNull($contract->chirias_date['administrator']['domiciliu']);
     }
 
+    public function test_contract_pj_activ_fara_sediu_social(): void
+    {
+        $imobil = Imobil::query()->create([
+            'nume' => '700 Office',
+            'strada' => 'Strada Test',
+            'numar' => '1',
+            'localitate' => 'Timișoara',
+        ]);
+
+        $spatiu = Spatiu::query()->create([
+            'imobil_id' => $imobil->id,
+            'identificator' => 'D205C2',
+            'status' => 'liber',
+            'ordine' => 1,
+        ]);
+
+        $this->post('/contracte', [
+            'spatiu_id' => $spatiu->id,
+            ...$this->contractRequiredFields(),
+            'numar_contract' => 'C-PJ-FARA-SEDIU',
+            'chirias_tip' => 'pj',
+            'chirias_pj' => [
+                'denumire' => 'MOTOSAN MADALINA-MIHAELA',
+                'sediu_social' => '',
+                'telefon' => '0722000000',
+                'email' => 'office@example.ro',
+                'nr_reg_comert' => 'J35/123/2020',
+                'cui' => 'RO12345678',
+                'administrator' => [
+                    'nume_complet' => 'Admin Test',
+                ],
+            ],
+            'data_start' => '2025-01-01',
+            'chirie' => 1200,
+            'moneda' => 'EUR',
+        ])->assertRedirect('/contracte');
+
+        $contract = Contract::query()->firstOrFail();
+
+        $this->assertSame('activ', $contract->status);
+        $this->assertNull($contract->chirias_date['sediu_social'] ?? null);
+        $this->assertSame('inchiriat', $spatiu->fresh()->status);
+    }
+
     public function test_contract_pj_accepta_date_scrise_in_format_romanesc(): void
     {
         $imobil = Imobil::query()->create([
@@ -917,6 +961,7 @@ class ContractChiriasTest extends TestCase
         $this->assertContains('locator_id', $missing);
         $this->assertContains('persoane_declarate', $missing);
         $this->assertNotContains('chirias_pj.denumire', $missing);
+        $this->assertNotContains('chirias_pj.sediu_social', $missing);
         $this->assertNotContains('chirias_pj.administrator.nume_complet', $missing);
         $this->assertNotContains('data_start', $missing);
         $this->assertNotContains('data_end', $missing);
