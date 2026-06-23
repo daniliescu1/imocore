@@ -1,6 +1,8 @@
 import React from 'react';
 import { Deferred, router, useForm } from '@inertiajs/react';
 import AppLayout from '../../Layouts/AppLayout';
+import ModuleSpatiuSearchToolbar from '../../Components/ModuleSpatiuSearchToolbar';
+import SpatiuModuleSearchTable from '../../Components/SpatiuModuleSearchTable';
 
 function formatMoney(value) {
     if (value === null || value === undefined || value === '') return '—';
@@ -20,7 +22,7 @@ function facturareStatusLine(anexeFacturate, anexeNefacturate, cursImplicit) {
     return `${anexeFacturate} ${facturateLabel} · ${anexeNefacturate} ${nefacturateLabel} — Curs ${cursImplicit} RON/EUR`;
 }
 
-function RezumatImobileTable({ rezumatImobile = [] }) {
+function RezumatImobileTable({ rezumatImobile = [], search = '' }) {
     return (
         <section className="table-card module-table-card facturare-table-card">
             <div className="responsive-table">
@@ -57,7 +59,11 @@ function RezumatImobileTable({ rezumatImobile = [] }) {
                         ))}
                         {rezumatImobile.length === 0 ? (
                             <tr>
-                                <td colSpan="8">Nu există imobile introduse.</td>
+                                <td colSpan="8">
+                                    {search
+                                        ? 'Nu există imobile care să corespundă căutării.'
+                                        : 'Nu există imobile introduse.'}
+                                </td>
                             </tr>
                         ) : null}
                     </tbody>
@@ -67,7 +73,17 @@ function RezumatImobileTable({ rezumatImobile = [] }) {
     );
 }
 
-export default function Index({ anexeFacturate = 0, anexeNefacturate = 0, rezumatImobile = [], cursImplicit = 5 }) {
+export default function Index({
+    anexeFacturate = 0,
+    anexeNefacturate = 0,
+    rezumatImobile = [],
+    spatii = [],
+    localitati = [],
+    filters = {},
+    cursImplicit = 5,
+}) {
+    const isRootSpatiiSearchView = Boolean(filters.search_spatii);
+    const showImobilColumn = isRootSpatiiSearchView && new Set(spatii.map((spatiu) => spatiu.imobil_id)).size > 1;
     const { processing } = useForm({});
 
     function generate(event) {
@@ -76,25 +92,50 @@ export default function Index({ anexeFacturate = 0, anexeNefacturate = 0, rezuma
     }
 
     const topbarActions = (
-        <button className="primary-button topbar-primary-button" type="button" onClick={generate} disabled={processing}>
-            {processing ? 'Se generează...' : 'Generează facturi'}
-        </button>
+        <ModuleSpatiuSearchToolbar
+            filters={filters}
+            localitati={localitati}
+            routePath="/facturare"
+            showBack={isRootSpatiiSearchView}
+            extraActions={(
+                <button className="primary-button topbar-primary-button" type="button" onClick={generate} disabled={processing}>
+                    {processing ? 'Se generează...' : 'Generează facturi'}
+                </button>
+            )}
+        />
     );
 
     const statusLine = facturareStatusLine(anexeFacturate, anexeNefacturate, cursImplicit);
     const topbarTitle = (
         <div className="topbar-page-title">
-            <h1>Facturare</h1>
+            <h1>{isRootSpatiiSearchView ? `Rezultate căutare (${spatii.length})` : 'Facturare'}</h1>
             <p>{statusLine}</p>
         </div>
     );
 
+    function openSpatiu(spatiu) {
+        const params = new URLSearchParams({ search_spatiu: filters.search || '' });
+        router.visit(`/facturare/imobil/${spatiu.imobil_id}?${params.toString()}`);
+    }
+
     return (
-        <AppLayout title="Facturare" showGlobalSearch={false} topbarActions={topbarActions} topbarTitle={topbarTitle}>
+        <AppLayout title={isRootSpatiiSearchView ? `Rezultate căutare (${spatii.length})` : 'Facturare'} showGlobalSearch={false} topbarActions={topbarActions} topbarTitle={topbarTitle}>
             <div className="page-compact-list">
-                <Deferred data="rezumatImobile" fallback={<p className="facturare-loading-note">Se încarcă rezumatul pe imobile...</p>}>
-                    <RezumatImobileTable rezumatImobile={rezumatImobile} />
-                </Deferred>
+                {isRootSpatiiSearchView ? (
+                    <SpatiuModuleSearchTable
+                        spatii={spatii}
+                        onOpen={openSpatiu}
+                        showImobilColumn={showImobilColumn}
+                        getRowHref={(spatiu) => {
+                            const params = new URLSearchParams({ search_spatiu: filters.search || '' });
+                            return `/facturare/imobil/${spatiu.imobil_id}?${params.toString()}`;
+                        }}
+                    />
+                ) : (
+                    <Deferred data="rezumatImobile" fallback={<p className="facturare-loading-note">Se încarcă rezumatul pe imobile...</p>}>
+                        <RezumatImobileTable rezumatImobile={rezumatImobile} search={filters.search} />
+                    </Deferred>
+                )}
             </div>
         </AppLayout>
     );

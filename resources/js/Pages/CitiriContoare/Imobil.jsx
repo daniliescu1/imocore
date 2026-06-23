@@ -193,6 +193,7 @@ export default function Imobil({
     luniCitite = [],
     spatii = [],
     contoareConfigurabile = [],
+    searchSpatiu = '',
 }) {
     const serverStateKey = useMemo(() => JSON.stringify({
         imobilId: imobil?.id,
@@ -211,7 +212,11 @@ export default function Imobil({
         contoareConfigurabile,
     }));
     const [inchidereProcessing, setInchidereProcessing] = React.useState(false);
-    const [search, setSearch] = React.useState('');
+    const [search, setSearch] = React.useState(searchSpatiu || '');
+
+    useEffect(() => {
+        setSearch(searchSpatiu || '');
+    }, [searchSpatiu]);
 
     useEffect(() => {
         if (lastServerStateKey.current === serverStateKey) {

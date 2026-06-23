@@ -11,6 +11,7 @@ use App\Models\SetareAplicatie;
 use App\Models\Spatiu;
 use App\Support\AnexaDocumentPayload;
 use App\Support\DocumentFormatter;
+use App\Support\SpatiuIndexSearch;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -22,8 +23,10 @@ class FacturaController extends Controller
 {
     private const TVA_CHIRIE_PROCENT = 21;
 
-    public function index(): Response
+    public function index(Request $request): Response|RedirectResponse
     {
+        $search = trim($request->string('search')->toString());
+        $localitate = trim($request->string('localitate')->toString());
         $anexeFacturate = Anexa::query()
             ->whereHas('factura')
             ->count();
@@ -33,10 +36,54 @@ class FacturaController extends Controller
 
         $curs = $this->cursEurBt();
 
+        if ($search !== '' && SpatiuIndexSearch::matchesSpatii($search, $localitate)) {
+            $imobilIds = Spatiu::query()
+                ->when($localitate !== '', fn ($query) => $query->whereHas(
+                    'imobil',
+                    fn ($imobilQuery) => $imobilQuery->where('localitate', $localitate)
+                ))
+                ->where(function ($query) use ($search) {
+                    $query->where('identificator', 'like', "%{$search}%")
+                        ->orWhere('locator', 'like', "%{$search}%")
+                        ->orWhere('chirias', 'like', "%{$search}%");
+                })
+                ->distinct()
+                ->pluck('imobil_id');
+
+            if ($imobilIds->count() === 1) {
+                return redirect()->route('facturare.imobil', [
+                    'imobil' => $imobilIds->first(),
+                    'search_spatiu' => $search,
+                ]);
+            }
+
+            return Inertia::render('Facturare/Index', [
+                'anexeFacturate' => $anexeFacturate,
+                'anexeNefacturate' => $anexeNefacturate,
+                'rezumatImobile' => [],
+                'spatii' => SpatiuIndexSearch::spatiiForSearch($search, $localitate),
+                'localitati' => SpatiuIndexSearch::localitati(),
+                'filters' => [
+                    'search' => $search,
+                    'localitate' => $localitate,
+                    'search_spatii' => true,
+                ],
+                'cursImplicit' => $curs['valoare'],
+                'cursSursa' => $curs['sursa'],
+            ]);
+        }
+
         return Inertia::render('Facturare/Index', [
             'anexeFacturate' => $anexeFacturate,
             'anexeNefacturate' => $anexeNefacturate,
-            'rezumatImobile' => Inertia::defer(fn () => $this->rezumatImobile((float) $curs['valoare']), 'summary'),
+            'rezumatImobile' => Inertia::defer(fn () => $this->rezumatImobile((float) $curs['valoare'], $localitate, $search), 'summary'),
+            'spatii' => [],
+            'localitati' => SpatiuIndexSearch::localitati(),
+            'filters' => [
+                'search' => $search,
+                'localitate' => $localitate,
+                'search_spatii' => false,
+            ],
             'cursImplicit' => $curs['valoare'],
             'cursSursa' => $curs['sursa'],
         ]);
@@ -755,7 +802,7 @@ class FacturaController extends Controller
         ];
     }
 
-    private function rezumatImobile(float $cursEur): array
+    private function rezumatImobile(float $cursEur, string $localitate = '', string $search = ''): array
     {
         $facturiPeImobil = Factura::query()
             ->with(['anexa.contract.spatiu', 'contract.spatiu'])
@@ -787,11 +834,21 @@ class FacturaController extends Controller
             ->get()
             ->keyBy('imobil_id');
 
-        return Imobil::query()
+        $query = Imobil::query()
             ->withCount([
                 'spatii as spatii_inchiriate_count' => fn ($query) => $query->where('status', 'inchiriat'),
             ])
-            ->orderBy('nume')
+            ->orderBy('nume');
+
+        if ($localitate !== '') {
+            $query->where('localitate', $localitate);
+        }
+
+        if ($search !== '') {
+            $query->where('nume', 'like', "%{$search}%");
+        }
+
+        return $query
             ->get()
             ->map(function (Imobil $imobil) use ($anexePeImobil, $chiriiPeImobil, $cursEur, $facturiPeImobil): array {
                 $facturi = $facturiPeImobil->get($imobil->id);

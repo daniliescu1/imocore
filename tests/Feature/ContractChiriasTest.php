@@ -813,7 +813,7 @@ class ContractChiriasTest extends TestCase
         $this->put(route('contracte.update', $contract), [
             'spatiu_id' => $spatiu->id,
             ...$this->contractRequiredFields(),
-            'numar_contract' => 'C-COMPLETE-1',
+            'numar_contract' => '',
             'chirias_tip' => 'pj',
             'chirias_pj' => [
                 'denumire' => 'SC Parțial SRL',
@@ -840,6 +840,7 @@ class ContractChiriasTest extends TestCase
         $spatiu->refresh();
 
         $this->assertSame('activ', $contract->status);
+        $this->assertSame('', $contract->numar_contract);
         $this->assertSame('inchiriat', $spatiu->status);
         $this->assertSame('SC Parțial SRL', $spatiu->chirias);
     }
@@ -907,7 +908,7 @@ class ContractChiriasTest extends TestCase
             ],
         ]);
 
-        $this->assertContains('numar_contract', $missing);
+        $this->assertNotContains('numar_contract', $missing);
         $this->assertContains('locator_id', $missing);
         $this->assertNotContains('data_start', $missing);
         $this->assertNotContains('data_end', $missing);

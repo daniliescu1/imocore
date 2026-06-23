@@ -132,7 +132,6 @@ function missingFieldKeysForForm(data) {
 
     if (!data.spatiu_id) missing.push('spatiu_id');
     if (!data.locator_id) missing.push('locator_id');
-    if (isBlank(data.numar_contract)) missing.push('numar_contract');
     if (isBlank(data.chirie) && data.chirie !== 0) missing.push('chirie');
 
     if (data.chirias_tip === 'pf') {
@@ -600,7 +599,7 @@ export default function Form({
                     </label>
 
                     <label className={`${fieldClassName('numar_contract')} form-grid-span-1`.trim()}>
-                        <span>Număr contract *</span>
+                        <span>Număr contract</span>
                         <input type="text" value={data.numar_contract} onChange={(event) => setData('numar_contract', event.target.value)} />
                         {errors.numar_contract ? <small>{errors.numar_contract}</small> : null}
                     </label>

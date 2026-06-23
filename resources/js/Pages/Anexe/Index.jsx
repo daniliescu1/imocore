@@ -1,6 +1,8 @@
 import React from 'react';
 import { Deferred, router, useForm } from '@inertiajs/react';
 import AppLayout from '../../Layouts/AppLayout';
+import ModuleSpatiuSearchToolbar from '../../Components/ModuleSpatiuSearchToolbar';
+import SpatiuModuleSearchTable from '../../Components/SpatiuModuleSearchTable';
 
 function formatMoney(value) {
     if (value === null || value === undefined || value === '') return '—';
@@ -22,7 +24,7 @@ const luni = [
     ['12', 'Decembrie'],
 ];
 
-function RezumatImobileTable({ rezumatImobile = [] }) {
+function RezumatImobileTable({ rezumatImobile = [], search = '' }) {
     return (
         <section className="table-card module-table-card facturare-table-card">
             <div className="responsive-table">
@@ -51,7 +53,11 @@ function RezumatImobileTable({ rezumatImobile = [] }) {
                         ))}
                         {rezumatImobile.length === 0 ? (
                             <tr>
-                                <td colSpan="4">Nu există imobile introduse.</td>
+                                <td colSpan="4">
+                                    {search
+                                        ? 'Nu există imobile care să corespundă căutării.'
+                                        : 'Nu există imobile introduse.'}
+                                </td>
                             </tr>
                         ) : null}
                     </tbody>
@@ -61,7 +67,16 @@ function RezumatImobileTable({ rezumatImobile = [] }) {
     );
 }
 
-export default function Index({ rezumatImobile = [], lunaImplicita = '', contracteEligibile = 0 }) {
+export default function Index({
+    rezumatImobile = [],
+    spatii = [],
+    localitati = [],
+    filters = {},
+    lunaImplicita = '',
+    contracteEligibile = 0,
+}) {
+    const isRootSpatiiSearchView = Boolean(filters.search_spatii);
+    const showImobilColumn = isRootSpatiiSearchView && new Set(spatii.map((spatiu) => spatiu.imobil_id)).size > 1;
     const [anImplicit, lunaImplicit] = String(lunaImplicita || '').split('-');
     const { data, setData, processing } = useForm({
         luna: lunaImplicit || String(new Date().getMonth() + 1).padStart(2, '0'),
@@ -81,19 +96,35 @@ export default function Index({ rezumatImobile = [], lunaImplicita = '', contrac
     }
 
     const topbarActions = (
-        <form className="topbar-actions" onSubmit={generate}>
-            <select className="filter-input topbar-filter" value={data.luna} onChange={(event) => setData('luna', event.target.value)}>
-                {luni.map(([value, label]) => <option value={value} key={value}>{value} - {label}</option>)}
-            </select>
-            <input className="filter-input topbar-filter" type="number" min="2000" max="2100" value={data.an} onChange={(event) => setData('an', event.target.value)} />
-            <button className="primary-button topbar-primary-button" type="submit" disabled={processing}>
-                {processing ? 'Se generează...' : 'Generează anexele'}
-            </button>
-        </form>
+        <ModuleSpatiuSearchToolbar
+            filters={filters}
+            localitati={localitati}
+            routePath="/anexe"
+            showBack={isRootSpatiiSearchView}
+            extraActions={(
+                <form className="topbar-actions" onSubmit={generate}>
+                    <select className="filter-input topbar-filter" value={data.luna} onChange={(event) => setData('luna', event.target.value)}>
+                        {luni.map(([value, label]) => <option value={value} key={value}>{value} - {label}</option>)}
+                    </select>
+                    <input className="filter-input topbar-filter" type="number" min="2000" max="2100" value={data.an} onChange={(event) => setData('an', event.target.value)} />
+                    <button className="primary-button topbar-primary-button" type="submit" disabled={processing}>
+                        {processing ? 'Se generează...' : 'Generează anexele'}
+                    </button>
+                </form>
+            )}
+        />
     );
 
+    function openSpatiu(spatiu) {
+        router.visit(`/anexe/imobil/${spatiu.imobil_id}`);
+    }
+
     return (
-        <AppLayout title="Generare anexe" showGlobalSearch={false} topbarActions={topbarActions}>
+        <AppLayout
+            title={isRootSpatiiSearchView ? `Rezultate căutare (${spatii.length})` : 'Generare anexe'}
+            showGlobalSearch={false}
+            topbarActions={topbarActions}
+        >
             <section className="facturare-imobil-toolbar">
                 <div className="facturare-imobil-toolbar-main">
                     <strong className="facturare-imobil-count">{contracteEligibile} spații eligibile</strong>
@@ -109,9 +140,18 @@ export default function Index({ rezumatImobile = [], lunaImplicita = '', contrac
                 </div>
             </section>
 
-            <Deferred data="rezumatImobile" fallback={<p className="facturare-loading-note">Se încarcă rezumatul pe imobile...</p>}>
-                <RezumatImobileTable rezumatImobile={rezumatImobile} />
-            </Deferred>
+            {isRootSpatiiSearchView ? (
+                <SpatiuModuleSearchTable
+                    spatii={spatii}
+                    onOpen={openSpatiu}
+                    showImobilColumn={showImobilColumn}
+                    getRowHref={(spatiu) => `/anexe/imobil/${spatiu.imobil_id}`}
+                />
+            ) : (
+                <Deferred data="rezumatImobile" fallback={<p className="facturare-loading-note">Se încarcă rezumatul pe imobile...</p>}>
+                    <RezumatImobileTable rezumatImobile={rezumatImobile} search={filters.search} />
+                </Deferred>
+            )}
         </AppLayout>
     );
 }

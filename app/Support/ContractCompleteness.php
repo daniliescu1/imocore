@@ -98,7 +98,7 @@ class ContractCompleteness
         $rules = [
             'spatiu_id' => ['required', 'exists:spatii,id'],
             'locator_id' => ['required', 'exists:locatori,id'],
-            'numar_contract' => ['required', 'string', 'max:255'],
+            'numar_contract' => ['nullable', 'string', 'max:255'],
             'chirias_tip' => ['required', 'in:pf,pj'],
             'data_start' => ['nullable', 'date'],
             'data_end' => ['nullable', 'date', 'after_or_equal:data_start'],

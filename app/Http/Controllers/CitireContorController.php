@@ -9,6 +9,7 @@ use App\Models\ContorConfigurabil;
 use App\Models\Imobil;
 use App\Models\Spatiu;
 use App\Support\ContorConfigurabilSync;
+use App\Support\SpatiuIndexSearch;
 use App\Support\TipCalculAnexa;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -17,10 +18,36 @@ use Inertia\Response;
 
 class CitireContorController extends Controller
 {
-    public function index(): Response
+    public function index(Request $request): Response
     {
-        $imobile = Imobil::query()
-            ->orderBy('nume')
+        $search = $request->string('search')->toString();
+        $localitate = $request->string('localitate')->toString();
+
+        if ($search !== '' && SpatiuIndexSearch::matchesSpatii($search, $localitate)) {
+            return Inertia::render('CitiriContoare/Index', [
+                'imobile' => [],
+                'spatii' => SpatiuIndexSearch::spatiiForSearch($search, $localitate),
+                'localitati' => SpatiuIndexSearch::localitati(),
+                'filters' => [
+                    'search' => $search,
+                    'localitate' => $localitate,
+                    'search_spatii' => true,
+                ],
+            ]);
+        }
+
+        $query = Imobil::query()
+            ->orderBy('nume');
+
+        if ($localitate !== '') {
+            $query->where('localitate', $localitate);
+        }
+
+        if ($search !== '') {
+            $query->where('nume', 'like', "%{$search}%");
+        }
+
+        $imobile = $query
             ->get(['id', 'nume', 'localitate'])
             ->map(fn (Imobil $imobil): array => [
                 'id' => $imobil->id,
@@ -32,6 +59,13 @@ class CitireContorController extends Controller
 
         return Inertia::render('CitiriContoare/Index', [
             'imobile' => $imobile,
+            'spatii' => [],
+            'localitati' => SpatiuIndexSearch::localitati(),
+            'filters' => [
+                'search' => $search,
+                'localitate' => $localitate,
+                'search_spatii' => false,
+            ],
         ]);
     }
 
@@ -56,6 +90,7 @@ class CitireContorController extends Controller
         ContorConfigurabilSync::syncForImobil($imobil->id);
         $spatii = $this->spatiiCuCitiriPentruImobil($imobil, $luna, $lunaInchisa);
         $contoareConfigurabile = $this->contoareConfigurabilePentruImobil($imobil, $luna, $lunaInchisa);
+        $searchSpatiu = $request->string('search')->toString();
 
         return Inertia::render('CitiriContoare/Imobil', [
             'imobil' => [
@@ -73,6 +108,7 @@ class CitireContorController extends Controller
             'luniSelectabile' => $this->luniSelectabile(),
             'spatii' => $spatii,
             'contoareConfigurabile' => $contoareConfigurabile,
+            'searchSpatiu' => $searchSpatiu,
         ]);
     }
 

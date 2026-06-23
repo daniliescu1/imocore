@@ -13,6 +13,7 @@ use App\Support\AnexaDocumentPayload;
 use App\Support\ContorConfigurabilSync;
 use App\Support\DocumentFormatter;
 use App\Support\GenerareAnexaLinieCalculator;
+use App\Support\SpatiuIndexSearch;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\Carbon;
 use Illuminate\Http\RedirectResponse;
@@ -23,12 +24,36 @@ use Symfony\Component\HttpFoundation\Response as HttpResponse;
 
 class AnexaController extends Controller
 {
-    public function index(): Response
+    public function index(Request $request): Response
     {
+        $search = $request->string('search')->toString();
+        $localitate = $request->string('localitate')->toString();
         $contracteEligibile = $this->contracteEligibileQuery()->count();
 
+        if ($search !== '' && SpatiuIndexSearch::matchesSpatii($search, $localitate)) {
+            return Inertia::render('Anexe/Index', [
+                'rezumatImobile' => [],
+                'spatii' => SpatiuIndexSearch::spatiiForSearch($search, $localitate),
+                'localitati' => SpatiuIndexSearch::localitati(),
+                'filters' => [
+                    'search' => $search,
+                    'localitate' => $localitate,
+                    'search_spatii' => true,
+                ],
+                'lunaImplicita' => now()->format('Y-m'),
+                'contracteEligibile' => $contracteEligibile,
+            ]);
+        }
+
         return Inertia::render('Anexe/Index', [
-            'rezumatImobile' => Inertia::defer(fn () => $this->rezumatImobile(), 'summary'),
+            'rezumatImobile' => Inertia::defer(fn () => $this->rezumatImobile($localitate, $search), 'summary'),
+            'spatii' => [],
+            'localitati' => SpatiuIndexSearch::localitati(),
+            'filters' => [
+                'search' => $search,
+                'localitate' => $localitate,
+                'search_spatii' => false,
+            ],
             'lunaImplicita' => now()->format('Y-m'),
             'contracteEligibile' => $contracteEligibile,
         ]);
@@ -165,7 +190,7 @@ class AnexaController extends Controller
                 ->when($imobilId, fn ($spatiuQuery) => $spatiuQuery->where('imobil_id', $imobilId)));
     }
 
-    private function rezumatImobile(): array
+    private function rezumatImobile(string $localitate = '', string $search = ''): array
     {
         $anexePeImobil = Anexa::query()
             ->join('contracte', 'contracte.id', '=', 'anexe.contract_id')
@@ -177,11 +202,21 @@ class AnexaController extends Controller
             ->get()
             ->keyBy('imobil_id');
 
-        return Imobil::query()
+        $query = Imobil::query()
             ->withCount([
                 'spatii as spatii_inchiriate_count' => fn ($query) => $query->where('status', 'inchiriat'),
             ])
-            ->orderBy('nume')
+            ->orderBy('nume');
+
+        if ($localitate !== '') {
+            $query->where('localitate', $localitate);
+        }
+
+        if ($search !== '') {
+            $query->where('nume', 'like', "%{$search}%");
+        }
+
+        return $query
             ->get()
             ->map(function (Imobil $imobil) use ($anexePeImobil): array {
                 $anexe = $anexePeImobil->get($imobil->id);
