@@ -545,7 +545,8 @@ class CitiriContoareTest extends TestCase
                 ->where('contoareConfigurabile.0.index_vechi', '')
                 ->where('contoareConfigurabile.0.index_nou', '')
                 ->where('contoareConfigurabile.1.is_pausal', true)
-                ->where('searchMatchingSpatiuIds', [$spatiu->id])
+                ->where('searchMatchingSpatii.0.id', $spatiu->id)
+                ->where('contoareConfigurabile.0.configurare_anexa_id', $configurare->id)
                 ->where('contoareConfigurabile.0.alocari_spatiu_ids', [$spatiu->id])
                 ->has('spatii', 1)
                 ->has('spatii.0.liniiContor', 1)
@@ -590,12 +591,52 @@ class CitiriContoareTest extends TestCase
         ]))
             ->assertOk()
             ->assertInertia(fn (Assert $page) => $page
-                ->where('searchMatchingSpatiuIds', [$spatiu->id])
+                ->where('searchMatchingSpatii.0.id', $spatiu->id)
                 ->has('spatii', 0)
                 ->has('contoareConfigurabile', 3)
                 ->where('contoareConfigurabile', fn ($contoare) => collect($contoare)
                     ->contains(fn (array $linie): bool => (int) $linie['configurare_anexa_linie_id'] === (int) $linieCurent->id
                         && in_array($spatiu->id, $linie['alocari_spatiu_ids'], true)))
+            );
+    }
+
+    public function test_cautarea_spatiu_fara_anexa_nu_leaga_contoarele_anexei_shared(): void
+    {
+        $imobil = $this->creeazaImobil();
+        $configurare = $this->creeazaConfigurare($imobil, 'Anexa Pers < 50 mp');
+        $this->creeazaLiniePausal($configurare, 'Consum apa - mc / pers');
+        $this->creeazaLiniePausal($configurare, 'Canalizare mc / pers');
+        $configurarePersonalizata = $this->creeazaConfigurare($imobil, 'Anexa Pers < 50 mp · Contor configurabil · C 309 / C310');
+        ConfigurareAnexaLinie::query()->create([
+            'configurare_anexa_id' => $configurarePersonalizata->id,
+            'denumire' => 'Energie Electrica',
+            'tip_calcul' => 'Contor configurabil',
+            'um' => 'Kw',
+            'activ' => true,
+        ]);
+
+        $spatiuPeAnexa = $this->creeazaSpatiu($imobil, $configurare, 'C 308');
+        $spatiuPeAnexa->update(['status' => 'inchiriat']);
+        Spatiu::query()->create([
+            'imobil_id' => $imobil->id,
+            'identificator' => 'C 309',
+            'status' => 'inchiriat',
+            'configurare_anexa_id' => null,
+        ]);
+
+        ContorConfigurabilSync::syncForConfigurare($configurare);
+        ContorConfigurabilSync::syncForConfigurare($configurarePersonalizata);
+
+        $this->get(route('citiri-contoare.imobil', [
+            'imobil' => $imobil->id,
+            'mode' => 'new',
+            'search' => 'C 309',
+        ]))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('searchMatchingSpatii.0.identificator', 'C 309')
+                ->where('searchMatchingSpatii.0.configurare_anexa_id', null)
+                ->has('contoareConfigurabile', 0)
             );
     }
 

@@ -125,7 +125,13 @@ class CitireContorController extends Controller
             ?: ($mode === 'history' ? ($this->dataCitirePentruLuna($imobil, $luna) ?: "{$luna}-20T".now()->format('H:i')) : "{$luna}-20T".now()->format('H:i'));
         $lunaInchisa = $this->lunaInchisa($imobil->id, $luna);
         $spatii = $this->spatiiCuCitiriPentruImobil($imobil, $luna, $lunaInchisa);
-        $contoareConfigurabile = $this->contoareConfigurabilePentruImobil($imobil, $luna, $lunaInchisa);
+        $search = trim($request->string('search')->toString());
+        $searchMatchingSpatii = $this->searchMatchingSpatii($imobil, $search);
+        $contoareConfigurabile = $this->contoareConfigurabileFiltratePentruCautare(
+            $this->contoareConfigurabilePentruImobil($imobil, $luna, $lunaInchisa),
+            $search,
+            $searchMatchingSpatii,
+        );
 
         return [
             'imobil' => [
@@ -143,18 +149,36 @@ class CitireContorController extends Controller
             'luniSelectabile' => $this->luniSelectabile(),
             'spatii' => $spatii,
             'contoareConfigurabile' => $contoareConfigurabile,
-            'searchSpatiu' => trim($request->string('search')->toString()),
-            'searchMatchingSpatiuIds' => $this->searchMatchingSpatiuIds(
-                $imobil,
-                trim($request->string('search')->toString())
-            ),
+            'spatiiIndex' => $this->spatiiIndexForImobil($imobil),
+            'searchSpatiu' => $search,
+            'searchMatchingSpatii' => $searchMatchingSpatii,
         ];
     }
 
     /**
-     * @return list<int>
+     * @return list<array{id: int, identificator: string, chirias: string|null, locator: string|null, configurare_anexa_id: int|null}>
      */
-    private function searchMatchingSpatiuIds(Imobil $imobil, string $search): array
+    private function spatiiIndexForImobil(Imobil $imobil): array
+    {
+        return Spatiu::query()
+            ->with('locatorEntitate')
+            ->where('imobil_id', $imobil->id)
+            ->orderBy('identificator')
+            ->get(['id', 'identificator', 'chirias', 'locator', 'locator_id', 'configurare_anexa_id'])
+            ->map(fn (Spatiu $spatiu): array => [
+                'id' => $spatiu->id,
+                'identificator' => $spatiu->identificator,
+                'chirias' => $spatiu->chirias,
+                'locator' => $spatiu->locatorEntitate?->nume ?: ($spatiu->getAttribute('locator') ?: null),
+                'configurare_anexa_id' => $spatiu->configurare_anexa_id,
+            ])
+            ->all();
+    }
+
+    /**
+     * @return list<array{id: int, identificator: string, chirias: string|null, configurare_anexa_id: int|null}>
+     */
+    private function searchMatchingSpatii(Imobil $imobil, string $search): array
     {
         if ($search === '') {
             return [];
@@ -167,10 +191,67 @@ class CitireContorController extends Controller
                     ->orWhere('locator', 'like', "%{$search}%")
                     ->orWhere('chirias', 'like', "%{$search}%");
             })
-            ->pluck('id')
-            ->map(fn ($id): int => (int) $id)
-            ->values()
+            ->orderBy('identificator')
+            ->get(['id', 'identificator', 'chirias', 'configurare_anexa_id'])
+            ->map(fn (Spatiu $spatiu): array => [
+                'id' => $spatiu->id,
+                'identificator' => $spatiu->identificator,
+                'chirias' => $spatiu->chirias,
+                'configurare_anexa_id' => $spatiu->configurare_anexa_id,
+            ])
             ->all();
+    }
+
+    /**
+     * @param  list<array<string, mixed>>  $contoareConfigurabile
+     * @param  list<array{id: int, identificator: string, chirias: string|null, configurare_anexa_id: int|null}>  $searchMatchingSpatii
+     * @return list<array<string, mixed>>
+     */
+    private function contoareConfigurabileFiltratePentruCautare(
+        array $contoareConfigurabile,
+        string $search,
+        array $searchMatchingSpatii,
+    ): array {
+        if ($search === '') {
+            return $contoareConfigurabile;
+        }
+
+        if ($searchMatchingSpatii !== []) {
+            return array_values(array_filter(
+                $contoareConfigurabile,
+                fn (array $linie): bool => $this->contorConfigurabilMatchesSpatiiSearch($linie, $searchMatchingSpatii),
+            ));
+        }
+
+        $query = mb_strtolower($search);
+
+        return array_values(array_filter(
+            $contoareConfigurabile,
+            fn (array $linie): bool => str_contains(mb_strtolower(trim(($linie['anexa'] ?? '').' '.($linie['denumire'] ?? ''))), $query),
+        ));
+    }
+
+    /**
+     * @param  array<string, mixed>  $linie
+     * @param  list<array{id: int, identificator: string, chirias: string|null, configurare_anexa_id: int|null}>  $searchMatchingSpatii
+     */
+    private function contorConfigurabilMatchesSpatiiSearch(array $linie, array $searchMatchingSpatii): bool
+    {
+        foreach ($searchMatchingSpatii as $spatiu) {
+            if (blank($spatiu['configurare_anexa_id'] ?? null)) {
+                continue;
+            }
+
+            if ((int) $spatiu['configurare_anexa_id'] !== (int) ($linie['configurare_anexa_id'] ?? 0)) {
+                continue;
+            }
+
+            if (in_array((int) $spatiu['id'], $linie['alocari_spatiu_ids'] ?? [], true)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**
@@ -741,6 +822,7 @@ class CitireContorController extends Controller
 
                 return [
                     'configurare_anexa_linie_id' => $regula->configurare_anexa_linie_id,
+                    'configurare_anexa_id' => $regula->configurare_anexa_id,
                     'denumire' => $linie?->denumire ?: '—',
                     'anexa' => $regula->configurareAnexa?->denumire ?: '—',
                     'alocari_spatiu_ids' => $regula->alocariEfectiveIds(),

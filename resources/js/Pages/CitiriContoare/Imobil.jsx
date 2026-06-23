@@ -159,11 +159,33 @@ function matchesCitiriSearch(spatiu, linie, search) {
     return String(linie.denumire || '').toLowerCase().includes(query);
 }
 
-function matchesContorConfigurabilSearch(linie, search, matchingSpatiuIds) {
+function matchingSpatiiForSearch(search, searchMatchingSpatii, spatiiIndex) {
+    const query = String(search || '').trim();
+
+    if (!query) {
+        return [];
+    }
+
+    if (searchMatchingSpatii?.length) {
+        return searchMatchingSpatii;
+    }
+
+    return (spatiiIndex || []).filter((spatiu) => spatiuMatchesSearch(spatiu, search));
+}
+
+function matchesContorConfigurabilSearch(linie, search, matchingSpatii) {
     const query = String(search || '').trim().toLowerCase();
 
     if (!query) {
         return true;
+    }
+
+    if (matchingSpatii.length > 0) {
+        return matchingSpatii.some((spatiu) => (
+            spatiu.configurare_anexa_id != null
+            && Number(spatiu.configurare_anexa_id) === Number(linie.configurare_anexa_id)
+            && (linie.alocari_spatiu_ids || []).includes(Number(spatiu.id))
+        ));
     }
 
     const linieHaystack = [linie.anexa, linie.denumire]
@@ -171,15 +193,7 @@ function matchesContorConfigurabilSearch(linie, search, matchingSpatiuIds) {
         .join(' ')
         .toLowerCase();
 
-    if (linieHaystack.includes(query)) {
-        return true;
-    }
-
-    if (matchingSpatiuIds && matchingSpatiuIds.size > 0) {
-        return (linie.alocari_spatiu_ids || []).some((spatiuId) => matchingSpatiuIds.has(Number(spatiuId)));
-    }
-
-    return false;
+    return linieHaystack.includes(query);
 }
 
 export default function Imobil({
@@ -195,7 +209,8 @@ export default function Imobil({
     spatii = [],
     contoareConfigurabile = [],
     searchSpatiu = '',
-    searchMatchingSpatiuIds = [],
+    searchMatchingSpatii = [],
+    spatiiIndex = [],
 }) {
     const serverStateKey = useMemo(() => JSON.stringify({
         imobilId: imobil?.id,
@@ -317,19 +332,19 @@ export default function Imobil({
         spatiu,
         linie,
     }))), [spatii]);
-    const matchingSpatiuIds = useMemo(() => {
+    const matchingSpatii = useMemo(
+        () => matchingSpatiiForSearch(search, searchMatchingSpatii, spatiiIndex),
+        [search, searchMatchingSpatii, spatiiIndex],
+    );
+    const searchedSpatiuFaraAnexa = useMemo(() => {
         const query = String(search || '').trim();
 
-        if (!query) {
+        if (!query || matchingSpatii.length === 0) {
             return null;
         }
 
-        if (searchMatchingSpatiuIds.length > 0) {
-            return new Set(searchMatchingSpatiuIds.map((spatiuId) => Number(spatiuId)));
-        }
-
-        return getMatchingSpatiuIds(spatii, search);
-    }, [searchMatchingSpatiuIds, spatii, search]);
+        return matchingSpatii.find((spatiu) => spatiu.configurare_anexa_id == null) || null;
+    }, [matchingSpatii, search]);
     const filteredRanduriCitiri = useMemo(
         () => randuriCitiri.filter(({ spatiu, linie }) => matchesCitiriSearch(spatiu, linie, search)),
         [randuriCitiri, search],
@@ -339,8 +354,8 @@ export default function Imobil({
         [contoareConfigurabile],
     );
     const filteredRanduriConfigurabile = useMemo(
-        () => randuriConfigurabile.filter(({ linie }) => matchesContorConfigurabilSearch(linie, search, matchingSpatiuIds)),
-        [randuriConfigurabile, search, matchingSpatiuIds],
+        () => randuriConfigurabile.filter(({ linie }) => matchesContorConfigurabilSearch(linie, search, matchingSpatii)),
+        [randuriConfigurabile, search, matchingSpatii],
     );
     const totalRanduri = randuriCitiri.length + randuriConfigurabile.length;
     const isNewMode = mode === 'new';
@@ -615,6 +630,12 @@ export default function Imobil({
                                 </tbody>
                             </table>
                         </div>
+                        ) : null}
+
+                        {searchedSpatiuFaraAnexa ? (
+                            <div className="spatiu-context-banner spatiu-context-banner-compact">
+                                {`Spațiul ${searchedSpatiuFaraAnexa.identificator} nu are anexă alocată. Alocă anexa din editare spațiu ca să apară contoarele imobil aferente.`}
+                            </div>
                         ) : null}
 
                         {search.trim() && filteredRanduriConfigurabile.length === 0 && filteredRanduriCitiri.length === 0 ? (
