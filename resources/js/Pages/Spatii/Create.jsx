@@ -145,7 +145,6 @@ function applyStatusChange(status, data) {
             status,
             regim_incalzire: 'integral',
             procent_incalzire_override: '',
-            chirias: '',
         };
     }
 

@@ -154,7 +154,7 @@ class SpatiuDocumenteTest extends TestCase
             );
     }
 
-    public function test_salvarea_spatiului_liber_sterge_chiriasul(): void
+    public function test_salvarea_spatiului_liber_pastreaza_chiriasul(): void
     {
         $imobil = Imobil::query()->create([
             'nume' => '700 Office',
@@ -185,7 +185,7 @@ class SpatiuDocumenteTest extends TestCase
         $spatiu->refresh();
 
         $this->assertSame('liber', $spatiu->status);
-        $this->assertNull($spatiu->chirias);
+        $this->assertSame('Golden Cube', $spatiu->chirias);
     }
 
     public function test_document_rows_are_hidden_for_rezervat(): void

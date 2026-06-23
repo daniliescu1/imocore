@@ -828,10 +828,6 @@ class SpatiuController extends Controller
         $becomingLiber = ($validated['status'] ?? '') === 'liber'
             && ($spatiu === null || $spatiu->status !== 'liber');
 
-        if (($validated['status'] ?? '') === 'liber') {
-            $validated['chirias'] = null;
-        }
-
         if ($becomingLiber) {
             $pretLunar = (float) ($validated['pret_lunar'] ?? $spatiu?->pret_lunar ?? 0);
             $indexare = (float) ($validated['indexare_2026'] ?? $spatiu?->indexare_2026 ?? 0);

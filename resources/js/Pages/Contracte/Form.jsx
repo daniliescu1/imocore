@@ -333,6 +333,63 @@ function DateField({ label, value, onChange, error, incomplete = false, required
     );
 }
 
+function chiriasFieldsFromSpatiu(spatiu, chiriasTip = 'pj') {
+    const nume = spatiu?.chirias || '';
+
+    if (chiriasTip === 'pf') {
+        return {
+            chirias_pf: { ...emptyPf, nume_complet: nume },
+            chirias_pj: {
+                ...emptyPj,
+                administrator: { ...emptyAdministrator },
+                administrator_2: { ...emptyAdministrator },
+            },
+        };
+    }
+
+    return {
+        chirias_pf: { ...emptyPf },
+        chirias_pj: {
+            ...emptyPj,
+            denumire: nume,
+            administrator: { ...emptyAdministrator },
+            administrator_2: { ...emptyAdministrator },
+        },
+    };
+}
+
+function contractInitialChiriasFields(contract, spatiu) {
+    if (contract?.chirias_pf || contract?.chirias_pj) {
+        return {
+            chirias_pf: contract.chirias_pf || { ...emptyPf },
+            chirias_pj: contract.chirias_pj || {
+                ...emptyPj,
+                administrator: { ...emptyAdministrator },
+                administrator_2: { ...emptyAdministrator },
+            },
+        };
+    }
+
+    if (spatiu?.status === 'liber') {
+        return chiriasFieldsFromSpatiu(spatiu, 'pj');
+    }
+
+    const nume = contract?.chirias || spatiu?.chirias || '';
+
+    return {
+        chirias_pf: {
+            ...emptyPf,
+            nume_complet: contract?.chirias_tip === 'pf' ? nume : '',
+        },
+        chirias_pj: {
+            ...emptyPj,
+            denumire: contract?.chirias_tip === 'pj' || !contract?.chirias_tip ? nume : '',
+            administrator: { ...emptyAdministrator },
+            administrator_2: { ...emptyAdministrator },
+        },
+    };
+}
+
 export default function Form({
     imobile = [],
     spatii = [],
@@ -347,6 +404,7 @@ export default function Form({
     const [anexaEditDialogOpen, setAnexaEditDialogOpen] = useState(false);
     const [showSecondRepresentative, setShowSecondRepresentative] = useState(() => administratorHasData(contract?.chirias_pj?.administrator_2));
     const initialSpatiu = spatiuInfo(spatii, initialSpatiuId);
+    const initialChiriasFields = contractInitialChiriasFields(contract, initialSpatiu);
     const { data, setData, post, put, processing, errors, transform } = useForm({
         imobil_id: contract?.imobil_id || initialImobilId || initialSpatiu?.imobil_id || '',
         spatiu_id: contract?.spatiu_id || initialSpatiuId || '',
@@ -354,22 +412,16 @@ export default function Form({
         locator_id: contract?.locator_id || initialSpatiu?.locator_id || '',
         numar_contract: contract?.numar_contract || '',
         chirias_tip: contract?.chirias_tip || 'pj',
-        chirias_pf: contract?.chirias_pf || {
-            ...emptyPf,
-            nume_complet: contract?.chirias_tip === 'pf' ? (contract?.chirias || initialSpatiu?.chirias || '') : '',
-        },
-        chirias_pj: contract?.chirias_pj || {
-            ...emptyPj,
-            denumire: contract?.chirias_tip === 'pj' || !contract?.chirias_tip
-                ? (contract?.chirias || initialSpatiu?.chirias || '')
-                : '',
-            administrator: { ...emptyAdministrator },
-            administrator_2: { ...emptyAdministrator },
-        },
-        persoane_declarate: contract?.persoane_declarate ?? initialSpatiu?.persoane_declarate ?? '',
+        chirias_pf: initialChiriasFields.chirias_pf,
+        chirias_pj: initialChiriasFields.chirias_pj,
+        persoane_declarate: initialSpatiu?.status === 'liber' && !contract
+            ? ''
+            : (contract?.persoane_declarate ?? initialSpatiu?.persoane_declarate ?? ''),
         data_start: contract?.data_start || '',
         data_end: contract?.data_end || '',
-        chirie: formatDecimal(contract?.chirie) || formatDecimal(initialSpatiu?.chirie_curenta) || '',
+        chirie: initialSpatiu?.status === 'liber' && !contract
+            ? formatDecimal(initialSpatiu?.chirie_curenta) || ''
+            : (formatDecimal(contract?.chirie) || formatDecimal(initialSpatiu?.chirie_curenta) || ''),
         crestere_chirie_la: formatDecimal(contract?.crestere_chirie_la) || '',
         data_crestere_chirie: contract?.data_crestere_chirie || '',
         moneda: contract?.moneda || initialSpatiu?.moneda || 'EUR',
@@ -469,20 +521,28 @@ export default function Form({
 
     function applySpatiu(spatiuId) {
         const spatiu = spatiuInfo(spatii, spatiuId);
+        const chiriasFields = spatiu?.status === 'liber'
+            ? chiriasFieldsFromSpatiu(spatiu, data.chirias_tip)
+            : {
+                chirias_pf: {
+                    ...data.chirias_pf,
+                    nume_complet: spatiu?.chirias || data.chirias_pf.nume_complet,
+                },
+                chirias_pj: {
+                    ...data.chirias_pj,
+                    denumire: spatiu?.chirias || data.chirias_pj.denumire,
+                },
+            };
+
         setData({
             ...data,
             spatiu_id: spatiuId,
             spatiu_status: spatiu?.status || 'inchiriat',
             locator_id: spatiu?.locator_id || data.locator_id,
-            chirias_pf: {
-                ...data.chirias_pf,
-                nume_complet: spatiu?.chirias || data.chirias_pf.nume_complet,
-            },
-            chirias_pj: {
-                ...data.chirias_pj,
-                denumire: spatiu?.chirias || data.chirias_pj.denumire,
-            },
-            persoane_declarate: spatiu?.status === 'administrativ' ? '' : (spatiu?.persoane_declarate ?? data.persoane_declarate),
+            ...chiriasFields,
+            persoane_declarate: spatiu?.status === 'administrativ' || spatiu?.status === 'liber'
+                ? ''
+                : (spatiu?.persoane_declarate ?? data.persoane_declarate),
             chirie: formatDecimal(spatiu?.chirie_curenta) || data.chirie,
             moneda: 'EUR',
             configurare_anexa_id: spatiu?.configurare_anexa_id || '',
