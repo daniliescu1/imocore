@@ -109,6 +109,30 @@ function formatLunaLabel(luna) {
     return `${lunaNumar}.${an}`;
 }
 
+function matchesCitiriSearch(spatiu, linie, search) {
+    const query = String(search || '').trim().toLowerCase();
+
+    if (!query) {
+        return true;
+    }
+
+    const spatiuHaystack = [
+        spatiu.identificator,
+        spatiu.chirias,
+        spatiu.locator,
+        spatiu.anexa,
+    ]
+        .filter(Boolean)
+        .join(' ')
+        .toLowerCase();
+
+    if (spatiuHaystack.includes(query)) {
+        return true;
+    }
+
+    return String(linie.denumire || '').toLowerCase().includes(query);
+}
+
 export default function Imobil({
     imobil,
     luna = '',
@@ -138,6 +162,7 @@ export default function Imobil({
         contoareConfigurabile,
     }));
     const [inchidereProcessing, setInchidereProcessing] = React.useState(false);
+    const [search, setSearch] = React.useState('');
 
     useEffect(() => {
         if (lastServerStateKey.current === serverStateKey) {
@@ -231,10 +256,14 @@ export default function Imobil({
         });
     }
 
-    const randuriCitiri = spatii.flatMap((spatiu) => (spatiu.liniiContor || []).map((linie) => ({
+    const randuriCitiri = useMemo(() => spatii.flatMap((spatiu) => (spatiu.liniiContor || []).map((linie) => ({
         spatiu,
         linie,
-    })));
+    }))), [spatii]);
+    const filteredRanduriCitiri = useMemo(
+        () => randuriCitiri.filter(({ spatiu, linie }) => matchesCitiriSearch(spatiu, linie, search)),
+        [randuriCitiri, search],
+    );
     const randuriConfigurabile = (contoareConfigurabile || []).map((linie) => ({ linie }));
     const totalRanduri = randuriCitiri.length + randuriConfigurabile.length;
     const isNewMode = mode === 'new';
@@ -246,6 +275,15 @@ export default function Imobil({
 
     const topbarActions = (
         <>
+            {randuriCitiri.length > 0 ? (
+                <input
+                    className="filter-input topbar-search"
+                    type="search"
+                    value={search}
+                    placeholder="Caută spațiu..."
+                    onChange={(event) => setSearch(event.target.value)}
+                />
+            ) : null}
             <select className="filter-input topbar-filter" value={data.luna} onChange={(event) => {
                 const lunaSelectata = event.target.value;
                 setData('luna', lunaSelectata);
@@ -393,6 +431,7 @@ export default function Imobil({
                         ) : null}
 
                         {randuriCitiri.length > 0 ? (
+                        filteredRanduriCitiri.length > 0 ? (
                         <div className="responsive-table">
                             <table className="citiri-contoare-table">
                                 <thead>
@@ -408,7 +447,7 @@ export default function Imobil({
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    {randuriCitiri.map(({ spatiu, linie }) => {
+                                    {filteredRanduriCitiri.map(({ spatiu, linie }) => {
                                         const pausal = isPausalTip(linie.tip_calcul);
                                         const editable = isLineEditable(linie);
                                         const citire = data.citiri[citireIndexFor(spatiu.id, linie.configurare_anexa_linie_id)] || (
@@ -499,6 +538,12 @@ export default function Imobil({
                                 </tbody>
                             </table>
                         </div>
+                        ) : (
+                            <div className="readonly-info-card">
+                                <h2>Niciun rezultat</h2>
+                                <p>Nu am găsit spații sau servicii care să corespundă căutării „{search.trim()}”. Încearcă după identificator spațiu, chiriaș, locator, anexă sau serviciu.</p>
+                            </div>
+                        )
                         ) : null}
                     </div>
                 )}

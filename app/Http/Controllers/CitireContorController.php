@@ -400,9 +400,12 @@ class CitireContorController extends Controller
     private function spatiiCuCitiriPentruImobil(Imobil $imobil, string $luna, bool $lunaInchisa): array
     {
         return Spatiu::query()
-            ->with(['configurareAnexa.linii' => fn ($query) => TipCalculAnexa::applyLiniiContorSpatiuScope(
-                $query->orderBy('ordine')->orderBy('id')
-            )])
+            ->with([
+                'locatorEntitate',
+                'configurareAnexa.linii' => fn ($query) => TipCalculAnexa::applyLiniiContorSpatiuScope(
+                    $query->orderBy('ordine')->orderBy('id')
+                ),
+            ])
             ->where('imobil_id', $imobil->id)
             ->whereNotNull('configurare_anexa_id')
             ->orderBy('identificator')
@@ -443,6 +446,7 @@ class CitireContorController extends Controller
                 return [
                     'id' => $spatiu->id,
                     'identificator' => $spatiu->identificator,
+                    'locator' => $spatiu->locatorEntitate?->nume ?: ($spatiu->getAttribute('locator') ?: ''),
                     'chirias' => $spatiu->chirias,
                     'anexa' => $spatiu->configurareAnexa?->denumire,
                     'configurare_anexa_id' => $spatiu->configurare_anexa_id,
