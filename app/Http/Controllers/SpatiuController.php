@@ -40,6 +40,10 @@ class SpatiuController extends Controller
             return $this->indexSpatiiGlobalFilter($localitate, $search, $status, $etaj);
         }
 
+        if ($search !== '' && $this->searchMatchesSpatii($search, $localitate)) {
+            return $this->indexSpatiiFromRootSearch($localitate, $search, $status, $documente);
+        }
+
         return $this->indexImobileList($localitate, $search);
     }
 
@@ -61,14 +65,7 @@ class SpatiuController extends Controller
         }
 
         if ($search !== '') {
-            $query->where(function ($query) use ($search) {
-                $query->where('nume', 'like', "%{$search}%")
-                    ->orWhereHas('spatii', function ($query) use ($search) {
-                        $query->where('identificator', 'like', "%{$search}%")
-                            ->orWhere('locator', 'like', "%{$search}%")
-                            ->orWhere('chirias', 'like', "%{$search}%");
-                    });
-            });
+            $query->where('nume', 'like', "%{$search}%");
         }
 
         $imobile = $query->get()->map(fn (Imobil $imobil): array => [
@@ -93,9 +90,83 @@ class SpatiuController extends Controller
                 'status' => '',
                 'documente' => '',
                 'etaj' => '',
+                'search_spatii' => false,
                 'imobil_id' => null,
             ],
         ]);
+    }
+
+    private function indexSpatiiFromRootSearch(string $localitate, string $search, string $status, string $documente): Response
+    {
+        $query = Spatiu::query()
+            ->with([
+                'imobil',
+                'locatorEntitate',
+                'contracte' => fn ($query) => $query->where('status', 'activ')->latest('id'),
+            ])
+            ->withExists(['contracte as are_contract_inregistrat'])
+            ->withExists(['contracte as are_contract_activ' => fn ($query) => $query->where('status', 'activ')]);
+
+        if ($localitate !== '') {
+            $query->whereHas('imobil', fn ($imobilQuery) => $imobilQuery->where('localitate', $localitate));
+        }
+
+        if ($status !== '') {
+            $query->where('status', $status);
+        }
+
+        $this->applyDocumenteFilter($query, $documente);
+
+        $query->where(function ($query) use ($search) {
+            $query->where('identificator', 'like', "%{$search}%")
+                ->orWhere('locator', 'like', "%{$search}%")
+                ->orWhere('chirias', 'like', "%{$search}%");
+        });
+
+        $spatii = $query
+            ->join('imobile', 'spatii.imobil_id', '=', 'imobile.id')
+            ->orderBy('imobile.ordine')
+            ->orderBy('imobile.id')
+            ->orderBy('spatii.ordine')
+            ->orderBy('spatii.id')
+            ->select('spatii.*')
+            ->get()
+            ->map(fn (Spatiu $spatiu): array => $this->mapSpatiuForList($spatiu));
+
+        return Inertia::render('Spatii/Index', [
+            'imobile' => [],
+            'imobil' => null,
+            'spatii' => $spatii,
+            'localitati' => Imobil::query()->select('localitate')->distinct()->orderBy('localitate')->pluck('localitate'),
+            'filters' => [
+                'localitate' => $localitate,
+                'search' => $search,
+                'status' => $status,
+                'documente' => $documente,
+                'etaj' => '',
+                'search_spatii' => true,
+                'imobil_id' => null,
+            ],
+        ]);
+    }
+
+    private function searchMatchesSpatii(string $search, string $localitate): bool
+    {
+        if ($search === '') {
+            return false;
+        }
+
+        $query = Spatiu::query();
+
+        if ($localitate !== '') {
+            $query->whereHas('imobil', fn ($imobilQuery) => $imobilQuery->where('localitate', $localitate));
+        }
+
+        return $query->where(function ($query) use ($search) {
+            $query->where('identificator', 'like', "%{$search}%")
+                ->orWhere('locator', 'like', "%{$search}%")
+                ->orWhere('chirias', 'like', "%{$search}%");
+        })->exists();
     }
 
     private function indexSpatiiForImobil(int $imobilId, string $search, string $status, string $documente): Response
@@ -145,6 +216,7 @@ class SpatiuController extends Controller
                 'status' => $status,
                 'documente' => $documente,
                 'etaj' => '',
+                'search_spatii' => false,
                 'imobil_id' => $imobil->id,
             ],
         ]);
@@ -204,6 +276,7 @@ class SpatiuController extends Controller
                 'documente' => '',
                 'etaj' => $etaj,
                 'global' => true,
+                'search_spatii' => false,
                 'imobil_id' => null,
             ],
         ]);

@@ -61,6 +61,7 @@ function buildFilters(filters, overrides = {}) {
         documente: filters.documente || '',
         etaj: filters.etaj || '',
         global: filters.global ? 1 : '',
+        search_spatii: filters.search_spatii ? 1 : '',
         imobil_id: filters.imobil_id || '',
         ...overrides,
     };
@@ -219,7 +220,11 @@ function SpatiuRow({
 export default function Index({ imobile = [], imobil = null, spatii = [], localitati, filters }) {
     const isInsideImobil = Boolean(imobil);
     const isGlobalStatusView = Boolean(!imobil && filters.global);
-    const isSpatiiListView = isInsideImobil || isGlobalStatusView;
+    const isRootSpatiiSearchView = Boolean(!imobil && filters.search_spatii);
+    const isSpatiiListView = isInsideImobil || isGlobalStatusView || isRootSpatiiSearchView;
+    const showImobilColumn = isGlobalStatusView || (
+        isRootSpatiiSearchView && new Set(spatii.map((spatiu) => spatiu.imobil_id)).size > 1
+    );
     const canReorderSpatii = isInsideImobil && !filters.search && !filters.status && !filters.documente && spatii.length > 1;
     const canReorderImobile = !isSpatiiListView && !filters.search && !filters.localitate && imobile.length > 1;
     const [orderedSpatii, setOrderedSpatii] = useState(spatii);
@@ -231,13 +236,15 @@ export default function Index({ imobile = [], imobil = null, spatii = [], locali
 
     const pageTitle = isInsideImobil
         ? `${imobil.nume} (${spatii.length})`
-        : isGlobalStatusView
-            ? (filters.status === 'liber'
-                ? `Spații libere (${spatii.length})`
-                : filters.status
-                    ? `${STATUS_LABELS[filters.status] || filters.status} (${spatii.length})`
-                    : `Spații (${spatii.length})`)
-            : `Spații (${totalSpatii})`;
+        : isRootSpatiiSearchView
+            ? `Rezultate căutare (${spatii.length})`
+            : isGlobalStatusView
+                ? (filters.status === 'liber'
+                    ? `Spații libere (${spatii.length})`
+                    : filters.status
+                        ? `${STATUS_LABELS[filters.status] || filters.status} (${spatii.length})`
+                        : `Spații (${spatii.length})`)
+                : `Spații (${totalSpatii})`;
 
     function updateFilters(overrides = {}) {
         if ((isGlobalStatusView || overrides.global) && overrides.global !== '') {
@@ -252,10 +259,12 @@ export default function Index({ imobile = [], imobil = null, spatii = [], locali
         updateFilters({
             search: value,
             imobil_id: isInsideImobil ? imobil.id : '',
-            status: isSpatiiListView ? (filters.status || '') : '',
-            documente: isInsideImobil ? (filters.documente || '') : '',
+            status: isSpatiiListView || value.trim() !== '' ? (filters.status || '') : '',
+            documente: isInsideImobil || isRootSpatiiSearchView || value.trim() !== '' ? (filters.documente || '') : '',
             etaj: isGlobalStatusView ? (filters.etaj || '') : '',
-            localitate: isGlobalStatusView ? (filters.localitate || '') : (filters.localitate || ''),
+            localitate: filters.localitate || '',
+            search_spatii: '',
+            global: isGlobalStatusView ? 1 : '',
         });
     });
 
@@ -339,7 +348,7 @@ export default function Index({ imobile = [], imobil = null, spatii = [], locali
 
     const topbarActions = (
         <div className="spaces-topbar-toolbar">
-            {isInsideImobil || isGlobalStatusView ? (
+            {isInsideImobil || isGlobalStatusView || isRootSpatiiSearchView ? (
                 <button
                     type="button"
                     className="secondary-button topbar-back-button"
@@ -350,6 +359,7 @@ export default function Index({ imobile = [], imobil = null, spatii = [], locali
                         documente: '',
                         etaj: '',
                         global: '',
+                        search_spatii: '',
                         localitate: '',
                     })}
                 >
@@ -359,7 +369,7 @@ export default function Index({ imobile = [], imobil = null, spatii = [], locali
             <div className="spaces-topbar-filters">
                 {isSpatiiListView ? (
                     <>
-                        {isGlobalStatusView ? (
+                        {isGlobalStatusView || isRootSpatiiSearchView ? (
                             <label className="inline-topbar-field spaces-topbar-field">
                                 <span>Localitate</span>
                                 <select className="filter-input topbar-filter" value={filters.localitate || ''} onChange={(event) => updateFilters({ localitate: event.target.value })}>
@@ -408,7 +418,7 @@ export default function Index({ imobile = [], imobil = null, spatii = [], locali
                                         value={filters.documente || ''}
                                         onChange={(event) => updateFilters({
                                             documente: event.target.value,
-                                            imobil_id: imobil.id,
+                                            imobil_id: isInsideImobil ? imobil.id : '',
                                             status: filters.status || '',
                                         })}
                                     >
@@ -434,7 +444,13 @@ export default function Index({ imobile = [], imobil = null, spatii = [], locali
                     className="filter-input topbar-search"
                     type="search"
                     value={searchDraft}
-                    placeholder={isSpatiiListView ? 'Caută spațiu...' : 'Caută imobil...'}
+                    placeholder={
+                        isInsideImobil || isRootSpatiiSearchView
+                            ? 'Caută spațiu...'
+                            : isGlobalStatusView
+                                ? 'Caută spațiu...'
+                                : 'Caută spațiu sau imobil...'
+                    }
                     onChange={(event) => handleSearchChange(event.target.value)}
                 />
             </div>
@@ -453,8 +469,8 @@ export default function Index({ imobile = [], imobil = null, spatii = [], locali
                 {canReorderSpatii ? <th className="drag-handle-header" aria-label="Reordonează" /> : null}
                 <th className="spatiu-indicator-header" aria-hidden="true" />
                 <th className="spatiu-identificator-header">Identificat</th>
-                {isGlobalStatusView ? <th>Imobil</th> : null}
-                {isGlobalStatusView ? <th>Localitate</th> : null}
+                {showImobilColumn ? <th>Imobil</th> : null}
+                {showImobilColumn ? <th>Localitate</th> : null}
                 <th>Etaj</th>
                 <th>Suprafață</th>
                 <th>Status</th>
@@ -481,9 +497,11 @@ export default function Index({ imobile = [], imobil = null, spatii = [], locali
                 spatii.length === 0 ? (
                     <section className="table-card module-table-card page-compact-list">
                         <div className="empty-state-card">
-                            {isGlobalStatusView
-                                ? `Nu există spații cu status „${STATUS_LABELS[filters.status] || filters.status}”.`
-                                : 'Nu există spații în acest imobil. Adaugă primul spațiu.'}
+                            {isRootSpatiiSearchView
+                                ? 'Nu există spații care să corespundă căutării.'
+                                : isGlobalStatusView
+                                    ? `Nu există spații cu status „${STATUS_LABELS[filters.status] || filters.status}”.`
+                                    : 'Nu există spații în acest imobil. Adaugă primul spațiu.'}
                         </div>
                     </section>
                 ) : (
@@ -503,7 +521,7 @@ export default function Index({ imobile = [], imobil = null, spatii = [], locali
                                             onDragOver={handleDragOver}
                                             onDrop={handleDrop}
                                             onDragEnd={handleDragEnd}
-                                            showImobil={isGlobalStatusView}
+                                            showImobil={showImobilColumn}
                                         />
                                     ))}
                                 </tbody>
