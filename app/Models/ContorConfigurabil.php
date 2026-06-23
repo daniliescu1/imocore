@@ -58,6 +58,7 @@ class ContorConfigurabil extends Model
     {
         $spatiiAnexaIds = Spatiu::query()
             ->where('configurare_anexa_id', $this->configurare_anexa_id)
+            ->where('status', 'inchiriat')
             ->orderBy('identificator')
             ->pluck('id')
             ->map(fn ($id): int => (int) $id)

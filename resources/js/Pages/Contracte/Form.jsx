@@ -414,9 +414,7 @@ export default function Form({
         chirias_tip: contract?.chirias_tip || 'pj',
         chirias_pf: initialChiriasFields.chirias_pf,
         chirias_pj: initialChiriasFields.chirias_pj,
-        persoane_declarate: initialSpatiu?.status === 'liber' && !contract
-            ? ''
-            : (contract?.persoane_declarate ?? initialSpatiu?.persoane_declarate ?? ''),
+        persoane_declarate: contract?.persoane_declarate ?? initialSpatiu?.persoane_declarate ?? '',
         data_start: contract?.data_start || '',
         data_end: contract?.data_end || '',
         chirie: initialSpatiu?.status === 'liber' && !contract
@@ -457,6 +455,7 @@ export default function Form({
     const spatiuEditUrl = data.spatiu_id
         ? `/spatii/${data.spatiu_id}/editare?return_url=${encodedContractReturnUrl}`
         : null;
+    const spatiuBlocat = !isEditing && Boolean(initialSpatiuId);
     const spatiuAdministrativ = selectedSpatiu?.status === 'administrativ';
     const estePf = data.chirias_tip === 'pf';
     const contractStatus = contract?.status || null;
@@ -540,7 +539,7 @@ export default function Form({
             spatiu_status: spatiu?.status || 'inchiriat',
             locator_id: spatiu?.locator_id || data.locator_id,
             ...chiriasFields,
-            persoane_declarate: spatiu?.status === 'administrativ' || spatiu?.status === 'liber'
+            persoane_declarate: spatiu?.status === 'administrativ'
                 ? ''
                 : (spatiu?.persoane_declarate ?? data.persoane_declarate),
             chirie: formatDecimal(spatiu?.chirie_curenta) || data.chirie,
@@ -630,7 +629,7 @@ export default function Form({
                 <div className="form-grid form-grid-chirias">
                     <label className="form-field form-grid-span-3">
                         <span>Imobil *</span>
-                        <select value={data.imobil_id} onChange={(event) => {
+                        <select value={data.imobil_id} disabled={spatiuBlocat} onChange={(event) => {
                             setData({
                                 ...data,
                                 imobil_id: event.target.value,
@@ -662,7 +661,7 @@ export default function Form({
 
                     <label className={`${fieldClassName('spatiu_id')} form-grid-span-1`.trim()}>
                         <span>Spațiu *</span>
-                        <select value={data.spatiu_id} onChange={(event) => applySpatiu(event.target.value)} disabled={!data.imobil_id}>
+                        <select value={data.spatiu_id} onChange={(event) => applySpatiu(event.target.value)} disabled={!data.imobil_id || spatiuBlocat}>
                             <option value="">{data.imobil_id ? 'Alege spațiul' : 'Alege mai întâi imobilul'}</option>
                             {spatiiPentruImobil.map((spatiu) => <option value={spatiu.id} key={spatiu.id}>{spatiu.identificator}</option>)}
                         </select>

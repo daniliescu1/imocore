@@ -169,6 +169,7 @@ class SpatiuDocumenteTest extends TestCase
             'etaj' => 'Parter',
             'status' => 'inchiriat',
             'chirias' => 'Golden Cube',
+            'persoane_declarate' => 4,
             'ordine' => 1,
         ]);
 
@@ -186,6 +187,7 @@ class SpatiuDocumenteTest extends TestCase
 
         $this->assertSame('liber', $spatiu->status);
         $this->assertSame('Golden Cube', $spatiu->chirias);
+        $this->assertSame(4, $spatiu->persoane_declarate);
     }
 
     public function test_document_rows_are_hidden_for_rezervat(): void

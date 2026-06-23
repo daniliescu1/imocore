@@ -540,4 +540,55 @@ class ContorConfigurabilTest extends TestCase
 
         return [$imobil, $configurare, $linieConfigurabil, $linieIndividual, $spatiuA, $spatiuB];
     }
+
+    public function test_spatiul_liber_nu_intra_in_alocarile_efective_pentru_pausal(): void
+    {
+        $imobil = Imobil::query()->create([
+            'nume' => '700 Office',
+            'strada' => 'Strada Test',
+            'numar' => '1',
+            'localitate' => 'Timisoara',
+        ]);
+
+        $configurare = ConfigurareAnexaImobil::query()->create([
+            'imobil_id' => $imobil->id,
+            'denumire' => 'Anexa servicii',
+            'implicit' => true,
+            'activ' => true,
+        ]);
+
+        $liniePausal = ConfigurareAnexaLinie::query()->create([
+            'configurare_anexa_id' => $configurare->id,
+            'denumire' => 'Consum apa - mc / pers',
+            'tip_calcul' => 'pausal',
+            'um' => 'MC',
+            'activ' => true,
+            'ordine' => 1,
+        ]);
+
+        $spatiuInchiriat = Spatiu::query()->create([
+            'imobil_id' => $imobil->id,
+            'identificator' => 'C303',
+            'status' => 'inchiriat',
+            'configurare_anexa_id' => $configurare->id,
+            'ordine' => 1,
+        ]);
+
+        $spatiuLiber = Spatiu::query()->create([
+            'imobil_id' => $imobil->id,
+            'identificator' => 'C304',
+            'status' => 'liber',
+            'configurare_anexa_id' => $configurare->id,
+            'ordine' => 2,
+        ]);
+
+        ContorConfigurabilSync::syncForConfigurare($configurare);
+
+        $regula = ContorConfigurabil::query()
+            ->where('configurare_anexa_linie_id', $liniePausal->id)
+            ->firstOrFail();
+
+        $this->assertSame([$spatiuInchiriat->id], $regula->alocariEfectiveIds());
+        $this->assertContains($spatiuLiber->id, $regula->alocariIds());
+    }
 }

@@ -231,7 +231,6 @@ class ContractController extends Controller
 
             if ($effectiveStatus === 'liber') {
                 $spatiuUpdates['chirias'] = $contract->chirias ?: $contract->spatiu->chirias;
-                $spatiuUpdates['persoane_declarate'] = null;
             } elseif ($effectiveStatus === 'administrativ') {
                 $spatiuUpdates['chirias'] = $contract->chirias;
                 $spatiuUpdates['persoane_declarate'] = null;
@@ -244,10 +243,6 @@ class ContractController extends Controller
             }
         } elseif ($spatiuStatus !== null) {
             $spatiuUpdates['status'] = $spatiuStatus;
-
-            if ($spatiuStatus === 'liber') {
-                $spatiuUpdates['persoane_declarate'] = null;
-            }
         }
 
         $contract->spatiu->update($spatiuUpdates);

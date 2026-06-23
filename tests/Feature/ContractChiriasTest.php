@@ -1176,6 +1176,7 @@ class ContractChiriasTest extends TestCase
             'identificator' => 'C 302',
             'status' => 'inchiriat',
             'chirias' => 'Golden Cube',
+            'persoane_declarate' => 3,
             'ordine' => 1,
         ]);
 
@@ -1216,11 +1217,13 @@ class ContractChiriasTest extends TestCase
             'data_end' => '2026-12-31',
             'chirie' => 169.96,
             'moneda' => 'EUR',
+            'persoane_declarate' => 3,
         ])->assertRedirect('/contracte');
 
         $spatiu->refresh();
 
         $this->assertSame('liber', $spatiu->status);
         $this->assertSame('Golden Cube', $spatiu->chirias);
+        $this->assertSame(3, $spatiu->persoane_declarate);
     }
 }

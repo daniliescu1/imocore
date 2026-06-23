@@ -481,6 +481,47 @@ class CitiriContoareTest extends TestCase
         ]);
     }
 
+    public function test_citirile_contorului_pe_spatiu_raman_la_trecerea_pe_liber(): void
+    {
+        $imobil = $this->creeazaImobil();
+        $configurare = $this->creeazaConfigurare($imobil);
+        $linie = $this->creeazaLinieContor($configurare, 'Energie electrica');
+        $spatiu = Spatiu::query()->create([
+            'imobil_id' => $imobil->id,
+            'identificator' => 'C303',
+            'status' => 'inchiriat',
+            'configurare_anexa_id' => $configurare->id,
+            'ordine' => 1,
+        ]);
+
+        ContorConfigurabilSync::syncForConfigurare($configurare);
+
+        $citire = CitireContor::query()->create([
+            'spatiu_id' => $spatiu->id,
+            'configurare_anexa_linie_id' => $linie->id,
+            'luna' => '2026-05',
+            'index_vechi' => 100,
+            'index_nou' => 145,
+            'consum' => 45,
+        ]);
+
+        $this->put(route('spatii.update', $spatiu), [
+            'imobil_id' => $imobil->id,
+            'identificator' => 'C303',
+            'status' => 'liber',
+            'de_lamurit' => false,
+            'marcat_galben' => false,
+            'marcat_verde' => false,
+        ])->assertRedirect();
+
+        $this->assertDatabaseHas('citiri_contoare', [
+            'id' => $citire->id,
+            'spatiu_id' => $spatiu->id,
+            'index_nou' => 145,
+            'consum' => 45,
+        ]);
+    }
+
     private function creeazaImobil(): Imobil
     {
         return Imobil::query()->create([

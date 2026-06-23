@@ -2,7 +2,6 @@
 
 namespace App\Support;
 
-use App\Models\CitireContor;
 use App\Models\ConfigurareAnexaImobil;
 use App\Models\ConfigurareAnexaLinie;
 use App\Models\Contor;
@@ -60,7 +59,6 @@ class ContorConfigurabilSync
             $regula->save();
 
             self::ensureContorImobil($configurare->imobil_id, $linie);
-            self::eliminaCitiriPeSpatiuPentruLinie($linie->id);
         }
 
         $sterge = ContorConfigurabil::query()
@@ -95,18 +93,5 @@ class ContorConfigurabilSync
                 'activ' => true,
             ]
         );
-    }
-
-    private static function eliminaCitiriPeSpatiuPentruLinie(int $linieId): void
-    {
-        CitireContor::query()
-            ->where('configurare_anexa_linie_id', $linieId)
-            ->whereNotNull('spatiu_id')
-            ->delete();
-
-        Contor::query()
-            ->where('configurare_anexa_linie_id', $linieId)
-            ->whereNotNull('spatiu_id')
-            ->delete();
     }
 }

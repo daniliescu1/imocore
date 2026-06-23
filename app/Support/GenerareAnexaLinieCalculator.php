@@ -53,48 +53,54 @@ class GenerareAnexaLinieCalculator
         } elseif ($tipCalcul === 'persoane') {
             $cantitate = $spatiu->persoanePentruAnexa();
         } elseif (TipCalculAnexa::isContorConfigurabil($tipCalcul)) {
-            $regula = ContorConfigurabil::query()
-                ->where('configurare_anexa_linie_id', $linieConfigurata->id)
-                ->first();
+            if ($spatiu->status === 'inchiriat') {
+                $regula = ContorConfigurabil::query()
+                    ->where('configurare_anexa_linie_id', $linieConfigurata->id)
+                    ->first();
 
-            if ($regula) {
-                $calcul = ContorConfigurabilCalculator::cantitatePentruSpatiu(
-                    $regula,
-                    $spatiu->id,
-                    $lunaUtilitati,
-                    $lunaFacturare,
-                );
-                $indexVechi = $calcul['index_vechi'];
-                $indexNou = $calcul['index_nou'];
-                $cantitate = $calcul['cantitate'];
+                if ($regula) {
+                    $calcul = ContorConfigurabilCalculator::cantitatePentruSpatiu(
+                        $regula,
+                        $spatiu->id,
+                        $lunaUtilitati,
+                        $lunaFacturare,
+                    );
+                    $indexVechi = $calcul['index_vechi'];
+                    $indexNou = $calcul['index_nou'];
+                    $cantitate = $calcul['cantitate'];
+                }
             }
         } elseif (TipCalculAnexa::isPausal($tipCalcul)) {
-            $regula = ContorConfigurabil::query()
-                ->where('configurare_anexa_linie_id', $linieConfigurata->id)
-                ->first();
+            if ($spatiu->status === 'inchiriat') {
+                $regula = ContorConfigurabil::query()
+                    ->where('configurare_anexa_linie_id', $linieConfigurata->id)
+                    ->first();
 
-            if ($regula) {
-                $calcul = ContorConfigurabilCalculator::cantitatePentruSpatiu(
-                    $regula,
-                    $spatiu->id,
-                    $lunaUtilitati,
-                    $lunaFacturare,
-                );
-                $cantitate = $calcul['cantitate'];
-            } else {
-                $citire = self::citirePentruAnexa($spatiu->id, $linieConfigurata->id, $lunaUtilitati, $lunaFacturare);
+                if ($regula) {
+                    $calcul = ContorConfigurabilCalculator::cantitatePentruSpatiu(
+                        $regula,
+                        $spatiu->id,
+                        $lunaUtilitati,
+                        $lunaFacturare,
+                    );
+                    $cantitate = $calcul['cantitate'];
+                } else {
+                    $citire = self::citirePentruAnexa($spatiu->id, $linieConfigurata->id, $lunaUtilitati, $lunaFacturare);
 
-                if ($citire) {
-                    $cantitate = $citire->consum;
+                    if ($citire) {
+                        $cantitate = $citire->consum;
+                    }
                 }
             }
         } elseif ($tipCalcul === 'contor') {
-            $citire = self::citirePentruAnexa($spatiu->id, $linieConfigurata->id, $lunaUtilitati, $lunaFacturare);
+            if ($spatiu->status === 'inchiriat') {
+                $citire = self::citirePentruAnexa($spatiu->id, $linieConfigurata->id, $lunaUtilitati, $lunaFacturare);
 
-            if ($citire) {
-                $indexVechi = $citire->index_vechi;
-                $indexNou = $citire->index_nou;
-                $cantitate = $citire->consum;
+                if ($citire) {
+                    $indexVechi = $citire->index_vechi;
+                    $indexNou = $citire->index_nou;
+                    $cantitate = $citire->consum;
+                }
             }
         } elseif (TipCalculAnexa::folosesteFacturatDinTemplate($tipCalcul)) {
             $cantitate = TipCalculAnexa::cantitateDinTemplateLinie(
