@@ -337,13 +337,22 @@ class CitireContorController extends Controller
                 }
 
                 if (TipCalculAnexa::isPausal($linie->tip_calcul)) {
-                    $this->persistCitirePausalSauIndex(
-                        $linie,
-                        null,
-                        $luna,
-                        $dataCitire,
-                        $citireData,
-                        fn () => $this->ultimulIndexNouImobil((int) $linie->id, $luna)
+                    $consum = (float) ($citireData['consum'] ?? 0);
+
+                    CitireContor::query()->updateOrCreate(
+                        [
+                            'spatiu_id' => null,
+                            'configurare_anexa_linie_id' => $linie->id,
+                            'luna' => $luna,
+                        ],
+                        [
+                            'contor_id' => null,
+                            'spatiu_id' => null,
+                            'data_citire' => $dataCitire,
+                            'index_vechi' => 0,
+                            'index_nou' => 0,
+                            'consum' => max(0, $consum),
+                        ]
                     );
 
                     continue;
@@ -394,19 +403,6 @@ class CitireContorController extends Controller
             }
 
             if (TipCalculAnexa::isPausal($linie->tip_calcul)) {
-                $this->persistCitirePausalSauIndex(
-                    $linie,
-                    (int) $spatiuId,
-                    $luna,
-                    $dataCitire,
-                    $citireData,
-                    fn () => $this->ultimulIndexNou(
-                        (int) $spatiuId,
-                        (int) $citireData['configurare_anexa_linie_id'],
-                        $luna
-                    )
-                );
-
                 continue;
             }
 
@@ -504,14 +500,14 @@ class CitireContorController extends Controller
                             'denumire' => $linie->denumire,
                             'tip_calcul' => $linie->tip_calcul,
                             'um' => $linie->um,
-                            'index_vechi' => TipCalculAnexa::folosesteIndexLaCitire($linie->tip_calcul, $linie->denumire, $citire)
-                                ? ($citire
+                            'index_vechi' => TipCalculAnexa::isPausal($linie->tip_calcul)
+                                ? ''
+                                : ($citire
                                     ? ($citire->index_vechi ?? '')
-                                    : $ultimulIndexNou)
-                                : '',
-                            'index_nou' => TipCalculAnexa::folosesteIndexLaCitire($linie->tip_calcul, $linie->denumire, $citire)
-                                ? ($citire?->index_nou ?? '')
-                                : '',
+                                    : $ultimulIndexNou),
+                            'index_nou' => TipCalculAnexa::isPausal($linie->tip_calcul)
+                                ? ''
+                                : ($citire?->index_nou ?? ''),
                             'consum' => $citire?->consum ?? '',
                             'citire_salvata' => $citire !== null,
                             'editabila' => $editabila,
@@ -697,67 +693,6 @@ class CitireContorController extends Controller
             ->value('index_nou') ?? 0);
     }
 
-    /**
-     * @param  callable(): float  $ultimulIndexResolver
-     */
-    private function persistCitirePausalSauIndex(
-        ConfigurareAnexaLinie $linie,
-        ?int $spatiuId,
-        string $luna,
-        string $dataCitire,
-        array $citireData,
-        callable $ultimulIndexResolver,
-    ): void {
-        $folosesteIndex = TipCalculAnexa::folosesteIndexLaCitire(
-            $linie->tip_calcul,
-            $linie->denumire,
-            $citireData,
-        );
-
-        if ($folosesteIndex) {
-            $indexVechi = array_key_exists('index_vechi', $citireData) && $citireData['index_vechi'] !== null && $citireData['index_vechi'] !== ''
-                ? (float) $citireData['index_vechi']
-                : $ultimulIndexResolver();
-            $indexNou = (float) ($citireData['index_nou'] ?? 0);
-
-            CitireContor::query()->updateOrCreate(
-                [
-                    'spatiu_id' => $spatiuId,
-                    'configurare_anexa_linie_id' => $linie->id,
-                    'luna' => $luna,
-                ],
-                [
-                    'contor_id' => null,
-                    'spatiu_id' => $spatiuId,
-                    'data_citire' => $dataCitire,
-                    'index_vechi' => $indexVechi,
-                    'index_nou' => $indexNou,
-                    'consum' => max(0, $indexNou - $indexVechi),
-                ]
-            );
-
-            return;
-        }
-
-        $consum = (float) ($citireData['consum'] ?? 0);
-
-        CitireContor::query()->updateOrCreate(
-            [
-                'spatiu_id' => $spatiuId,
-                'configurare_anexa_linie_id' => $linie->id,
-                'luna' => $luna,
-            ],
-            [
-                'contor_id' => null,
-                'spatiu_id' => $spatiuId,
-                'data_citire' => $dataCitire,
-                'index_vechi' => 0,
-                'index_nou' => 0,
-                'consum' => max(0, $consum),
-            ]
-        );
-    }
-
     private function contoareConfigurabilePentruImobil(Imobil $imobil, string $luna, bool $lunaInchisa): array
     {
         return ContorConfigurabil::query()
@@ -774,7 +709,6 @@ class CitireContorController extends Controller
                     ->where('configurare_anexa_linie_id', $regula->configurare_anexa_linie_id)
                     ->where('luna', $luna)
                     ->first();
-                $folosesteIndex = TipCalculAnexa::folosesteIndexLaCitire($linie?->tip_calcul, $linie?->denumire, $citire);
 
                 $ultimulIndexNou = $this->ultimulIndexNouImobil($regula->configurare_anexa_linie_id, $luna);
                 $editabila = ! $lunaInchisa && ! $this->linieAreCitireLunaUlterioaraImobil($regula->configurare_anexa_linie_id, $luna);
@@ -787,12 +721,12 @@ class CitireContorController extends Controller
                     'tip_calcul' => $linie?->tip_calcul ?: 'Contor configurabil',
                     'um' => $linie?->um,
                     'is_pausal' => $isPausal,
-                    'index_vechi' => $folosesteIndex
-                        ? ($citire
+                    'index_vechi' => $isPausal
+                        ? ''
+                        : ($citire
                             ? ($citire->index_vechi ?? '')
-                            : $ultimulIndexNou)
-                        : '',
-                    'index_nou' => $folosesteIndex ? ($citire?->index_nou ?? '') : '',
+                            : $ultimulIndexNou),
+                    'index_nou' => $isPausal ? '' : ($citire?->index_nou ?? ''),
                     'consum' => $citire?->consum ?? '',
                     'citire_salvata' => $citire !== null,
                     'editabila' => $editabila,

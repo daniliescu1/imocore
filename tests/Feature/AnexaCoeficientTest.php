@@ -355,6 +355,78 @@ class AnexaCoeficientTest extends TestCase
         $this->assertNotSame($imobilNeselectat->id, $anexe->first()->contract->spatiu->imobil_id);
     }
 
+    public function test_generarea_anexei_creeaza_o_singura_anexa_pe_spatiu_si_luna(): void
+    {
+        $imobil = Imobil::query()->create([
+            'nume' => 'Imobil duplicate',
+            'strada' => 'Strada Test',
+            'numar' => '1',
+            'localitate' => 'Timisoara',
+        ]);
+
+        $configurare = $imobil->configurariAnexe()->create([
+            'denumire' => 'Anexa test',
+            'implicit' => true,
+        ]);
+
+        $configurare->linii()->create([
+            'denumire' => 'Energie Electrica',
+            'tip_calcul' => 'manual',
+            'um' => 'KW',
+            'valoare' => 100,
+            'ordine' => 1,
+            'nr_crt' => 1,
+        ]);
+
+        $spatiu = Spatiu::query()->create([
+            'imobil_id' => $imobil->id,
+            'identificator' => 'D204',
+            'status' => 'inchiriat',
+            'configurare_anexa_id' => $configurare->id,
+        ]);
+
+        $contractVechi = Contract::query()->create([
+            'spatiu_id' => $spatiu->id,
+            'numar_contract' => 'C-OLD',
+            'chirias' => 'Chiriaș vechi',
+            'data_start' => '2025-01-01',
+            'status' => 'activ',
+        ]);
+
+        $contractActiv = Contract::query()->create([
+            'spatiu_id' => $spatiu->id,
+            'numar_contract' => 'C-NEW',
+            'chirias' => 'Chiriaș nou',
+            'data_start' => '2026-01-01',
+            'status' => 'activ',
+        ]);
+
+        $this->post('/anexe/generare', [
+            'luna' => '2026-06',
+            'imobil_id' => $imobil->id,
+        ])->assertRedirect(route('anexe.imobil', $imobil));
+
+        $anexe = Anexa::query()
+            ->where('luna', '2026-05')
+            ->whereHas('contract', fn ($query) => $query->where('spatiu_id', $spatiu->id))
+            ->get();
+
+        $this->assertCount(1, $anexe);
+        $this->assertSame($contractActiv->id, $anexe->first()->contract_id);
+
+        $this->post('/anexe/generare', [
+            'luna' => '2026-06',
+            'imobil_id' => $imobil->id,
+        ])
+            ->assertRedirect(route('anexe.imobil', $imobil))
+            ->assertSessionHas('warning');
+
+        $this->assertCount(1, Anexa::query()
+            ->where('luna', '2026-05')
+            ->whereHas('contract', fn ($query) => $query->where('spatiu_id', $spatiu->id))
+            ->get());
+    }
+
     public function test_pagina_anexe_imobil_afiseaza_doar_anexele_imobilului(): void
     {
         $imobilSelectat = $this->creeazaImobilEligibil('Imobil anexe dedicat', 'A1');

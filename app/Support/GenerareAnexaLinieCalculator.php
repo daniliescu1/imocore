@@ -88,13 +88,7 @@ class GenerareAnexaLinieCalculator
                     $citire = self::citirePentruAnexa($spatiu->id, $linieConfigurata->id, $lunaUtilitati, $lunaFacturare);
 
                     if ($citire) {
-                        if (TipCalculAnexa::folosesteIndexLaCitire($tipCalcul, $linieConfigurata->denumire, $citire)) {
-                            $indexVechi = $citire->index_vechi;
-                            $indexNou = $citire->index_nou;
-                            $cantitate = max(0, (float) $citire->index_nou - (float) $citire->index_vechi);
-                        } else {
-                            $cantitate = $citire->consum;
-                        }
+                        $cantitate = $citire->consum;
                     }
                 }
             }

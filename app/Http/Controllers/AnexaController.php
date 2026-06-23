@@ -15,6 +15,7 @@ use App\Support\DocumentFormatter;
 use App\Support\GenerareAnexaLinieCalculator;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\Carbon;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -125,16 +126,16 @@ class AnexaController extends Controller
                 continue;
             }
 
-            $anexa = Anexa::query()->updateOrCreate(
-                [
-                    'contract_id' => $contract->id,
-                    'luna' => $lunaUtilitati,
-                ],
-                [
-                    'status' => 'draft',
-                    'total' => 0,
-                ]
-            );
+            if ($this->anexaExistaPentruSpatiuSiLuna((int) $spatiu->id, $lunaUtilitati)) {
+                continue;
+            }
+
+            $anexa = Anexa::query()->create([
+                'contract_id' => $contract->id,
+                'luna' => $lunaUtilitati,
+                'status' => 'draft',
+                'total' => 0,
+            ]);
 
             $anexa->linii()->delete();
             $total = 0;
@@ -159,14 +160,22 @@ class AnexaController extends Controller
             $generated++;
         }
 
+        if ($generated === 0 && $contracte->isNotEmpty()) {
+            return redirect()->route($redirectRoute[0], $redirectRoute[1])
+                ->with('warning', 'Anexele pentru luna selectată există deja. Șterge anexa existentă dacă vrei să generezi una nouă.');
+        }
+
         return redirect()->route($redirectRoute[0], $redirectRoute[1])
             ->with('success', "{$generated} anexe au fost generate.");
     }
 
-    private function anexeQuery(?int $imobilId = null, string $search = '', string $localitate = '')
+    private function anexeQuery(?int $imobilId = null, string $search = '', string $localitate = ''): Builder
     {
+        $latestAnexaIds = $this->latestAnexaIdsQuery($imobilId, $search, $localitate);
+
         return Anexa::query()
             ->with('contract.spatiu.imobil')
+            ->whereIn('id', $latestAnexaIds)
             ->when($imobilId, fn ($query) => $query->whereHas(
                 'contract.spatiu',
                 fn ($spatiuQuery) => $spatiuQuery->where('imobil_id', $imobilId)
@@ -201,15 +210,55 @@ class AnexaController extends Controller
         ];
     }
 
-    private function contracteEligibileQuery(?int $imobilId = null)
+    private function contracteEligibileQuery(?int $imobilId = null): Builder
     {
+        $latestContractIds = Contract::query()
+            ->selectRaw('MAX(contracte.id) as id')
+            ->join('spatii', 'spatii.id', '=', 'contracte.spatiu_id')
+            ->where('contracte.status', 'activ')
+            ->where('spatii.status', 'inchiriat')
+            ->whereNotNull('spatii.configurare_anexa_id')
+            ->when($imobilId, fn ($query) => $query->where('spatii.imobil_id', $imobilId))
+            ->groupBy('contracte.spatiu_id')
+            ->pluck('id');
+
         return Contract::query()
             ->with(['spatiu.configurareAnexa.linii', 'spatiu.imobil'])
-            ->where('status', 'activ')
-            ->whereHas('spatiu', fn ($query) => $query
-                ->where('status', 'inchiriat')
-                ->whereNotNull('configurare_anexa_id')
-                ->when($imobilId, fn ($spatiuQuery) => $spatiuQuery->where('imobil_id', $imobilId)));
+            ->whereIn('id', $latestContractIds);
+    }
+
+    private function anexaExistaPentruSpatiuSiLuna(int $spatiuId, string $lunaUtilitati): bool
+    {
+        return Anexa::query()
+            ->where('luna', $lunaUtilitati)
+            ->whereHas('contract', fn ($query) => $query->where('spatiu_id', $spatiuId))
+            ->exists();
+    }
+
+    /**
+     * @return list<int>
+     */
+    private function latestAnexaIdsQuery(?int $imobilId = null, string $search = '', string $localitate = ''): array
+    {
+        return Anexa::query()
+            ->join('contracte', 'contracte.id', '=', 'anexe.contract_id')
+            ->join('spatii', 'spatii.id', '=', 'contracte.spatiu_id')
+            ->join('imobile', 'imobile.id', '=', 'spatii.imobil_id')
+            ->when($imobilId, fn ($query) => $query->where('spatii.imobil_id', $imobilId))
+            ->when($localitate !== '', fn ($query) => $query->where('imobile.localitate', $localitate))
+            ->when($search !== '', function ($query) use ($search): void {
+                $query->where(function ($query) use ($search): void {
+                    $query->where('anexe.luna', 'like', '%'.$search.'%')
+                        ->orWhere('contracte.numar_contract', 'like', '%'.$search.'%')
+                        ->orWhere('contracte.chirias', 'like', '%'.$search.'%')
+                        ->orWhere('spatii.identificator', 'like', '%'.$search.'%')
+                        ->orWhere('imobile.nume', 'like', '%'.$search.'%');
+                });
+            })
+            ->selectRaw('MAX(anexe.id) as id')
+            ->groupBy('contracte.spatiu_id', 'anexe.luna')
+            ->pluck('id')
+            ->all();
     }
 
     private function rezumatImobile(string $localitate = '', string $search = ''): array

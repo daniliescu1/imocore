@@ -310,8 +310,7 @@ class CitiriContoareTest extends TestCase
                 ->where('mode', 'history')
                 ->where('spatii.1.id', $spatiuNou->id)
                 ->where('spatii.1.liniiContor.0.editabila', true)
-                ->has('spatii.1.liniiContor', 2)
-                ->where('spatii.1.liniiContor.1.denumire', 'Consum apa - mc / pers')
+                ->has('spatii.1.liniiContor', 1)
                 ->where('contoareConfigurabile.0.editabila', true)
                 ->where('contoareConfigurabile.0.configurare_anexa_linie_id', $linieNouaPausal->id)
                 ->where('spatii.0.liniiContor.0.editabila', false)
@@ -523,43 +522,31 @@ class CitiriContoareTest extends TestCase
         ]);
     }
 
-    public function test_citire_pausal_consum_apa_cu_index_se_salveaza_cu_index(): void
+    public function test_pausal_apa_si_canalizare_apar_doar_la_nivel_imobil_in_citiri(): void
     {
         $imobil = $this->creeazaImobil();
-        $configurare = $this->creeazaConfigurare($imobil);
-        $linie = $this->creeazaLiniePausal($configurare, 'Consum apa - mc / pers');
-        $spatiu = $this->creeazaSpatiu($imobil, $configurare, 'A1');
-
-        $this->post(route('citiri-contoare.store'), [
-            'imobil_id' => $imobil->id,
-            'luna' => '2026-06',
-            'data_citire' => '2026-06-15T10:00',
-            'citiri' => [[
-                'spatiu_id' => $spatiu->id,
-                'configurare_anexa_linie_id' => $linie->id,
-                'index_vechi' => 120,
-                'index_nou' => 135,
-            ]],
-        ])->assertRedirect();
-
-        $this->assertDatabaseHas('citiri_contoare', [
-            'spatiu_id' => $spatiu->id,
-            'configurare_anexa_linie_id' => $linie->id,
-            'luna' => '2026-06',
-            'index_vechi' => 120,
-            'index_nou' => 135,
-            'consum' => 15,
-        ]);
+        $configurare = $this->creeazaConfigurare($imobil, 'Anexa Pers < 50 mp');
+        $linieApa = $this->creeazaLiniePausal($configurare, 'Consum apa - mc / pers');
+        $linieCanal = $this->creeazaLiniePausal($configurare, 'Canalizare mc / pers');
+        $this->creeazaLinieContor($configurare, 'Energie Electrica');
+        $spatiu = $this->creeazaSpatiu($imobil, $configurare, 'C 307');
+        ContorConfigurabilSync::syncForConfigurare($configurare);
 
         $this->get(route('citiri-contoare.imobil', [
             'imobil' => $imobil->id,
-            'luna' => '2026-06',
-            'mode' => 'history',
+            'mode' => 'new',
+            'search' => 'C 307',
         ]))
             ->assertOk()
             ->assertInertia(fn (Assert $page) => $page
-                ->where('spatii.0.liniiContor.0.index_vechi', '120.000')
-                ->where('spatii.0.liniiContor.0.index_nou', '135.000')
+                ->has('contoareConfigurabile', 2)
+                ->where('contoareConfigurabile.0.is_pausal', true)
+                ->where('contoareConfigurabile.0.index_vechi', '')
+                ->where('contoareConfigurabile.0.index_nou', '')
+                ->where('contoareConfigurabile.1.is_pausal', true)
+                ->has('spatii', 1)
+                ->has('spatii.0.liniiContor', 1)
+                ->where('spatii.0.liniiContor.0.denumire', 'Energie Electrica')
             );
     }
 
@@ -580,20 +567,20 @@ class CitiriContoareTest extends TestCase
         ContorConfigurabilSync::syncForConfigurare($configurare);
 
         $citireApa = CitireContor::query()->create([
-            'spatiu_id' => $spatiu->id,
+            'spatiu_id' => null,
             'configurare_anexa_linie_id' => $linieApa->id,
             'luna' => '2026-05',
-            'index_vechi' => 50,
-            'index_nou' => 62,
+            'index_vechi' => 0,
+            'index_nou' => 0,
             'consum' => 12,
         ]);
 
         $citireCanal = CitireContor::query()->create([
-            'spatiu_id' => $spatiu->id,
+            'spatiu_id' => null,
             'configurare_anexa_linie_id' => $linieCanal->id,
             'luna' => '2026-05',
-            'index_vechi' => 50,
-            'index_nou' => 62,
+            'index_vechi' => 0,
+            'index_nou' => 0,
             'consum' => 12,
         ]);
 
@@ -608,15 +595,13 @@ class CitiriContoareTest extends TestCase
 
         $this->assertDatabaseHas('citiri_contoare', [
             'id' => $citireApa->id,
-            'index_vechi' => 50,
-            'index_nou' => 62,
+            'spatiu_id' => null,
             'consum' => 12,
         ]);
 
         $this->assertDatabaseHas('citiri_contoare', [
             'id' => $citireCanal->id,
-            'index_vechi' => 50,
-            'index_nou' => 62,
+            'spatiu_id' => null,
             'consum' => 12,
         ]);
     }
