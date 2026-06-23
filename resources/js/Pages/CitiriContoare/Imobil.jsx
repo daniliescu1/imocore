@@ -109,14 +109,8 @@ function formatLunaLabel(luna) {
     return `${lunaNumar}.${an}`;
 }
 
-function matchesCitiriSearch(spatiu, linie, search) {
-    const query = String(search || '').trim().toLowerCase();
-
-    if (!query) {
-        return true;
-    }
-
-    const spatiuHaystack = [
+function spatiuHaystack(spatiu) {
+    return [
         spatiu.identificator,
         spatiu.chirias,
         spatiu.locator,
@@ -125,12 +119,67 @@ function matchesCitiriSearch(spatiu, linie, search) {
         .filter(Boolean)
         .join(' ')
         .toLowerCase();
+}
 
-    if (spatiuHaystack.includes(query)) {
+function spatiuMatchesSearch(spatiu, search) {
+    const query = String(search || '').trim().toLowerCase();
+
+    if (!query) {
+        return true;
+    }
+
+    return spatiuHaystack(spatiu).includes(query);
+}
+
+function getMatchingSpatiuIds(spatii, search) {
+    const query = String(search || '').trim().toLowerCase();
+
+    if (!query) {
+        return null;
+    }
+
+    return new Set(
+        spatii
+            .filter((spatiu) => spatiuMatchesSearch(spatiu, search))
+            .map((spatiu) => Number(spatiu.id)),
+    );
+}
+
+function matchesCitiriSearch(spatiu, linie, search) {
+    const query = String(search || '').trim().toLowerCase();
+
+    if (!query) {
+        return true;
+    }
+
+    if (spatiuMatchesSearch(spatiu, search)) {
         return true;
     }
 
     return String(linie.denumire || '').toLowerCase().includes(query);
+}
+
+function matchesContorConfigurabilSearch(linie, search, matchingSpatiuIds) {
+    const query = String(search || '').trim().toLowerCase();
+
+    if (!query) {
+        return true;
+    }
+
+    const linieHaystack = [linie.anexa, linie.denumire]
+        .filter(Boolean)
+        .join(' ')
+        .toLowerCase();
+
+    if (linieHaystack.includes(query)) {
+        return true;
+    }
+
+    if (matchingSpatiuIds && matchingSpatiuIds.size > 0) {
+        return (linie.alocari_spatiu_ids || []).some((spatiuId) => matchingSpatiuIds.has(Number(spatiuId)));
+    }
+
+    return false;
 }
 
 export default function Imobil({
@@ -260,11 +309,22 @@ export default function Imobil({
         spatiu,
         linie,
     }))), [spatii]);
+    const matchingSpatiuIds = useMemo(
+        () => getMatchingSpatiuIds(spatii, search),
+        [spatii, search],
+    );
     const filteredRanduriCitiri = useMemo(
         () => randuriCitiri.filter(({ spatiu, linie }) => matchesCitiriSearch(spatiu, linie, search)),
         [randuriCitiri, search],
     );
-    const randuriConfigurabile = (contoareConfigurabile || []).map((linie) => ({ linie }));
+    const randuriConfigurabile = useMemo(
+        () => (contoareConfigurabile || []).map((linie) => ({ linie })),
+        [contoareConfigurabile],
+    );
+    const filteredRanduriConfigurabile = useMemo(
+        () => randuriConfigurabile.filter(({ linie }) => matchesContorConfigurabilSearch(linie, search, matchingSpatiuIds)),
+        [randuriConfigurabile, search, matchingSpatiuIds],
+    );
     const totalRanduri = randuriCitiri.length + randuriConfigurabile.length;
     const isNewMode = mode === 'new';
     const hasEditableLines = !lunaInchisa && (
@@ -275,7 +335,7 @@ export default function Imobil({
 
     const topbarActions = (
         <>
-            {randuriCitiri.length > 0 ? (
+            {(randuriCitiri.length > 0 || randuriConfigurabile.length > 0) ? (
                 <input
                     className="filter-input topbar-search"
                     type="search"
@@ -319,7 +379,7 @@ export default function Imobil({
                     </div>
                 ) : (
                     <div className="meter-reading-groups">
-                        {randuriConfigurabile.length > 0 ? (
+                        {filteredRanduriConfigurabile.length > 0 ? (
                             <div className="contor-config-citiri-block">
                                 <h2 className="contor-config-citiri-title">Contoare configurabile și pausale (imobil)</h2>
                                 <p className="contor-config-citiri-help">Citire unică la nivel de imobil; cantitatea se repartizează pe spațiile alocate din Configurare contoare.</p>
@@ -337,7 +397,7 @@ export default function Imobil({
                                             </tr>
                                         </thead>
                                         <tbody>
-                                            {randuriConfigurabile.map(({ linie }) => {
+                                            {filteredRanduriConfigurabile.map(({ linie }) => {
                                                 const editable = isLineEditable(linie);
                                                 const pausal = isPausalTip(linie.tip_calcul) || linie.is_pausal;
                                                 const citire = data.citiri[citireIndexFor(null, linie.configurare_anexa_linie_id)] || (
@@ -430,8 +490,7 @@ export default function Imobil({
                             </div>
                         ) : null}
 
-                        {randuriCitiri.length > 0 ? (
-                        filteredRanduriCitiri.length > 0 ? (
+                        {randuriCitiri.length > 0 && filteredRanduriCitiri.length > 0 ? (
                         <div className="responsive-table">
                             <table className="citiri-contoare-table">
                                 <thead>
@@ -538,12 +597,13 @@ export default function Imobil({
                                 </tbody>
                             </table>
                         </div>
-                        ) : (
+                        ) : null}
+
+                        {search.trim() && filteredRanduriConfigurabile.length === 0 && filteredRanduriCitiri.length === 0 ? (
                             <div className="readonly-info-card">
                                 <h2>Niciun rezultat</h2>
-                                <p>Nu am găsit spații sau servicii care să corespundă căutării „{search.trim()}”. Încearcă după identificator spațiu, chiriaș, locator, anexă sau serviciu.</p>
+                                <p>Nu am găsit spații, contoare configurabile sau servicii care să corespundă căutării „{search.trim()}”. Încearcă după identificator spațiu, chiriaș, locator, anexă sau serviciu.</p>
                             </div>
-                        )
                         ) : null}
                     </div>
                 )}

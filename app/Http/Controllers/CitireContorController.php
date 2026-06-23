@@ -645,6 +645,7 @@ class CitireContorController extends Controller
                     'configurare_anexa_linie_id' => $regula->configurare_anexa_linie_id,
                     'denumire' => $linie?->denumire ?: '—',
                     'anexa' => $regula->configurareAnexa?->denumire ?: '—',
+                    'alocari_spatiu_ids' => $regula->alocariEfectiveIds(),
                     'tip_calcul' => $linie?->tip_calcul ?: 'Contor configurabil',
                     'um' => $linie?->um,
                     'is_pausal' => $isPausal,

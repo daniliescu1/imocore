@@ -361,7 +361,7 @@ class ContractChiriasData
         return [
             $prefix => [$requireNume ? 'required' : 'nullable', 'array'],
             "{$prefix}.nume_complet" => [$requireNume ? 'required' : 'nullable', 'string', 'max:255'],
-            "{$prefix}.calitate" => ['nullable', 'in:administrator,asociat,presedinte,reprezentant_legal,imputernicit_notarial'],
+            "{$prefix}.calitate" => ['nullable', 'in:administrator,asociat,presedinte,director,reprezentant_legal,imputernicit_notarial'],
             "{$prefix}.serie_ci" => ['nullable', 'string', 'max:500'],
             "{$prefix}.numar_ci" => ['nullable', 'string', 'max:20'],
             "{$prefix}.cnp" => ['nullable', 'string', 'max:13'],

@@ -244,6 +244,7 @@ function LegalRepresentativeFields({
                     <option value="administrator">Administrator</option>
                     <option value="asociat">Asociat</option>
                     <option value="presedinte">Președinte</option>
+                    <option value="director">Director</option>
                     <option value="reprezentant_legal">Reprezentant legal</option>
                     <option value="imputernicit_notarial">Împuternicit notarial</option>
                 </select>
