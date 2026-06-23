@@ -76,6 +76,20 @@ function formatPhoneNumber(value) {
     return parts.join(' ');
 }
 
+function normalizeBankAccount(value) {
+    return String(value || '').replace(/\s+/g, '').toUpperCase();
+}
+
+function formatBankAccount(value) {
+    const normalized = normalizeBankAccount(value);
+
+    if (!normalized) {
+        return '';
+    }
+
+    return normalized.match(/.{1,4}/g)?.join(' ') || normalized;
+}
+
 function spatiuInfo(spatii, spatiuId) {
     return spatii.find((spatiu) => Number(spatiu.id) === Number(spatiuId)) || null;
 }
@@ -259,15 +273,22 @@ function LegalRepresentativeFields({
     );
 }
 
-function PfField({ label, value, onChange, error, type = 'text', required = false, incomplete = false, gridSpan = 2, formatter = null }) {
+function PfField({ label, value, onChange, error, type = 'text', required = false, incomplete = false, gridSpan = 2, formatter = null, normalize = null }) {
     function handleChange(event) {
+        if (normalize) {
+            onChange(normalize(event.target.value));
+            return;
+        }
+
         onChange(formatter ? formatter(event.target.value) : event.target.value);
     }
+
+    const displayValue = formatter ? formatter(value) : value;
 
     return (
         <label className={`form-field form-grid-span-${gridSpan}${incomplete ? ' form-field-incomplete' : ''}`}>
             <span>{label}{required ? ' *' : ''}</span>
-            <input type={type} value={value} onChange={handleChange} />
+            <input type={type} value={displayValue} onChange={handleChange} />
             {error ? <small>{error}</small> : null}
         </label>
     );
@@ -638,10 +659,10 @@ export default function Form({
                             <PfField label="Serie CI Număr CI, eliberat de, la data." value={data.chirias_pf.serie_ci} onChange={(value) => updatePf('serie_ci', value)} error={errors['chirias_pf.serie_ci']} required incomplete={fieldIncomplete('chirias_pf.serie_ci')} />
                             <PfField label="Domiciliu" value={data.chirias_pf.domiciliu} onChange={(value) => updatePf('domiciliu', value)} error={errors['chirias_pf.domiciliu']} required incomplete={fieldIncomplete('chirias_pf.domiciliu')} />
                             <PfField label="CNP" value={data.chirias_pf.cnp} onChange={(value) => updatePf('cnp', value)} error={errors['chirias_pf.cnp']} required incomplete={fieldIncomplete('chirias_pf.cnp')} />
+                            <PfField label="Telefon" value={data.chirias_pf.telefon} onChange={(value) => updatePf('telefon', value)} error={errors['chirias_pf.telefon']} required incomplete={fieldIncomplete('chirias_pf.telefon')} formatter={formatPhoneNumber} />
                             <PfField label="Email" value={data.chirias_pf.email} onChange={(value) => updatePf('email', value)} error={errors['chirias_pf.email']} incomplete={fieldIncomplete('chirias_pf.email')} gridSpan={1} />
                             <PfField label="Email facturare" value={data.chirias_pf.email_2} onChange={(value) => updatePf('email_2', value)} error={errors['chirias_pf.email_2']} gridSpan={1} />
-                            <PfField label="Telefon" value={data.chirias_pf.telefon} onChange={(value) => updatePf('telefon', value)} error={errors['chirias_pf.telefon']} required incomplete={fieldIncomplete('chirias_pf.telefon')} formatter={formatPhoneNumber} />
-                            <PfField label="Cont bancar" value={data.chirias_pf.cont_bancar} onChange={(value) => updatePf('cont_bancar', value)} error={errors['chirias_pf.cont_bancar']} />
+                            <PfField label="Cont bancar" value={data.chirias_pf.cont_bancar} onChange={(value) => updatePf('cont_bancar', value)} error={errors['chirias_pf.cont_bancar']} formatter={formatBankAccount} normalize={normalizeBankAccount} />
                             <PfField label="Banca" value={data.chirias_pf.banca} onChange={(value) => updatePf('banca', value)} error={errors['chirias_pf.banca']} />
                             {!spatiuAdministrativ ? (
                                 <label className="form-field form-grid-span-2">
@@ -658,12 +679,12 @@ export default function Form({
                                     <PfField label="Denumire" value={data.chirias_pj.denumire} onChange={(value) => updatePj('denumire', value)} error={errors['chirias_pj.denumire']} required incomplete={fieldIncomplete('chirias_pj.denumire')} gridSpan={1} />
                                     <PfField label="Sediul social" value={data.chirias_pj.sediu_social} onChange={(value) => updatePj('sediu_social', value)} error={errors['chirias_pj.sediu_social']} required incomplete={fieldIncomplete('chirias_pj.sediu_social')} gridSpan={1} />
                                 </div>
+                                <PfField label="Telefon" value={data.chirias_pj.telefon} onChange={(value) => updatePj('telefon', value)} error={errors['chirias_pj.telefon']} incomplete={fieldIncomplete('chirias_pj.telefon')} gridSpan={1} formatter={formatPhoneNumber} />
                                 <PfField label="Email" value={data.chirias_pj.email} onChange={(value) => updatePj('email', value)} error={errors['chirias_pj.email']} incomplete={fieldIncomplete('chirias_pj.email')} gridSpan={1} />
                                 <PfField label="Email facturare" value={data.chirias_pj.email_2} onChange={(value) => updatePj('email_2', value)} error={errors['chirias_pj.email_2']} gridSpan={1} />
-                                <PfField label="Telefon" value={data.chirias_pj.telefon} onChange={(value) => updatePj('telefon', value)} error={errors['chirias_pj.telefon']} incomplete={fieldIncomplete('chirias_pj.telefon')} gridSpan={1} formatter={formatPhoneNumber} />
                                 <PfField label="Registrul Comerțului" value={data.chirias_pj.nr_reg_comert} onChange={(value) => updatePj('nr_reg_comert', value)} error={errors['chirias_pj.nr_reg_comert']} incomplete={fieldIncomplete('chirias_pj.nr_reg_comert')} gridSpan={1} />
                                 <PfField label="CUI" value={data.chirias_pj.cui} onChange={(value) => updatePj('cui', value)} error={errors['chirias_pj.cui']} incomplete={fieldIncomplete('chirias_pj.cui')} gridSpan={1} />
-                                <PfField label="Cont bancar" value={data.chirias_pj.cont_bancar} onChange={(value) => updatePj('cont_bancar', value)} error={errors['chirias_pj.cont_bancar']} gridSpan={1} />
+                                <PfField label="Cont bancar" value={data.chirias_pj.cont_bancar} onChange={(value) => updatePj('cont_bancar', value)} error={errors['chirias_pj.cont_bancar']} gridSpan={1} formatter={formatBankAccount} normalize={normalizeBankAccount} />
                                 <PfField label="Banca" value={data.chirias_pj.banca} onChange={(value) => updatePj('banca', value)} error={errors['chirias_pj.banca']} gridSpan={1} />
                                 {!spatiuAdministrativ ? (
                                     <label className="form-field form-grid-span-1">
