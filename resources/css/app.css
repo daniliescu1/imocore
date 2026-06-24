@@ -3815,6 +3815,38 @@ tr:last-child td {
     min-width: 100%;
 }
 
+.anexe-list-table {
+    table-layout: fixed;
+    width: 100%;
+}
+
+.anexe-list-table-card .responsive-table {
+    overflow-x: hidden;
+    max-width: 100%;
+}
+
+.anexe-spatiu-header,
+.anexe-spatiu-cell {
+    box-sizing: border-box;
+    width: min(59ch, 36vw);
+    max-width: min(59ch, 36vw);
+}
+
+.anexe-spatiu-cell {
+    vertical-align: top;
+}
+
+.anexe-spatiu-cell-text {
+    display: -webkit-box;
+    overflow: hidden;
+    white-space: normal;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+    line-height: 1.35;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 3;
+}
+
 .table-card.module-table-card.facturare-table-card {
     display: flex;
     flex: 1 1 auto;

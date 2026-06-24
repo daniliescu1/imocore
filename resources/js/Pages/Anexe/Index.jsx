@@ -72,14 +72,14 @@ function RezumatImobileTable({ rezumatImobile = [] }) {
 
 function AnexeSearchTable({ anexe = [], search = '' }) {
     return (
-        <section className="table-card module-table-card">
+        <section className="table-card module-table-card anexe-list-table-card">
             <div className="responsive-table">
-                <table>
+                <table className="anexe-list-table">
                     <thead>
                         <tr>
                             <th>Imobil</th>
                             <th>Contract</th>
-                            <th>Spațiu</th>
+                            <th className="anexe-spatiu-header">Spațiu</th>
                             <th>Chiriaș</th>
                             <th>Luna</th>
                             <th>Total</th>
@@ -99,7 +99,9 @@ function AnexeSearchTable({ anexe = [], search = '' }) {
                                 >
                                     <td>{anexa.imobil}</td>
                                     <td>{anexa.contract}</td>
-                                    <td>{anexa.spatiu}</td>
+                                    <td className="anexe-spatiu-cell">
+                                        <span className="anexe-spatiu-cell-text" title={anexa.spatiu}>{anexa.spatiu}</span>
+                                    </td>
                                     <td>{anexa.chirias}</td>
                                     <td>{anexa.luna}</td>
                                     <td>{formatMoney(anexa.total)}</td>

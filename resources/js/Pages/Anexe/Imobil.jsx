@@ -129,13 +129,13 @@ export default function Imobil({ imobil, anexe = [], lunaImplicita = '', contrac
                 </div>
             </section>
 
-            <section className="table-card module-table-card">
+            <section className="table-card module-table-card anexe-list-table-card">
                 <div className="responsive-table">
-                    <table>
+                    <table className="anexe-list-table">
                         <thead>
                             <tr>
                                 <th>Contract</th>
-                                <th>Spațiu</th>
+                                <th className="anexe-spatiu-header">Spațiu</th>
                                 <th>Chiriaș</th>
                                 <th>Luna</th>
                                 <th>Total</th>
@@ -156,7 +156,9 @@ export default function Imobil({ imobil, anexe = [], lunaImplicita = '', contrac
                                 return (
                                     <tr key={anexa.id} className="clickable-row" data-prefetch-href={anexaHref} onClick={() => router.visit(anexaHref)}>
                                         <td>{anexa.contract}</td>
-                                        <td>{anexa.spatiu}</td>
+                                        <td className="anexe-spatiu-cell">
+                                            <span className="anexe-spatiu-cell-text" title={anexa.spatiu}>{anexa.spatiu}</span>
+                                        </td>
                                         <td>{anexa.chirias}</td>
                                         <td>{anexa.luna}</td>
                                         <td>{formatMoney(anexa.total)}</td>
