@@ -24,6 +24,8 @@ class BackupController extends Controller
             'latestBackupAt' => $backupService->latestBackupCreatedAt(),
             'nextScheduledAt' => $backupService->nextAutomaticBackupAt(),
             'allSpatiiDownloadUrl' => route('backup.download.spatii-toate'),
+            'indexareChiriiDownloadUrl' => route('backup.download.indexare-chirii'),
+            'persoaneDeclarateDownloadUrl' => route('backup.download.persoane-declarate'),
         ]);
     }
 
@@ -73,6 +75,38 @@ class BackupController extends Controller
 
         return response()->download($tempPath, $backupService->onDemandAllSpatiiDownloadFilename(), [
             'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        ])->deleteFileAfterSend();
+    }
+
+    public function downloadIndexareChirii(BackupService $backupService): BinaryFileResponse
+    {
+        $tempDirectory = storage_path('app/temp');
+
+        if (! File::isDirectory($tempDirectory)) {
+            File::makeDirectory($tempDirectory, 0755, true);
+        }
+
+        $tempPath = $tempDirectory.DIRECTORY_SEPARATOR.'indexare-chirii-'.Str::uuid().'.csv';
+        $backupService->exportIndexareChiriiCsv($tempPath, now()->format('Y-m-d H:i:s'));
+
+        return response()->download($tempPath, $backupService->onDemandIndexareChiriiDownloadFilename(), [
+            'Content-Type' => 'text/csv',
+        ])->deleteFileAfterSend();
+    }
+
+    public function downloadPersoaneDeclarate(BackupService $backupService): BinaryFileResponse
+    {
+        $tempDirectory = storage_path('app/temp');
+
+        if (! File::isDirectory($tempDirectory)) {
+            File::makeDirectory($tempDirectory, 0755, true);
+        }
+
+        $tempPath = $tempDirectory.DIRECTORY_SEPARATOR.'persoane-declarate-'.Str::uuid().'.csv';
+        $backupService->exportPersoaneDeclarateCsv($tempPath, now()->format('Y-m-d H:i:s'));
+
+        return response()->download($tempPath, $backupService->onDemandPersoaneDeclarateDownloadFilename(), [
+            'Content-Type' => 'text/csv',
         ])->deleteFileAfterSend();
     }
 

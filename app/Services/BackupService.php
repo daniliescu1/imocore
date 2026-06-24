@@ -27,6 +27,10 @@ class BackupService
 
     public const LOCATORI_CSV_FILENAME = 'locatori.csv';
 
+    public const INDEXARE_CHIRII_CSV_FILENAME = 'indexare-chirii.csv';
+
+    public const PERSOANE_DECLARATE_CSV_FILENAME = 'persoane-declarate.csv';
+
     public const MARCATE_SPATII_CSV_FILENAME = 'spatii-marcate.csv';
 
     public const FARA_ANEXA_SPATII_CSV_FILENAME = 'spatii-fara-anexa.csv';
@@ -88,6 +92,8 @@ class BackupService
             'spatii_toate_csv' => basename($csvExport['spatii_toate']),
             'contracte_csv' => basename($csvExport['contracte']),
             'locatori_csv' => basename($csvExport['locatori']),
+            'indexare_chirii_csv' => basename($csvExport['indexare_chirii']),
+            'persoane_declarate_csv' => basename($csvExport['persoane_declarate']),
         ], JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
 
         $this->pruneOldBackups();
@@ -102,6 +108,8 @@ class BackupService
             'spatii_toate' => $csvExport['spatii_toate'],
             'contracte_csv' => $csvExport['contracte'],
             'locatori_csv' => $csvExport['locatori'],
+            'indexare_chirii_csv' => $csvExport['indexare_chirii'],
+            'persoane_declarate_csv' => $csvExport['persoane_declarate'],
             'created_at' => $createdAt->toIso8601String(),
             'trigger' => $trigger,
         ];
@@ -125,6 +133,16 @@ class BackupService
     public function onDemandFaraContractActivSpatiiDownloadFilename(): string
     {
         return 'imocore-spatii-fara-contract-activ-'.now()->format('Y-m-d').'.csv';
+    }
+
+    public function onDemandIndexareChiriiDownloadFilename(): string
+    {
+        return 'imocore-indexare-chirii-'.now()->format('Y-m-d').'.csv';
+    }
+
+    public function onDemandPersoaneDeclarateDownloadFilename(): string
+    {
+        return 'imocore-persoane-declarate-'.now()->format('Y-m-d').'.csv';
     }
 
     /**
@@ -269,6 +287,8 @@ class BackupService
         $spatiiToateCsvFile = $directory.DIRECTORY_SEPARATOR.self::ALL_SPATII_CSV_FILENAME;
         $contracteCsvFile = $directory.DIRECTORY_SEPARATOR.self::CONTRACTE_CSV_FILENAME;
         $locatoriCsvFile = $directory.DIRECTORY_SEPARATOR.self::LOCATORI_CSV_FILENAME;
+        $indexareChiriiCsvFile = $directory.DIRECTORY_SEPARATOR.self::INDEXARE_CHIRII_CSV_FILENAME;
+        $persoaneDeclarateCsvFile = $directory.DIRECTORY_SEPARATOR.self::PERSOANE_DECLARATE_CSV_FILENAME;
 
         if ($databaseFile === null) {
             return null;
@@ -292,12 +312,20 @@ class BackupService
                 ? route('backup.download', ['date' => $dateKey, 'type' => 'locatori'])
                 : null,
             'chiriasi_csv_url' => File::exists($chiriasiCsvFile) ? route('backup.download', ['date' => $dateKey, 'type' => 'chiriasi']) : null,
+            'indexare_chirii_csv_url' => File::exists($indexareChiriiCsvFile)
+                ? route('backup.download', ['date' => $dateKey, 'type' => 'indexare-chirii'])
+                : null,
             'database_size' => File::size($databaseFile),
             'imobile_csv_size' => File::exists($imobileCsvFile) ? File::size($imobileCsvFile) : null,
             'spatii_toate_csv_size' => File::exists($spatiiToateCsvFile) ? File::size($spatiiToateCsvFile) : null,
             'contracte_csv_size' => File::exists($contracteCsvFile) ? File::size($contracteCsvFile) : null,
             'locatori_csv_size' => File::exists($locatoriCsvFile) ? File::size($locatoriCsvFile) : null,
             'chiriasi_csv_size' => File::exists($chiriasiCsvFile) ? File::size($chiriasiCsvFile) : null,
+            'indexare_chirii_csv_size' => File::exists($indexareChiriiCsvFile) ? File::size($indexareChiriiCsvFile) : null,
+            'persoane_declarate_csv_url' => File::exists($persoaneDeclarateCsvFile)
+                ? route('backup.download', ['date' => $dateKey, 'type' => 'persoane-declarate'])
+                : null,
+            'persoane_declarate_csv_size' => File::exists($persoaneDeclarateCsvFile) ? File::size($persoaneDeclarateCsvFile) : null,
         ];
     }
 
@@ -329,6 +357,12 @@ class BackupService
                 : abort(404),
             'locatori' => File::exists($directory.DIRECTORY_SEPARATOR.self::LOCATORI_CSV_FILENAME)
                 ? $directory.DIRECTORY_SEPARATOR.self::LOCATORI_CSV_FILENAME
+                : abort(404),
+            'indexare-chirii' => File::exists($directory.DIRECTORY_SEPARATOR.self::INDEXARE_CHIRII_CSV_FILENAME)
+                ? $directory.DIRECTORY_SEPARATOR.self::INDEXARE_CHIRII_CSV_FILENAME
+                : abort(404),
+            'persoane-declarate' => File::exists($directory.DIRECTORY_SEPARATOR.self::PERSOANE_DECLARATE_CSV_FILENAME)
+                ? $directory.DIRECTORY_SEPARATOR.self::PERSOANE_DECLARATE_CSV_FILENAME
                 : abort(404),
             default => abort(404),
         };
@@ -371,6 +405,8 @@ class BackupService
             'spatii-toate' => "imocore-spatii-toate-{$dateLabel}.csv",
             'contracte' => "imocore-contracte-{$dateLabel}.csv",
             'locatori' => "imocore-locatori-{$dateLabel}.csv",
+            'indexare-chirii' => "imocore-indexare-chirii-{$dateLabel}.csv",
+            'persoane-declarate' => "imocore-persoane-declarate-{$dateLabel}.csv",
             default => abort(404),
         };
     }
@@ -586,7 +622,7 @@ class BackupService
     }
 
     /**
-     * @return array{spatii_files: list<array{imobil_id: int, imobil: string, filename: string, path: string}>, chiriasi: string, imobile: string, spatii_toate: string, contracte: string, locatori: string}
+     * @return array{spatii_files: list<array{imobil_id: int, imobil: string, filename: string, path: string}>, chiriasi: string, imobile: string, spatii_toate: string, contracte: string, locatori: string, indexare_chirii: string, persoane_declarate: string}
      */
     private function exportCsvFiles(string $directory, string $exportDate): array
     {
@@ -596,6 +632,8 @@ class BackupService
         $spatiiToatePath = $directory.DIRECTORY_SEPARATOR.self::ALL_SPATII_CSV_FILENAME;
         $contractePath = $directory.DIRECTORY_SEPARATOR.self::CONTRACTE_CSV_FILENAME;
         $locatoriPath = $directory.DIRECTORY_SEPARATOR.self::LOCATORI_CSV_FILENAME;
+        $indexareChiriiPath = $directory.DIRECTORY_SEPARATOR.self::INDEXARE_CHIRII_CSV_FILENAME;
+        $persoaneDeclaratePath = $directory.DIRECTORY_SEPARATOR.self::PERSOANE_DECLARATE_CSV_FILENAME;
         $spatiiFiles = [];
         $imobile = $this->imobileWithOrderedSpatii();
         $columnFieldsUnion = $this->editableFieldsUnionFromImobile($imobile);
@@ -603,6 +641,8 @@ class BackupService
         $this->exportImobileCsv($imobilePath, $exportDate);
         $this->exportContracteCsv($contractePath, $exportDate);
         $this->exportLocatoriCsv($locatoriPath, $exportDate);
+        $this->exportIndexareChiriiCsv($indexareChiriiPath, $exportDate);
+        $this->exportPersoaneDeclarateCsv($persoaneDeclaratePath, $exportDate);
 
         $chiriasiHandle = $this->openCsvWriter($chiriasiPath);
         $allSpatiiHandle = $this->openCsvWriter($spatiiToatePath);
@@ -669,7 +709,99 @@ class BackupService
             'spatii_toate' => $spatiiToatePath,
             'contracte' => $contractePath,
             'locatori' => $locatoriPath,
+            'indexare_chirii' => $indexareChiriiPath,
+            'persoane_declarate' => $persoaneDeclaratePath,
         ];
+    }
+
+    public function exportPersoaneDeclarateCsv(string $targetPath, string $exportDate): void
+    {
+        $handle = $this->openCsvWriter($targetPath);
+
+        $this->writeCsvRow($handle, [
+            'Imobil',
+            'Identificat',
+            'Etaj',
+            'Pers. calc automat',
+            'Pers declarate',
+            'Locatar',
+            'Data export',
+        ]);
+
+        Spatiu::query()
+            ->with('imobil')
+            ->join('imobile', 'imobile.id', '=', 'spatii.imobil_id')
+            ->select('spatii.*')
+            ->where('spatii.status', 'inchiriat')
+            ->orderBy('imobile.ordine')
+            ->orderBy('imobile.id')
+            ->orderBy('spatii.ordine')
+            ->orderBy('spatii.id')
+            ->get()
+            ->each(function (Spatiu $spatiu) use ($handle, $exportDate): void {
+                $this->writeCsvRow($handle, [
+                    $spatiu->imobil?->nume ?? '',
+                    $spatiu->identificator ?? '',
+                    $spatiu->etaj ?: '',
+                    $spatiu->persoane_standard,
+                    $spatiu->persoane_declarate ?? '',
+                    $spatiu->chirias ?? '',
+                    $exportDate,
+                ]);
+            });
+
+        fclose($handle);
+    }
+
+    public function exportIndexareChiriiCsv(string $targetPath, string $exportDate): void
+    {
+        $anCurent = (int) now()->format('Y');
+        $handle = $this->openCsvWriter($targetPath);
+
+        $this->writeCsvRow($handle, [
+            'Imobil',
+            'Identificat',
+            'Etaj',
+            'Chirie curenta',
+            "Indexare {$anCurent}",
+            'Locatar',
+            'Data export',
+        ]);
+
+        Spatiu::query()
+            ->with('imobil')
+            ->join('imobile', 'imobile.id', '=', 'spatii.imobil_id')
+            ->select('spatii.*')
+            ->where('spatii.status', 'inchiriat')
+            ->orderBy('imobile.ordine')
+            ->orderBy('imobile.id')
+            ->orderBy('spatii.ordine')
+            ->orderBy('spatii.id')
+            ->get()
+            ->each(function (Spatiu $spatiu) use ($handle, $exportDate): void {
+                $chirieCurenta = $spatiu->indexare_2026 ?: $spatiu->pret_lunar;
+
+                $this->writeCsvRow($handle, [
+                    $spatiu->imobil?->nume ?? '',
+                    $spatiu->identificator ?? '',
+                    $spatiu->etaj ?: '',
+                    $this->formatChirieCurentaForIndexareExport($spatiu, $chirieCurenta),
+                    $spatiu->indexare_2026 ?? '',
+                    $spatiu->chirias ?? '',
+                    $exportDate,
+                ]);
+            });
+
+        fclose($handle);
+    }
+
+    private function formatChirieCurentaForIndexareExport(Spatiu $spatiu, mixed $chirieCurenta): string
+    {
+        if ($chirieCurenta === null || $chirieCurenta === '') {
+            return '';
+        }
+
+        return number_format((float) $chirieCurenta, 2, '.', '').' '.$spatiu->monedaLabel();
     }
 
     private function exportContracteCsv(string $targetPath, string $exportDate): void

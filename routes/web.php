@@ -101,6 +101,8 @@ Route::get('/backup', [BackupController::class, 'index'])->name('backup.index');
 Route::post('/backup', [BackupController::class, 'store'])->name('backup.store');
 Route::get('/backup/cron', [BackupController::class, 'runScheduled'])->name('backup.cron');
 Route::get('/backup/spatii-toate', [BackupController::class, 'downloadAllSpatii'])->name('backup.download.spatii-toate');
+Route::get('/backup/indexare-chirii', [BackupController::class, 'downloadIndexareChirii'])->name('backup.download.indexare-chirii');
+Route::get('/backup/persoane-declarate', [BackupController::class, 'downloadPersoaneDeclarate'])->name('backup.download.persoane-declarate');
 Route::get('/indexare-chirii', [IndexareChiriiController::class, 'index'])->name('indexare-chirii.index');
 Route::patch('/indexare-chirii/{spatiu}', [IndexareChiriiController::class, 'update'])->name('indexare-chirii.update');
 Route::get('/persoane-declarate', [PersoaneDeclarateController::class, 'index'])->name('persoane-declarate.index');

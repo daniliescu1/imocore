@@ -81,6 +81,8 @@ function BackupDownloads({ backup }) {
                     <DownloadLink href={backup.imobile_csv_url} icon={Download} label="Imobile" size={backup.imobile_csv_size} />
                     <DownloadLink href={backup.spatii_toate_csv_url} icon={Download} label="Spații toate" size={backup.spatii_toate_csv_size} />
                     <DownloadLink href={backup.chiriasi_csv_url} icon={Download} label="Chiriași" size={backup.chiriasi_csv_size} />
+                    <DownloadLink href={backup.indexare_chirii_csv_url} icon={Download} label="Indexare chirii" size={backup.indexare_chirii_csv_size} />
+                    <DownloadLink href={backup.persoane_declarate_csv_url} icon={Download} label="Persoane declarate" size={backup.persoane_declarate_csv_size} />
                     <DownloadLink href={backup.contracte_csv_url} icon={Download} label="Contracte" size={backup.contracte_csv_size} />
                     <DownloadLink href={backup.locatori_csv_url} icon={Download} label="Locatari" size={backup.locatori_csv_size} />
                 </div>
@@ -96,12 +98,24 @@ export default function BackupIndex({
     latestBackupAt = null,
     nextScheduledAt = null,
     allSpatiiDownloadUrl = null,
+    indexareChiriiDownloadUrl = null,
+    persoaneDeclarateDownloadUrl = null,
 }) {
     const topbarActions = (
         <>
             {allSpatiiDownloadUrl ? (
                 <a className="secondary-button button-link" href={allSpatiiDownloadUrl}>
                     Descarcă toate spațiile
+                </a>
+            ) : null}
+            {indexareChiriiDownloadUrl ? (
+                <a className="secondary-button button-link" href={indexareChiriiDownloadUrl}>
+                    Descarcă indexare chirii
+                </a>
+            ) : null}
+            {persoaneDeclarateDownloadUrl ? (
+                <a className="secondary-button button-link" href={persoaneDeclarateDownloadUrl}>
+                    Descarcă persoane declarate
                 </a>
             ) : null}
             <button
