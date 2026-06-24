@@ -3820,16 +3820,28 @@ tr:last-child td {
     width: 100%;
 }
 
+.anexe-list-table th,
+.anexe-list-table td {
+    overflow: hidden;
+    vertical-align: top;
+}
+
 .anexe-list-table-card .responsive-table {
     overflow-x: hidden;
     max-width: 100%;
 }
 
+.anexe-contract-header,
+.anexe-contract-cell {
+    width: 5.5rem;
+    white-space: nowrap;
+}
+
 .anexe-spatiu-header,
 .anexe-spatiu-cell {
     box-sizing: border-box;
-    width: min(59ch, 36vw);
-    max-width: min(59ch, 36vw);
+    width: min(41ch, 25vw);
+    max-width: min(41ch, 25vw);
 }
 
 .anexe-spatiu-cell {
@@ -3845,6 +3857,43 @@ tr:last-child td {
     line-height: 1.35;
     -webkit-box-orient: vertical;
     -webkit-line-clamp: 3;
+}
+
+.anexe-chirias-header,
+.anexe-chirias-cell {
+    width: auto;
+    min-width: 0;
+}
+
+.anexe-chirias-cell-text {
+    display: -webkit-box;
+    overflow: hidden;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+    line-height: 1.35;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+}
+
+.anexe-luna-header,
+.anexe-luna-cell {
+    width: 5.75rem;
+    max-width: 5.75rem;
+    white-space: nowrap;
+}
+
+.anexe-total-header,
+.anexe-total-cell {
+    width: 7.25rem;
+    max-width: 7.25rem;
+    white-space: nowrap;
+}
+
+.anexe-status-header,
+.anexe-status-cell {
+    width: 4.5rem;
+    max-width: 4.5rem;
+    white-space: nowrap;
 }
 
 .table-card.module-table-card.facturare-table-card {
@@ -4092,16 +4141,11 @@ tr:last-child td {
 }
 
 .meter-reading-groups .contor-config-citiri-table col.contor-config-col-numeric {
-    width: 5.5%;
+    width: 3.25rem;
 }
 
 .meter-reading-groups .contor-config-citiri-table col.contor-config-col-serviciu {
     width: 16%;
-}
-
-.contor-config-citiri-table th:nth-child(4),
-.contor-config-citiri-table td:nth-child(4) {
-    min-width: 0;
 }
 
 .meter-reading-groups .contor-config-citiri-table th:nth-child(1),
@@ -4109,13 +4153,40 @@ tr:last-child td {
     width: 18%;
 }
 
+.contor-config-citiri-table th:nth-child(4),
+.contor-config-citiri-table td:nth-child(4) {
+    min-width: 0;
+}
+
+.meter-reading-groups .contor-config-citiri-table th.citiri-numeric-header {
+    white-space: normal;
+    line-height: 1.15;
+    overflow: hidden;
+    vertical-align: bottom;
+    padding-top: 6px;
+    padding-bottom: 6px;
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.meter-reading-groups .contor-config-citiri-table th.citiri-numeric-header .citiri-numeric-header-text {
+    display: inline-block;
+    max-width: 100%;
+}
+
 .meter-reading-groups .contor-config-citiri-table th:nth-child(2),
 .meter-reading-groups .contor-config-citiri-table td:nth-child(2),
 .meter-reading-groups .contor-config-citiri-table th:nth-child(3),
 .meter-reading-groups .contor-config-citiri-table td:nth-child(3) {
-    width: 5.5%;
-    min-width: 0;
+    width: 3.25rem;
+    max-width: 3.25rem;
+    min-width: 3.25rem;
     text-align: center;
+}
+
+.meter-reading-groups .contor-config-citiri-table td:nth-child(2),
+.meter-reading-groups .contor-config-citiri-table td:nth-child(3) {
+    white-space: nowrap;
 }
 
 .meter-reading-groups .contor-config-citiri-table th:nth-child(4),
@@ -4149,13 +4220,6 @@ tr:last-child td {
 .meter-reading-groups .contor-config-citiri-table th:nth-child(n + 7),
 .meter-reading-groups .contor-config-citiri-table td:nth-child(n + 7) {
     text-align: right;
-}
-
-.meter-reading-groups .contor-config-citiri-table th:nth-child(2),
-.meter-reading-groups .contor-config-citiri-table td:nth-child(2),
-.meter-reading-groups .contor-config-citiri-table th:nth-child(3),
-.meter-reading-groups .contor-config-citiri-table td:nth-child(3) {
-    text-align: center;
 }
 
 .contor-config-list-table-card .responsive-table {

@@ -416,8 +416,10 @@ export default function Imobil({
                                         <thead>
                                             <tr>
                                                 <th>Anexă</th>
-                                                <th>Nr. spații</th>
-                                                <th>Nr. persoane</th>
+                                                <th className="citiri-numeric-header" aria-label="Număr spații">spații</th>
+                                                <th className="citiri-numeric-header" aria-label="Număr persoane">
+                                                    <span className="citiri-numeric-header-text">nr<br />pers</span>
+                                                </th>
                                                 <th>Serviciu</th>
                                                 <th>Tip</th>
                                                 <th>UM</th>

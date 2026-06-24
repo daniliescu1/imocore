@@ -134,12 +134,12 @@ export default function Imobil({ imobil, anexe = [], lunaImplicita = '', contrac
                     <table className="anexe-list-table">
                         <thead>
                             <tr>
-                                <th>Contract</th>
+                                <th className="anexe-contract-header">Contract</th>
                                 <th className="anexe-spatiu-header">Spațiu</th>
-                                <th>Chiriaș</th>
-                                <th>Luna</th>
-                                <th>Total</th>
-                                <th>Status</th>
+                                <th className="anexe-chirias-header">Chiriaș</th>
+                                <th className="anexe-luna-header">Luna</th>
+                                <th className="anexe-total-header">Total</th>
+                                <th className="anexe-status-header">Status</th>
                                 <th className="table-action-cell">
                                     {anexe.length > 0 ? (
                                         <button className="delete-all-header-button" type="button" onClick={deleteAllAnexe} aria-label="Șterge toate anexele">
@@ -155,14 +155,16 @@ export default function Imobil({ imobil, anexe = [], lunaImplicita = '', contrac
 
                                 return (
                                     <tr key={anexa.id} className="clickable-row" data-prefetch-href={anexaHref} onClick={() => router.visit(anexaHref)}>
-                                        <td>{anexa.contract}</td>
+                                        <td className="anexe-contract-cell">{anexa.contract}</td>
                                         <td className="anexe-spatiu-cell">
                                             <span className="anexe-spatiu-cell-text" title={anexa.spatiu}>{anexa.spatiu}</span>
                                         </td>
-                                        <td>{anexa.chirias}</td>
-                                        <td>{anexa.luna}</td>
-                                        <td>{formatMoney(anexa.total)}</td>
-                                        <td>{anexa.status}</td>
+                                        <td className="anexe-chirias-cell">
+                                            <span className="anexe-chirias-cell-text" title={anexa.chirias}>{anexa.chirias}</span>
+                                        </td>
+                                        <td className="anexe-luna-cell">{anexa.luna}</td>
+                                        <td className="anexe-total-cell">{formatMoney(anexa.total)}</td>
+                                        <td className="anexe-status-cell">{anexa.status}</td>
                                         <td className="table-action-cell">
                                             <button className="delete-inline-button" type="button" onClick={(event) => deleteAnexa(event, anexa)} aria-label="Șterge anexa">
                                                 <Trash2 size={15} strokeWidth={2.4} />
