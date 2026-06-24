@@ -211,12 +211,16 @@ class ConfigurareContoareController extends Controller
             'alocari' => $alocari,
             'configurata' => $alocari !== [],
             'formula' => $regula->foloseste_scaderi
-                ? (TipCalculAnexa::isPausal($linie?->tip_calcul)
-                    ? '(cantitate pausal − sumă scăderi) / nr. spații alocate'
-                    : '(consum contor − sumă scăderi) / nr. spații alocate')
-                : (TipCalculAnexa::isPausal($linie?->tip_calcul)
-                    ? 'cantitate pausal / nr. spații închiriate din anexă'
-                    : 'consum contor / nr. spații închiriate din anexă'),
+                ? (TipCalculAnexa::isPausalApaCanalizarePePersoana($linie?->tip_calcul, $linie?->denumire)
+                    ? '(cantitate pausal − sumă scăderi) / total persoane × persoane spațiu'
+                    : (TipCalculAnexa::isPausal($linie?->tip_calcul)
+                        ? '(cantitate pausal − sumă scăderi) / nr. spații alocate'
+                        : '(consum contor − sumă scăderi) / nr. spații alocate'))
+                : (TipCalculAnexa::isPausalApaCanalizarePePersoana($linie?->tip_calcul, $linie?->denumire)
+                    ? 'cantitate pausal / total persoane × persoane spațiu'
+                    : (TipCalculAnexa::isPausal($linie?->tip_calcul)
+                        ? 'cantitate pausal / nr. spații închiriate din anexă'
+                        : 'consum contor / nr. spații închiriate din anexă')),
             'spatiiOptions' => $this->spatiiOptionsForAnexa($regula->configurare_anexa_id),
             'liniiScadereOptions' => $this->liniiScadereOptionsForAnexa($regula->configurare_anexa_id),
             'citiriScadere' => $this->citiriScaderePentruAnexa($regula->configurare_anexa_id, $ultimaCitire['luna'] ?? null),

@@ -50,6 +50,34 @@ class TipCalculAnexa
         return self::normalize($tipCalcul) === 'pausal';
     }
 
+    public static function isPausalApaCanalizarePePersoana(?string $tipCalcul, ?string $denumire): bool
+    {
+        if (! self::isPausal($tipCalcul)) {
+            return false;
+        }
+
+        $normalized = self::normalizeDenumireServiciu($denumire);
+
+        if ($normalized === '') {
+            return false;
+        }
+
+        if (str_contains($normalized, 'canalizare') && str_contains($normalized, 'pers')) {
+            return true;
+        }
+
+        return str_contains($normalized, 'consumapa')
+            || (str_contains($normalized, 'apa') && str_contains($normalized, 'mcpers'));
+    }
+
+    private static function normalizeDenumireServiciu(?string $denumire): string
+    {
+        $value = mb_strtolower(trim((string) $denumire));
+        $value = str_replace(['ă', 'â', 'î', 'ș', 'ş', 'ț', 'ţ'], ['a', 'a', 'i', 's', 's', 't', 't'], $value);
+
+        return (string) preg_replace('/[\s\-_\/\.]+/u', '', $value);
+    }
+
     public static function isAdministrare(?string $tipCalcul): bool
     {
         return self::normalize($tipCalcul) === 'administrare';

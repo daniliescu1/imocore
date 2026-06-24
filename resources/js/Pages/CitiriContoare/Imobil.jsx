@@ -399,7 +399,7 @@ export default function Imobil({
                         {filteredRanduriConfigurabile.length > 0 ? (
                             <div className="contor-config-citiri-block">
                                 <h2 className="contor-config-citiri-title">Contoare configurabile și pausale (imobil)</h2>
-                                <p className="contor-config-citiri-help">Citire unică la nivel de imobil; cantitatea se împarte la numărul de spații închiriate alocate în Configurare contoare.</p>
+                                <p className="contor-config-citiri-help">Citire unică la nivel de imobil; apa și canalizarea pausal se împart la numărul total de persoane alocate, celelalte contoare configurabile la numărul de spații închiriate.</p>
                                 <div className="responsive-table contor-config-citiri-scroll">
                                     <table className="citiri-contoare-table contor-config-citiri-table">
                                         <colgroup>

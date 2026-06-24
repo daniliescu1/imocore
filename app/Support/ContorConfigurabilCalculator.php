@@ -4,6 +4,7 @@ namespace App\Support;
 
 use App\Models\CitireContor;
 use App\Models\ContorConfigurabil;
+use App\Models\Spatiu;
 use Carbon\Carbon;
 
 class ContorConfigurabilCalculator
@@ -56,7 +57,10 @@ class ContorConfigurabilCalculator
         }
 
         $rest = max(0, $consumBrut - $scaderi);
-        $cantitate = round($rest / count($alocari), 3);
+        $linie = $regula->configurareAnexaLinie;
+        $cantitate = TipCalculAnexa::isPausalApaCanalizarePePersoana($linie?->tip_calcul, $linie?->denumire)
+            ? self::cantitatePausalPePersoanaPentruSpatiu($regula, $spatiuId, $rest)
+            : round($rest / count($alocari), 3);
 
         return [
             'index_vechi' => $isPausal ? null : (float) $citire->index_vechi,
@@ -101,5 +105,31 @@ class ContorConfigurabilCalculator
     public static function lunaFacturareDinUtilitati(string $lunaUtilitati): string
     {
         return Carbon::createFromFormat('Y-m', $lunaUtilitati)->addMonth()->format('Y-m');
+    }
+
+    private static function cantitatePausalPePersoanaPentruSpatiu(
+        ContorConfigurabil $regula,
+        int $spatiuId,
+        float $rest,
+    ): float {
+        $alocari = $regula->alocariEfectiveIds();
+        $spatii = Spatiu::query()
+            ->whereIn('id', $alocari)
+            ->get()
+            ->keyBy('id');
+
+        $totalPersoane = (int) $spatii->sum(fn (Spatiu $spatiu): int => $spatiu->persoanePentruAnexa());
+
+        if ($totalPersoane <= 0) {
+            return count($alocari) > 0 ? round($rest / count($alocari), 3) : 0.0;
+        }
+
+        $spatiu = $spatii->get($spatiuId);
+
+        if (! $spatiu) {
+            return 0.0;
+        }
+
+        return round(($rest / $totalPersoane) * $spatiu->persoanePentruAnexa(), 3);
     }
 }

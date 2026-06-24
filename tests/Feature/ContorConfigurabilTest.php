@@ -468,6 +468,127 @@ class ContorConfigurabilTest extends TestCase
         }
     }
 
+    public function test_generarea_anexei_repartizeaza_pausal_apa_si_canalizare_pe_persoane(): void
+    {
+        [
+            $imobil,
+            $configurare,
+            ,
+            ,
+            $spatiuA,
+            $spatiuB,
+        ] = $this->creeazaScenariuContorConfigurabil();
+
+        $spatiuC = Spatiu::query()->create([
+            'imobil_id' => $imobil->id,
+            'identificator' => 'HQC1',
+            'status' => 'inchiriat',
+            'configurare_anexa_id' => $configurare->id,
+            'persoane_declarate' => 3,
+        ]);
+
+        $spatiuA->update(['persoane_declarate' => 1]);
+        $spatiuB->update(['persoane_declarate' => 2]);
+
+        Contract::query()->create([
+            'spatiu_id' => $spatiuC->id,
+            'numar_contract' => 'C-HQC1',
+            'chirias' => 'Test SRL C',
+            'data_start' => '2026-01-01',
+            'status' => 'activ',
+        ]);
+
+        $linieApa = ConfigurareAnexaLinie::query()->create([
+            'configurare_anexa_id' => $configurare->id,
+            'denumire' => 'Consum apa - mc / pers',
+            'tip_calcul' => 'pausal',
+            'um' => 'MC',
+            'pret_unitar' => 10,
+            'activ' => true,
+            'ordine' => 4,
+        ]);
+
+        $linieCanalizare = ConfigurareAnexaLinie::query()->create([
+            'configurare_anexa_id' => $configurare->id,
+            'denumire' => 'Canalizare mc / pers',
+            'tip_calcul' => 'pausal',
+            'um' => 'MC',
+            'pret_unitar' => 8,
+            'activ' => true,
+            'ordine' => 5,
+        ]);
+
+        ContorConfigurabilSync::syncForConfigurare($configurare->fresh(['linii']));
+
+        CitireContor::query()->create([
+            'spatiu_id' => null,
+            'configurare_anexa_linie_id' => $linieApa->id,
+            'luna' => '2026-05',
+            'consum' => 49.5,
+        ]);
+
+        CitireContor::query()->create([
+            'spatiu_id' => null,
+            'configurare_anexa_linie_id' => $linieCanalizare->id,
+            'luna' => '2026-05',
+            'consum' => 49.5,
+        ]);
+
+        $this->post('/anexe/generare', ['luna' => '2026-06', 'imobil_id' => $imobil->id])
+            ->assertRedirect();
+
+        $anexe = Anexa::query()->with(['linii', 'contract'])->get();
+
+        $this->assertCount(3, $anexe);
+
+        $cantitatePentruSpatiu = function (Spatiu $spatiu, string $denumire) use ($anexe): float {
+            $anexa = $anexe->first(fn (Anexa $anexa): bool => (int) $anexa->contract?->spatiu_id === (int) $spatiu->id);
+            $this->assertNotNull($anexa, "Lipseste anexa pentru {$spatiu->identificator}");
+
+            return (float) $anexa->linii->firstWhere('denumire', $denumire)?->cantitate;
+        };
+
+        $this->assertEquals(8.25, $cantitatePentruSpatiu($spatiuA, $linieApa->denumire));
+        $this->assertEquals(16.5, $cantitatePentruSpatiu($spatiuB, $linieApa->denumire));
+        $this->assertEquals(24.75, $cantitatePentruSpatiu($spatiuC, $linieApa->denumire));
+        $this->assertEquals(8.25, $cantitatePentruSpatiu($spatiuA, $linieCanalizare->denumire));
+    }
+
+    public function test_generarea_anexei_pastreaza_repartizarea_contorului_configurabil_pe_spatii(): void
+    {
+        [
+            $imobil,
+            ,
+            $linieConfigurabil,
+            ,
+            $spatiuA,
+            $spatiuB,
+        ] = $this->creeazaScenariuContorConfigurabil();
+
+        $spatiuA->update(['persoane_declarate' => 1]);
+        $spatiuB->update(['persoane_declarate' => 5]);
+
+        CitireContor::query()->create([
+            'spatiu_id' => null,
+            'configurare_anexa_linie_id' => $linieConfigurabil->id,
+            'luna' => '2026-05',
+            'index_vechi' => 0,
+            'index_nou' => 10,
+            'consum' => 10,
+        ]);
+
+        $this->post('/anexe/generare', ['luna' => '2026-06', 'imobil_id' => $imobil->id])
+            ->assertRedirect();
+
+        $anexe = Anexa::query()->with('linii')->get();
+
+        foreach ($anexe as $anexa) {
+            $linie = $anexa->linii->firstWhere('denumire', $linieConfigurabil->denumire);
+            $this->assertNotNull($linie);
+            $this->assertEquals(5, (float) $linie->cantitate);
+        }
+    }
+
     /**
      * @return array{
      *     0: Imobil,
