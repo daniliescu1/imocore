@@ -15,6 +15,7 @@ use App\Support\InternalReturnUrl;
 use App\Support\ContorConfigurabilSync;
 use App\Support\PretServiciuStandard;
 use App\Support\SincronizareContoareDinAnexa;
+use App\Support\StrictSearch;
 use App\Support\TipCalculAnexa;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -49,11 +50,7 @@ class ConfigurareAnexaController extends Controller
             $spatiiQuery = Spatiu::query()
                 ->with(['imobil', 'configurareAnexa'])
                 ->when($selectedImobilId, fn ($query) => $query->where('imobil_id', $selectedImobilId))
-                ->where(function ($query) use ($search) {
-                    $query->where('identificator', 'like', "%{$search}%")
-                        ->orWhere('locator', 'like', "%{$search}%")
-                        ->orWhere('chirias', 'like', "%{$search}%");
-                });
+                ->tap(fn ($query) => StrictSearch::whereSpatiuListMatch($query, $search));
 
             $spatiiCautate = $spatiiQuery
                 ->orderBy('ordine')

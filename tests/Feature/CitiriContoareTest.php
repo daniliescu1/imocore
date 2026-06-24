@@ -640,6 +640,45 @@ class CitiriContoareTest extends TestCase
             );
     }
 
+    public function test_cautarea_citiri_nu_potriveste_chiriasul_fara_identificator(): void
+    {
+        $imobil = $this->creeazaImobil();
+        $configurare = $this->creeazaConfigurare($imobil, 'Anexa Pers < 50 mp');
+        $this->creeazaLiniePausal($configurare, 'Consum apa - mc / pers');
+        $this->creeazaLiniePausal($configurare, 'Canalizare mc / pers');
+        $this->creeazaLinieContor($configurare, 'Energie Electrica');
+
+        $spatiu = Spatiu::query()->create([
+            'imobil_id' => $imobil->id,
+            'identificator' => 'C 318',
+            'chirias' => '318 Logistics SRL',
+            'status' => 'inchiriat',
+            'configurare_anexa_id' => $configurare->id,
+        ]);
+        ContorConfigurabilSync::syncForConfigurare($configurare);
+
+        Spatiu::query()->create([
+            'imobil_id' => $imobil->id,
+            'identificator' => 'C 309',
+            'chirias' => '318 Logistics SRL',
+            'status' => 'inchiriat',
+            'configurare_anexa_id' => null,
+        ]);
+
+        $this->get(route('citiri-contoare.imobil', [
+            'imobil' => $imobil->id,
+            'mode' => 'new',
+            'search' => 'C 318',
+        ]))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->has('searchMatchingSpatii', 1)
+                ->where('searchMatchingSpatii.0.id', $spatiu->id)
+                ->has('contoareConfigurabile', 2)
+                ->has('spatii', 1)
+            );
+    }
+
     public function test_citirile_pausal_apa_si_canalizare_raman_la_trecerea_pe_liber(): void
     {
         $imobil = $this->creeazaImobil();

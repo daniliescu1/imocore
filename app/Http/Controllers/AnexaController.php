@@ -13,6 +13,7 @@ use App\Support\AnexaDocumentPayload;
 use App\Support\ContorConfigurabilSync;
 use App\Support\DocumentFormatter;
 use App\Support\GenerareAnexaLinieCalculator;
+use App\Support\StrictSearch;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder;
@@ -184,15 +185,13 @@ class AnexaController extends Controller
                 'contract.spatiu.imobil',
                 fn ($imobilQuery) => $imobilQuery->where('localitate', $localitate)
             ))
-            ->when($search !== '', fn ($query) => $query->where(function ($query) use ($search) {
-                $query->where('luna', 'like', '%'.$search.'%')
-                    ->orWhereHas('contract', fn ($contractQuery) => $contractQuery
-                        ->where('numar_contract', 'like', '%'.$search.'%')
-                        ->orWhere('chirias', 'like', '%'.$search.'%'))
-                    ->orWhereHas('contract.spatiu', fn ($spatiuQuery) => $spatiuQuery
-                        ->where('identificator', 'like', '%'.$search.'%'))
-                    ->orWhereHas('contract.spatiu.imobil', fn ($imobilQuery) => $imobilQuery
-                        ->where('nume', 'like', '%'.$search.'%'));
+            ->when($search !== '', fn ($query) => $query->where(function ($query) use ($search): void {
+                StrictSearch::whereColumnContains($query, 'luna', $search);
+                $query->orWhereHas('contract', function ($contractQuery) use ($search): void {
+                    StrictSearch::whereColumnContains($contractQuery, 'numar_contract', $search);
+                    StrictSearch::orWhereColumnContains($contractQuery, 'chirias', $search);
+                })->orWhereHas('contract.spatiu', fn ($spatiuQuery) => StrictSearch::whereSpatiuIdentificator($spatiuQuery, $search))
+                    ->orWhereHas('contract.spatiu.imobil', fn ($imobilQuery) => StrictSearch::whereColumnContains($imobilQuery, 'nume', $search));
             }));
     }
 
@@ -248,11 +247,11 @@ class AnexaController extends Controller
             ->when($localitate !== '', fn ($query) => $query->where('imobile.localitate', $localitate))
             ->when($search !== '', function ($query) use ($search): void {
                 $query->where(function ($query) use ($search): void {
-                    $query->where('anexe.luna', 'like', '%'.$search.'%')
-                        ->orWhere('contracte.numar_contract', 'like', '%'.$search.'%')
-                        ->orWhere('contracte.chirias', 'like', '%'.$search.'%')
-                        ->orWhere('spatii.identificator', 'like', '%'.$search.'%')
-                        ->orWhere('imobile.nume', 'like', '%'.$search.'%');
+                    StrictSearch::whereColumnContains($query, 'anexe.luna', $search);
+                    StrictSearch::orWhereColumnContains($query, 'contracte.numar_contract', $search);
+                    StrictSearch::orWhereColumnContains($query, 'contracte.chirias', $search);
+                    StrictSearch::orWhereColumnContains($query, 'spatii.identificator', $search);
+                    StrictSearch::orWhereColumnContains($query, 'imobile.nume', $search);
                 });
             })
             ->selectRaw('MAX(anexe.id) as id')
@@ -284,7 +283,7 @@ class AnexaController extends Controller
         }
 
         if ($search !== '') {
-            $query->where('nume', 'like', "%{$search}%");
+            StrictSearch::whereColumnContains($query, 'nume', $search);
         }
 
         return $query

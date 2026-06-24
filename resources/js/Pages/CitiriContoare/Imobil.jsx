@@ -109,30 +109,26 @@ function formatLunaLabel(luna) {
     return `${lunaNumar}.${an}`;
 }
 
-function spatiuHaystack(spatiu) {
-    return [
-        spatiu.identificator,
-        spatiu.chirias,
-        spatiu.locator,
-        spatiu.anexa,
-    ]
-        .filter(Boolean)
-        .join(' ')
-        .toLowerCase();
+function normalizeStrictSearch(value) {
+    return String(value || '').trim().toLowerCase().replace(/\s+/g, '');
 }
 
-function spatiuMatchesSearch(spatiu, search) {
-    const query = String(search || '').trim().toLowerCase();
+function identificatorMatchesSearch(spatiu, search) {
+    const query = normalizeStrictSearch(search);
 
     if (!query) {
         return true;
     }
 
-    return spatiuHaystack(spatiu).includes(query);
+    return normalizeStrictSearch(spatiu.identificator).includes(query);
+}
+
+function spatiuMatchesSearch(spatiu, search) {
+    return identificatorMatchesSearch(spatiu, search);
 }
 
 function getMatchingSpatiuIds(spatii, search) {
-    const query = String(search || '').trim().toLowerCase();
+    const query = normalizeStrictSearch(search);
 
     if (!query) {
         return null;
@@ -140,23 +136,19 @@ function getMatchingSpatiuIds(spatii, search) {
 
     return new Set(
         spatii
-            .filter((spatiu) => spatiuMatchesSearch(spatiu, search))
+            .filter((spatiu) => identificatorMatchesSearch(spatiu, search))
             .map((spatiu) => Number(spatiu.id)),
     );
 }
 
 function matchesCitiriSearch(spatiu, linie, search) {
-    const query = String(search || '').trim().toLowerCase();
+    const query = normalizeStrictSearch(search);
 
     if (!query) {
         return true;
     }
 
-    if (spatiuMatchesSearch(spatiu, search)) {
-        return true;
-    }
-
-    return String(linie.denumire || '').toLowerCase().includes(query);
+    return identificatorMatchesSearch(spatiu, search);
 }
 
 function matchingSpatiiForSearch(search, searchMatchingSpatii, spatiiIndex) {
@@ -174,7 +166,7 @@ function matchingSpatiiForSearch(search, searchMatchingSpatii, spatiiIndex) {
 }
 
 function matchesContorConfigurabilSearch(linie, search, matchingSpatii) {
-    const query = String(search || '').trim().toLowerCase();
+    const query = normalizeStrictSearch(search);
 
     if (!query) {
         return true;
@@ -188,10 +180,7 @@ function matchesContorConfigurabilSearch(linie, search, matchingSpatii) {
         ));
     }
 
-    const linieHaystack = [linie.anexa, linie.denumire]
-        .filter(Boolean)
-        .join(' ')
-        .toLowerCase();
+    const linieHaystack = normalizeStrictSearch([linie.anexa, linie.denumire].filter(Boolean).join(' '));
 
     return linieHaystack.includes(query);
 }
@@ -641,7 +630,7 @@ export default function Imobil({
                         {search.trim() && filteredRanduriConfigurabile.length === 0 && filteredRanduriCitiri.length === 0 ? (
                             <div className="readonly-info-card">
                                 <h2>Niciun rezultat</h2>
-                                <p>Nu am găsit spații, contoare configurabile sau servicii care să corespundă căutării „{search.trim()}”. Încearcă după identificator spațiu, chiriaș, locator, anexă sau serviciu.</p>
+                                <p>Nu am găsit spații sau contoare configurabile care să corespundă căutării „{search.trim()}”. Încearcă după identificator spațiu, anexă sau serviciu.</p>
                             </div>
                         ) : null}
                     </div>

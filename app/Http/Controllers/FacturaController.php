@@ -12,6 +12,7 @@ use App\Models\Spatiu;
 use App\Support\AnexaDocumentPayload;
 use App\Support\DocumentFormatter;
 use App\Support\SpatiuIndexSearch;
+use App\Support\StrictSearch;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -42,11 +43,7 @@ class FacturaController extends Controller
                     'imobil',
                     fn ($imobilQuery) => $imobilQuery->where('localitate', $localitate)
                 ))
-                ->where(function ($query) use ($search) {
-                    $query->where('identificator', 'like', "%{$search}%")
-                        ->orWhere('locator', 'like', "%{$search}%")
-                        ->orWhere('chirias', 'like', "%{$search}%");
-                })
+                ->tap(fn ($query) => StrictSearch::whereSpatiuListMatch($query, $search))
                 ->distinct()
                 ->pluck('imobil_id');
 
@@ -494,19 +491,19 @@ class FacturaController extends Controller
             ->when($searchSpatiu !== '', fn ($query) => $query->where(function ($query) use ($searchSpatiu) {
                 $query->whereHas(
                     'anexa.contract.spatiu',
-                    fn ($spatiuQuery) => $spatiuQuery->where('identificator', 'like', '%'.$searchSpatiu.'%')
+                    fn ($spatiuQuery) => StrictSearch::whereSpatiuIdentificator($spatiuQuery, $searchSpatiu)
                 )->orWhereHas(
                     'contract.spatiu',
-                    fn ($spatiuQuery) => $spatiuQuery->where('identificator', 'like', '%'.$searchSpatiu.'%')
+                    fn ($spatiuQuery) => StrictSearch::whereSpatiuIdentificator($spatiuQuery, $searchSpatiu)
                 );
             }))
             ->when($searchChirias !== '', fn ($query) => $query->where(function ($query) use ($searchChirias) {
                 $query->whereHas(
                     'anexa.contract',
-                    fn ($contractQuery) => $contractQuery->where('chirias', 'like', '%'.$searchChirias.'%')
+                    fn ($contractQuery) => StrictSearch::whereColumnContains($contractQuery, 'chirias', $searchChirias)
                 )->orWhereHas(
                     'contract',
-                    fn ($contractQuery) => $contractQuery->where('chirias', 'like', '%'.$searchChirias.'%')
+                    fn ($contractQuery) => StrictSearch::whereColumnContains($contractQuery, 'chirias', $searchChirias)
                 );
             }));
     }
@@ -845,7 +842,7 @@ class FacturaController extends Controller
         }
 
         if ($search !== '') {
-            $query->where('nume', 'like', "%{$search}%");
+            StrictSearch::whereColumnContains($query, 'nume', $search);
         }
 
         return $query

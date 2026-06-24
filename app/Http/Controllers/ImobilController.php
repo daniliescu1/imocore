@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\ConfigurareAnexaImobil;
 use App\Models\Imobil;
+use App\Support\StrictSearch;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
@@ -32,13 +33,13 @@ class ImobilController extends Controller
         }
 
         if ($search !== '') {
-            $query->where(function ($query) use ($search) {
-                $query->where('nume', 'like', "%{$search}%")
-                    ->orWhere('strada', 'like', "%{$search}%")
-                    ->orWhere('localitate', 'like', "%{$search}%")
-                    ->orWhere('numar_cf', 'like', "%{$search}%")
-                    ->orWhere('numere_cf', 'like', "%{$search}%");
-            });
+            StrictSearch::whereTextFieldsMatch($query, $search, [
+                'nume',
+                'strada',
+                'localitate',
+                'numar_cf',
+                'numere_cf',
+            ]);
         }
 
         $imobile = $query->get()->map(fn (Imobil $imobil) => [

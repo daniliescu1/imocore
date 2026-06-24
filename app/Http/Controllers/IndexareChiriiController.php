@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Imobil;
 use App\Models\Spatiu;
 use App\Support\DecimalInput;
+use App\Support\StrictSearch;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Schema;
@@ -40,10 +41,10 @@ class IndexareChiriiController extends Controller
         }
 
         if ($search !== '') {
-            $query->where(function ($query) use ($search) {
-                $query->where('spatii.identificator', 'like', "%{$search}%")
-                    ->orWhere('spatii.chirias', 'like', "%{$search}%")
-                    ->orWhere('imobile.nume', 'like', "%{$search}%");
+            $query->where(function ($query) use ($search): void {
+                StrictSearch::whereColumnContains($query, 'spatii.identificator', $search);
+                StrictSearch::orWhereColumnContains($query, 'spatii.chirias', $search);
+                StrictSearch::orWhereColumnContains($query, 'imobile.nume', $search);
             });
         }
 

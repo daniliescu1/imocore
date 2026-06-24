@@ -16,6 +16,7 @@ use App\Support\DecimalInput;
 use App\Support\InternalReturnUrl;
 use App\Support\SincronizareContoareDinAnexa;
 use App\Support\SpatiuIndexSearch;
+use App\Support\StrictSearch;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -66,7 +67,7 @@ class SpatiuController extends Controller
         }
 
         if ($search !== '') {
-            $query->where('nume', 'like', "%{$search}%");
+            StrictSearch::whereColumnContains($query, 'nume', $search);
         }
 
         $imobile = $query->get()->map(fn (Imobil $imobil): array => [
@@ -118,11 +119,7 @@ class SpatiuController extends Controller
 
         $this->applyDocumenteFilter($query, $documente);
 
-        $query->where(function ($query) use ($search) {
-            $query->where('identificator', 'like', "%{$search}%")
-                ->orWhere('locator', 'like', "%{$search}%")
-                ->orWhere('chirias', 'like', "%{$search}%");
-        });
+        StrictSearch::whereSpatiuListMatch($query, $search);
 
         $spatii = SpatiuIndexSearch::fetchOrdered($query)
             ->map(fn (Spatiu $spatiu): array => $this->mapSpatiuForList($spatiu));
@@ -156,11 +153,7 @@ class SpatiuController extends Controller
             $query->whereHas('imobil', fn ($imobilQuery) => $imobilQuery->where('localitate', $localitate));
         }
 
-        return $query->where(function ($query) use ($search) {
-            $query->where('identificator', 'like', "%{$search}%")
-                ->orWhere('locator', 'like', "%{$search}%")
-                ->orWhere('chirias', 'like', "%{$search}%");
-        })->exists();
+        return $query->tap(fn ($query) => StrictSearch::whereSpatiuListMatch($query, $search))->exists();
     }
 
     private function indexSpatiiForImobil(int $imobilId, string $search, string $status, string $documente): Response
@@ -186,11 +179,7 @@ class SpatiuController extends Controller
         $this->applyDocumenteFilter($query, $documente);
 
         if ($search !== '') {
-            $query->where(function ($query) use ($search) {
-                $query->where('identificator', 'like', "%{$search}%")
-                    ->orWhere('locator', 'like', "%{$search}%")
-                    ->orWhere('chirias', 'like', "%{$search}%");
-            });
+            StrictSearch::whereSpatiuListMatch($query, $search);
         }
 
         $spatii = $query->get()->map(fn (Spatiu $spatiu): array => $this->mapSpatiuForList($spatiu));
@@ -240,11 +229,12 @@ class SpatiuController extends Controller
         }
 
         if ($search !== '') {
-            $query->where(function ($query) use ($search) {
-                $query->where('identificator', 'like', "%{$search}%")
-                    ->orWhere('locator', 'like', "%{$search}%")
-                    ->orWhere('chirias', 'like', "%{$search}%")
-                    ->orWhereHas('imobil', fn ($imobilQuery) => $imobilQuery->where('nume', 'like', "%{$search}%"));
+            $query->where(function ($query) use ($search): void {
+                StrictSearch::whereSpatiuListMatch($query, $search);
+                $query->orWhereHas(
+                    'imobil',
+                    fn ($imobilQuery) => StrictSearch::whereColumnContains($imobilQuery, 'nume', $search)
+                );
             });
         }
 

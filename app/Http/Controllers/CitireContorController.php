@@ -10,6 +10,7 @@ use App\Models\Imobil;
 use App\Models\Spatiu;
 use App\Support\ContorConfigurabilSync;
 use App\Support\SpatiuIndexSearch;
+use App\Support\StrictSearch;
 use App\Support\TipCalculAnexa;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -71,7 +72,7 @@ class CitireContorController extends Controller
         }
 
         if ($search !== '') {
-            $query->where('nume', 'like', "%{$search}%");
+            StrictSearch::whereColumnContains($query, 'nume', $search);
         }
 
         $imobile = $query
@@ -186,11 +187,7 @@ class CitireContorController extends Controller
 
         return Spatiu::query()
             ->where('imobil_id', $imobil->id)
-            ->where(function ($query) use ($search): void {
-                $query->where('identificator', 'like', "%{$search}%")
-                    ->orWhere('locator', 'like', "%{$search}%")
-                    ->orWhere('chirias', 'like', "%{$search}%");
-            })
+            ->tap(fn ($query) => StrictSearch::whereSpatiuIdentificator($query, $search))
             ->orderBy('identificator')
             ->get(['id', 'identificator', 'chirias', 'configurare_anexa_id'])
             ->map(fn (Spatiu $spatiu): array => [
@@ -223,11 +220,12 @@ class CitireContorController extends Controller
             ));
         }
 
-        $query = mb_strtolower($search);
-
         return array_values(array_filter(
             $contoareConfigurabile,
-            fn (array $linie): bool => str_contains(mb_strtolower(trim(($linie['anexa'] ?? '').' '.($linie['denumire'] ?? ''))), $query),
+            fn (array $linie): bool => StrictSearch::contains(
+                trim(($linie['anexa'] ?? '').' '.($linie['denumire'] ?? '')),
+                $search,
+            ),
         ));
     }
 
@@ -264,11 +262,7 @@ class CitireContorController extends Controller
                 'imobil',
                 fn ($imobilQuery) => $imobilQuery->where('localitate', $localitate)
             ))
-            ->where(function ($query) use ($search) {
-                $query->where('identificator', 'like', "%{$search}%")
-                    ->orWhere('locator', 'like', "%{$search}%")
-                    ->orWhere('chirias', 'like', "%{$search}%");
-            })
+            ->tap(fn ($query) => StrictSearch::whereSpatiuIdentificator($query, $search))
             ->distinct()
             ->pluck('imobil_id');
     }

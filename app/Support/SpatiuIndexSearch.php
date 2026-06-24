@@ -4,6 +4,7 @@ namespace App\Support;
 
 use App\Models\Imobil;
 use App\Models\Spatiu;
+use App\Support\StrictSearch;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 
@@ -53,11 +54,9 @@ class SpatiuIndexSearch
             $query->whereHas('imobil', fn ($imobilQuery) => $imobilQuery->where('localitate', $localitate));
         }
 
-        return $query->where(function ($query) use ($search) {
-            $query->where('identificator', 'like', "%{$search}%")
-                ->orWhere('locator', 'like', "%{$search}%")
-                ->orWhere('chirias', 'like', "%{$search}%");
-        })->exists();
+        StrictSearch::whereSpatiuListMatch($query, $search);
+
+        return $query->exists();
     }
 
     /**
@@ -78,11 +77,7 @@ class SpatiuIndexSearch
             $query->whereHas('imobil', fn ($imobilQuery) => $imobilQuery->where('localitate', $localitate));
         }
 
-        $query->where(function ($query) use ($search) {
-            $query->where('identificator', 'like', "%{$search}%")
-                ->orWhere('locator', 'like', "%{$search}%")
-                ->orWhere('chirias', 'like', "%{$search}%");
-        });
+        StrictSearch::whereSpatiuListMatch($query, $search);
 
         return self::fetchOrdered($query)
             ->map(fn (Spatiu $spatiu): array => self::mapSpatiuForList($spatiu))
