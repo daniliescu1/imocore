@@ -4037,42 +4037,93 @@ tr:last-child td {
     color: var(--text-secondary);
 }
 
-.contor-config-citiri-table th:nth-child(2),
-.contor-config-citiri-table td:nth-child(2) {
-    min-width: 220px;
+.contor-config-citiri-scroll {
+    overflow-x: hidden;
+}
+
+.meter-reading-groups .contor-config-citiri-table {
+    min-width: 0;
+}
+
+.meter-reading-groups .contor-config-citiri-table th,
+.meter-reading-groups .contor-config-citiri-table td {
+    padding: 0 6px;
+}
+
+.meter-reading-groups .contor-config-citiri-table .citiri-numeric-cell {
+    text-align: center;
+    font-variant-numeric: tabular-nums;
+}
+
+.meter-reading-groups .contor-config-citiri-table col.contor-config-col-anexa {
+    width: 18%;
+}
+
+.meter-reading-groups .contor-config-citiri-table col.contor-config-col-numeric {
+    width: 5.5%;
+}
+
+.meter-reading-groups .contor-config-citiri-table col.contor-config-col-serviciu {
+    width: 16%;
+}
+
+.contor-config-citiri-table th:nth-child(4),
+.contor-config-citiri-table td:nth-child(4) {
+    min-width: 0;
 }
 
 .meter-reading-groups .contor-config-citiri-table th:nth-child(1),
 .meter-reading-groups .contor-config-citiri-table td:nth-child(1) {
-    width: 14%;
+    width: 18%;
 }
 
+.meter-reading-groups .contor-config-citiri-table th:nth-child(2),
+.meter-reading-groups .contor-config-citiri-table td:nth-child(2),
 .meter-reading-groups .contor-config-citiri-table th:nth-child(3),
 .meter-reading-groups .contor-config-citiri-table td:nth-child(3) {
-    width: 8%;
+    width: 5.5%;
+    min-width: 0;
+    text-align: center;
 }
 
 .meter-reading-groups .contor-config-citiri-table th:nth-child(4),
 .meter-reading-groups .contor-config-citiri-table td:nth-child(4) {
-    width: 6%;
+    width: 16%;
+    min-width: 0;
 }
 
 .meter-reading-groups .contor-config-citiri-table th:nth-child(5),
-.meter-reading-groups .contor-config-citiri-table td:nth-child(5),
+.meter-reading-groups .contor-config-citiri-table td:nth-child(5) {
+    width: 7%;
+    min-width: 0;
+}
+
 .meter-reading-groups .contor-config-citiri-table th:nth-child(6),
 .meter-reading-groups .contor-config-citiri-table td:nth-child(6) {
-    width: 11%;
-    min-width: 7.5rem;
+    width: 4%;
+    min-width: 0;
 }
 
 .meter-reading-groups .contor-config-citiri-table th:nth-child(7),
-.meter-reading-groups .contor-config-citiri-table td:nth-child(7) {
+.meter-reading-groups .contor-config-citiri-table td:nth-child(7),
+.meter-reading-groups .contor-config-citiri-table th:nth-child(8),
+.meter-reading-groups .contor-config-citiri-table td:nth-child(8),
+.meter-reading-groups .contor-config-citiri-table th:nth-child(9),
+.meter-reading-groups .contor-config-citiri-table td:nth-child(9) {
     width: 10%;
+    min-width: 0;
 }
 
-.meter-reading-groups .contor-config-citiri-table th:nth-child(n + 5),
-.meter-reading-groups .contor-config-citiri-table td:nth-child(n + 5) {
+.meter-reading-groups .contor-config-citiri-table th:nth-child(n + 7),
+.meter-reading-groups .contor-config-citiri-table td:nth-child(n + 7) {
     text-align: right;
+}
+
+.meter-reading-groups .contor-config-citiri-table th:nth-child(2),
+.meter-reading-groups .contor-config-citiri-table td:nth-child(2),
+.meter-reading-groups .contor-config-citiri-table th:nth-child(3),
+.meter-reading-groups .contor-config-citiri-table td:nth-child(3) {
+    text-align: center;
 }
 
 .contor-config-list-table-card .responsive-table {

@@ -735,6 +735,44 @@ class CitiriContoareTest extends TestCase
         ]);
     }
 
+    public function test_contoare_configurabile_afiseaza_numar_spatii_si_persoane_alocate(): void
+    {
+        $imobil = $this->creeazaImobil();
+        $configurare = $this->creeazaConfigurare($imobil);
+        $this->creeazaLiniePausal($configurare, 'Consum apa - mc / pers');
+
+        Spatiu::query()->create([
+            'imobil_id' => $imobil->id,
+            'identificator' => 'C 419',
+            'status' => 'inchiriat',
+            'configurare_anexa_id' => $configurare->id,
+            'suprafata_contractuala_mp' => 50,
+            'persoane_declarate' => 3,
+            'ordine' => 1,
+        ]);
+
+        Spatiu::query()->create([
+            'imobil_id' => $imobil->id,
+            'identificator' => 'C 420',
+            'status' => 'inchiriat',
+            'configurare_anexa_id' => $configurare->id,
+            'suprafata_contractuala_mp' => 30,
+            'ordine' => 2,
+        ]);
+
+        ContorConfigurabilSync::syncForConfigurare($configurare);
+
+        $this->get(route('citiri-contoare.imobil', [
+            'imobil' => $imobil->id,
+            'mode' => 'new',
+        ]))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->has('contoareConfigurabile', 1)
+                ->where('contoareConfigurabile.0.alocari_count', 2)
+                ->where('contoareConfigurabile.0.alocari_persoane_count', 6));
+    }
+
     private function creeazaImobil(): Imobil
     {
         return Imobil::query()->create([

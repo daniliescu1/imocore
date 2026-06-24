@@ -400,11 +400,24 @@ export default function Imobil({
                             <div className="contor-config-citiri-block">
                                 <h2 className="contor-config-citiri-title">Contoare configurabile și pausale (imobil)</h2>
                                 <p className="contor-config-citiri-help">Citire unică la nivel de imobil; cantitatea se împarte la numărul de spații închiriate alocate în Configurare contoare.</p>
-                                <div className="responsive-table">
+                                <div className="responsive-table contor-config-citiri-scroll">
                                     <table className="citiri-contoare-table contor-config-citiri-table">
+                                        <colgroup>
+                                            <col className="contor-config-col-anexa" />
+                                            <col className="contor-config-col-numeric" />
+                                            <col className="contor-config-col-numeric" />
+                                            <col className="contor-config-col-serviciu" />
+                                            <col />
+                                            <col />
+                                            <col />
+                                            <col />
+                                            <col />
+                                        </colgroup>
                                         <thead>
                                             <tr>
                                                 <th>Anexă</th>
+                                                <th>Nr. spații</th>
+                                                <th>Nr. persoane</th>
                                                 <th>Serviciu</th>
                                                 <th>Tip</th>
                                                 <th>UM</th>
@@ -431,10 +444,9 @@ export default function Imobil({
                                                     <tr key={`config-${linie.configurare_anexa_linie_id}`}>
                                                         <td title={linie.anexa}>
                                                             {linie.anexa || '—'}
-                                                            {linie.alocari_count ? (
-                                                                <span className="spatiu-documente-meta">{` · ${linie.alocari_count} închiriate`}</span>
-                                                            ) : null}
                                                         </td>
+                                                        <td className="citiri-numeric-cell">{linie.alocari_count ?? '—'}</td>
+                                                        <td className="citiri-numeric-cell">{linie.alocari_persoane_count ?? '—'}</td>
                                                         <td title={linie.denumire}>{linie.denumire}</td>
                                                         <td>{tipCitireLabel(linie.tip_calcul)}</td>
                                                         <td>{linie.um || '—'}</td>

@@ -796,13 +796,20 @@ class CitireContorController extends Controller
 
     private function contoareConfigurabilePentruImobil(Imobil $imobil, string $luna, bool $lunaInchisa): array
     {
-        return ContorConfigurabil::query()
+        $reguli = ContorConfigurabil::query()
             ->with(['configurareAnexaLinie', 'configurareAnexa'])
             ->where('imobil_id', $imobil->id)
             ->orderBy('configurare_anexa_id')
             ->orderBy('id')
+            ->get();
+
+        $spatiiById = Spatiu::query()
+            ->whereIn('id', $reguli->flatMap(fn (ContorConfigurabil $regula): array => $regula->alocariEfectiveIds())->unique()->all())
             ->get()
-            ->map(function (ContorConfigurabil $regula) use ($luna, $lunaInchisa): array {
+            ->keyBy('id');
+
+        return $reguli
+            ->map(function (ContorConfigurabil $regula) use ($luna, $lunaInchisa, $spatiiById): array {
                 $linie = $regula->configurareAnexaLinie;
                 $isPausal = TipCalculAnexa::isPausal($linie?->tip_calcul);
                 $citire = CitireContor::query()
@@ -813,14 +820,16 @@ class CitireContorController extends Controller
 
                 $ultimulIndexNou = $this->ultimulIndexNouImobil($regula->configurare_anexa_linie_id, $luna);
                 $editabila = ! $lunaInchisa && ! $this->linieAreCitireLunaUlterioaraImobil($regula->configurare_anexa_linie_id, $luna);
+                $alocariIds = $regula->alocariEfectiveIds();
 
                 return [
                     'configurare_anexa_linie_id' => $regula->configurare_anexa_linie_id,
                     'configurare_anexa_id' => $regula->configurare_anexa_id,
                     'denumire' => $linie?->denumire ?: '—',
                     'anexa' => $regula->configurareAnexa?->denumire ?: '—',
-                    'alocari_spatiu_ids' => $regula->alocariEfectiveIds(),
-                    'alocari_count' => count($regula->alocariEfectiveIds()),
+                    'alocari_spatiu_ids' => $alocariIds,
+                    'alocari_count' => count($alocariIds),
+                    'alocari_persoane_count' => $this->alocariPersoaneCount($alocariIds, $spatiiById),
                     'tip_calcul' => $linie?->tip_calcul ?: 'Contor configurabil',
                     'um' => $linie?->um,
                     'is_pausal' => $isPausal,
@@ -837,5 +846,15 @@ class CitireContorController extends Controller
             })
             ->values()
             ->all();
+    }
+
+    /**
+     * @param  list<int>  $alocariIds
+     * @param  \Illuminate\Support\Collection<int, Spatiu>  $spatiiById
+     */
+    private function alocariPersoaneCount(array $alocariIds, \Illuminate\Support\Collection $spatiiById): int
+    {
+        return (int) collect($alocariIds)
+            ->sum(fn (int $spatiuId): int => (int) ($spatiiById->get($spatiuId)?->persoanePentruAnexa() ?? 0));
     }
 }
