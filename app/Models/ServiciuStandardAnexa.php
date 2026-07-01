@@ -274,6 +274,7 @@ class ServiciuStandardAnexa extends Model
             'mp_coeficient' => 'Mp × coeficient',
             'persoane' => 'Pe persoane',
             'contor' => 'Contor',
+            'contor_fix' => 'Contor Fix',
             'pausal' => 'Pausal',
             'zero' => '0 lei',
         ];

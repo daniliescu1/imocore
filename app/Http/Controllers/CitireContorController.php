@@ -136,6 +136,10 @@ class CitireContorController extends Controller
             $search,
             $searchMatchingSpatii,
         );
+        $contoareFix = $this->contoareFixFiltratePentruCautare(
+            $this->contoareFixPentruImobil($imobil, $luna, $lunaInchisa),
+            $search,
+        );
 
         return [
             'imobil' => [
@@ -153,6 +157,7 @@ class CitireContorController extends Controller
             'luniSelectabile' => $this->luniSelectabile(),
             'spatii' => $spatii,
             'contoareConfigurabile' => $contoareConfigurabile,
+            'contoareFix' => $contoareFix,
             'spatiiIndex' => $this->spatiiIndexForImobil($imobil),
             'searchSpatiu' => $search,
             'searchMatchingSpatii' => $searchMatchingSpatii,
@@ -510,6 +515,28 @@ class CitireContorController extends Controller
                 continue;
             }
 
+            if (TipCalculAnexa::isContorFix($linie->tip_calcul)) {
+                $consum = (float) ($citireData['consum'] ?? 0);
+
+                CitireContor::query()->updateOrCreate(
+                    [
+                        'spatiu_id' => $spatiuId,
+                        'configurare_anexa_linie_id' => $citireData['configurare_anexa_linie_id'],
+                        'luna' => $luna,
+                    ],
+                    [
+                        'contor_id' => null,
+                        'spatiu_id' => $spatiuId,
+                        'data_citire' => $dataCitire,
+                        'index_vechi' => 0,
+                        'index_nou' => 0,
+                        'consum' => max(0, $consum),
+                    ]
+                );
+
+                continue;
+            }
+
             $indexVechi = array_key_exists('index_vechi', $citireData) && $citireData['index_vechi'] !== null && $citireData['index_vechi'] !== ''
                 ? (float) $citireData['index_vechi']
                 : $this->ultimulIndexNou(
@@ -545,6 +572,16 @@ class CitireContorController extends Controller
             ->where('imobil_id', $imobilId)
             ->whereNotNull('configurare_anexa_id')
             ->with(['configurareAnexa.linii' => fn ($query) => TipCalculAnexa::applyLiniiContorSpatiuScope(
+                $query->orderBy('ordine')->orderBy('id')
+            )])
+            ->each(function (Spatiu $spatiu) use (&$count): void {
+                $count += $spatiu->configurareAnexa?->linii->count() ?? 0;
+            });
+
+        Spatiu::query()
+            ->where('imobil_id', $imobilId)
+            ->whereNotNull('configurare_anexa_id')
+            ->with(['configurareAnexa.linii' => fn ($query) => TipCalculAnexa::applyLiniiContorFixSpatiuScope(
                 $query->orderBy('ordine')->orderBy('id')
             )])
             ->each(function (Spatiu $spatiu) use (&$count): void {
@@ -632,6 +669,73 @@ class CitireContorController extends Controller
             ->filter(fn (array $spatiu): bool => count($spatiu['liniiContor']) > 0)
             ->values()
             ->all();
+    }
+
+    /**
+     * @return list<array<string, mixed>>
+     */
+    private function contoareFixPentruImobil(Imobil $imobil, string $luna, bool $lunaInchisa): array
+    {
+        $rows = [];
+
+        Spatiu::query()
+            ->where('imobil_id', $imobil->id)
+            ->whereNotNull('configurare_anexa_id')
+            ->with(['configurareAnexa.linii' => fn ($query) => TipCalculAnexa::applyLiniiContorFixSpatiuScope(
+                $query->orderBy('ordine')->orderBy('id')
+            )])
+            ->orderBy('identificator')
+            ->get()
+            ->each(function (Spatiu $spatiu) use ($luna, $lunaInchisa, &$rows): void {
+                foreach ($spatiu->configurareAnexa?->linii ?? [] as $linie) {
+                    $citire = CitireContor::query()
+                        ->where('spatiu_id', $spatiu->id)
+                        ->where('configurare_anexa_linie_id', $linie->id)
+                        ->where('luna', $luna)
+                        ->first();
+
+                    $rows[] = [
+                        'spatiu_id' => $spatiu->id,
+                        'spatiu_identificator' => $spatiu->identificator,
+                        'chirias' => $spatiu->chirias,
+                        'anexa' => $spatiu->configurareAnexa?->denumire,
+                        'configurare_anexa_linie_id' => $linie->id,
+                        'denumire' => $linie->denumire,
+                        'tip_calcul' => $linie->tip_calcul,
+                        'um' => $linie->um,
+                        'consum' => $citire?->consum ?? '',
+                        'citire_salvata' => $citire !== null,
+                        'editabila' => $this->linieEditabila($spatiu->id, $linie->id, $luna, $lunaInchisa),
+                    ];
+                }
+            });
+
+        return $rows;
+    }
+
+    /**
+     * @param  list<array<string, mixed>>  $contoareFix
+     * @return list<array<string, mixed>>
+     */
+    private function contoareFixFiltratePentruCautare(array $contoareFix, string $search): array
+    {
+        if ($search === '') {
+            return $contoareFix;
+        }
+
+        $normalized = StrictSearch::normalize($search);
+
+        if ($normalized === '') {
+            return $contoareFix;
+        }
+
+        return array_values(array_filter(
+            $contoareFix,
+            fn (array $linie): bool => StrictSearch::contains((string) ($linie['spatiu_identificator'] ?? ''), $search)
+                || StrictSearch::contains((string) ($linie['chirias'] ?? ''), $search)
+                || StrictSearch::contains((string) ($linie['denumire'] ?? ''), $search)
+                || StrictSearch::contains((string) ($linie['anexa'] ?? ''), $search),
+        ));
     }
 
     private function luniCititePentruImobil(Imobil $imobil): array

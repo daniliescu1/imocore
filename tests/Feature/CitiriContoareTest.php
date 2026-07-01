@@ -119,6 +119,46 @@ class CitiriContoareTest extends TestCase
             );
     }
 
+    public function test_contoare_fix_apar_separat_si_salveaza_facturat(): void
+    {
+        $imobil = $this->creeazaImobil();
+        $configurare = $this->creeazaConfigurare($imobil);
+        $this->creeazaLinieContor($configurare, 'Energie Electrica');
+        $linieFix = $this->creeazaLinieContorFix($configurare, 'Telefon fix');
+        $spatiu = $this->creeazaSpatiu($imobil, $configurare);
+
+        $this->get(route('citiri-contoare.imobil', ['imobil' => $imobil->id, 'mode' => 'new']))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('CitiriContoare/Imobil')
+                ->has('contoareFix', 1)
+                ->where('contoareFix.0.spatiu_id', $spatiu->id)
+                ->where('contoareFix.0.denumire', 'Telefon fix')
+                ->has('spatii', 1)
+                ->has('spatii.0.liniiContor', 1)
+            );
+
+        $this->post(route('citiri-contoare.store'), [
+            'imobil_id' => $imobil->id,
+            'luna' => '2026-06',
+            'data_citire' => '2026-06-20T14:30',
+            'citiri' => [[
+                'spatiu_id' => $spatiu->id,
+                'configurare_anexa_linie_id' => $linieFix->id,
+                'consum' => 12.5,
+            ]],
+        ])->assertRedirect();
+
+        $this->assertDatabaseHas('citiri_contoare', [
+            'spatiu_id' => $spatiu->id,
+            'configurare_anexa_linie_id' => $linieFix->id,
+            'luna' => '2026-06',
+            'consum' => 12.5,
+            'index_vechi' => 0,
+            'index_nou' => 0,
+        ]);
+    }
+
     public function test_citiri_contoare_salvaeaza_indexurile_pe_linia_de_anexa(): void
     {
         $imobil = $this->creeazaImobil();
@@ -825,6 +865,18 @@ class CitiriContoareTest extends TestCase
             'configurare_anexa_id' => $configurare->id,
             'denumire' => $denumire,
             'tip_calcul' => 'contor',
+            'activ' => true,
+        ]);
+    }
+
+    private function creeazaLinieContorFix(ConfigurareAnexaImobil $configurare, string $denumire): ConfigurareAnexaLinie
+    {
+        return ConfigurareAnexaLinie::query()->create([
+            'configurare_anexa_id' => $configurare->id,
+            'denumire' => $denumire,
+            'tip_calcul' => 'Contor Fix',
+            'um' => 'Kw',
+            'pret_unitar' => 1.5,
             'activ' => true,
         ]);
     }

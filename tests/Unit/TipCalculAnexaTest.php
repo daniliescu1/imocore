@@ -19,4 +19,13 @@ class TipCalculAnexaTest extends TestCase
         $this->assertFalse(TipCalculAnexa::isPausalApaCanalizarePePersoana('pausal', 'Apă pausal'));
         $this->assertFalse(TipCalculAnexa::isPausalApaCanalizarePePersoana('contor configurabil', 'Consum apa - mc / pers'));
     }
+
+    public function test_identifica_contor_fix(): void
+    {
+        $this->assertTrue(TipCalculAnexa::isContorFix('Contor Fix'));
+        $this->assertTrue(TipCalculAnexa::isContorFix('contor fix'));
+        $this->assertTrue(TipCalculAnexa::isCitire('Contor Fix'));
+        $this->assertFalse(TipCalculAnexa::isContorFix('Contor'));
+        $this->assertFalse(TipCalculAnexa::isContorFix('fix'));
+    }
 }

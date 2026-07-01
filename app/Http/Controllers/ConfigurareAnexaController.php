@@ -15,6 +15,7 @@ use App\Support\InternalReturnUrl;
 use App\Support\ContorConfigurabilSync;
 use App\Support\PretServiciuStandard;
 use App\Support\SincronizareContoareDinAnexa;
+use App\Support\PropagareLiniiAnexaPersonalizata;
 use App\Support\StrictSearch;
 use App\Support\TipCalculAnexa;
 use Illuminate\Http\RedirectResponse;
@@ -245,18 +246,27 @@ class ConfigurareAnexaController extends Controller
         $imobil = Imobil::query()->findOrFail($validated['imobil_id']);
         $this->assertDenumireUnicaPeImobil($validated['denumire'], $imobil->id, $configurare->id);
         $configurare = $this->saveConfigurare($validated, $imobil, $configurare);
+        $copiiActualizate = PropagareLiniiAnexaPersonalizata::syncFromTemplate($configurare);
         SincronizareContoareDinAnexa::syncForConfigurare($configurare);
         ContorConfigurabilSync::syncForConfigurare($configurare);
 
         $returnUrl = InternalReturnUrl::normalize($request->input('return_url'));
 
         if ($returnUrl) {
-            return redirect($returnUrl)->with('success', 'Anexa a fost actualizată.');
+            $mesaj = $copiiActualizate > 0
+                ? "Anexa a fost actualizată. {$copiiActualizate} copii personalizate sincronizate."
+                : 'Anexa a fost actualizată.';
+
+            return redirect($returnUrl)->with('success', $mesaj);
         }
+
+        $mesaj = $copiiActualizate > 0
+            ? "Anexa a fost actualizată. {$copiiActualizate} copii personalizate sincronizate."
+            : 'Anexa a fost actualizată.';
 
         return redirect()
             ->route('configurare-anexa.edit', $configurare)
-            ->with('success', 'Anexa a fost actualizată.');
+            ->with('success', $mesaj);
     }
 
     public function destroy(Request $request, ConfigurareAnexaImobil $configurare): RedirectResponse

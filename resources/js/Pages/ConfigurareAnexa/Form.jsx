@@ -78,6 +78,12 @@ function isContorConfigurabilValue(value) {
     return normalized.includes('contor') && normalized.includes('configurabil');
 }
 
+function isContorFixValue(value) {
+    const normalized = String(value || '').toLowerCase().replace(/[\s_*×-]/g, '');
+
+    return normalized === 'contorfix';
+}
+
 function isAdministrareValue(value) {
     return String(value || '').trim().toLowerCase().replace(/[\s_-]/g, '') === 'administrare';
 }
@@ -88,6 +94,7 @@ function templateFaraIndex(tipCalcul) {
 
 function templateFaraCantitati(tipCalcul) {
     return tipCalcul === 'contor'
+        || isContorFixValue(tipCalcul)
         || isContorConfigurabilValue(tipCalcul)
         || isPausalValue(tipCalcul)
         || ['mp', 'pe_mp'].includes(tipCalcul)

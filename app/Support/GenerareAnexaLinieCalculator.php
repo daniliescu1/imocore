@@ -102,6 +102,14 @@ class GenerareAnexaLinieCalculator
                     $cantitate = $citire->consum;
                 }
             }
+        } elseif (TipCalculAnexa::isContorFix($tipCalcul)) {
+            if ($spatiu->status === 'inchiriat') {
+                $citire = self::citirePentruAnexa($spatiu->id, $linieConfigurata->id, $lunaUtilitati, $lunaFacturare);
+
+                if ($citire) {
+                    $cantitate = $citire->consum;
+                }
+            }
         } elseif (TipCalculAnexa::folosesteFacturatDinTemplate($tipCalcul)) {
             $cantitate = TipCalculAnexa::cantitateDinTemplateLinie(
                 $tipCalcul,

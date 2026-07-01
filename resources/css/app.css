@@ -4108,6 +4108,68 @@ tr:last-child td {
     margin-bottom: 24px;
 }
 
+.contor-fix-citiri-block {
+    margin-bottom: 24px;
+}
+
+.contor-fix-citiri-title {
+    margin: 0 0 6px;
+    color: var(--title-green);
+}
+
+.contor-fix-citiri-help {
+    margin: 0 0 14px;
+    color: var(--text-secondary);
+}
+
+.contor-fix-citiri-scroll {
+    overflow-x: hidden;
+}
+
+.meter-reading-groups .contor-fix-citiri-table {
+    min-width: 0;
+    table-layout: fixed;
+    width: 100%;
+}
+
+.meter-reading-groups .contor-fix-citiri-table th,
+.meter-reading-groups .contor-fix-citiri-table td {
+    overflow: hidden;
+    vertical-align: middle;
+}
+
+.meter-reading-groups .contor-fix-citiri-table th:nth-child(1),
+.meter-reading-groups .contor-fix-citiri-table td:nth-child(1) {
+    width: 14%;
+}
+
+.meter-reading-groups .contor-fix-citiri-table th:nth-child(2),
+.meter-reading-groups .contor-fix-citiri-table td:nth-child(2) {
+    width: 22%;
+}
+
+.meter-reading-groups .contor-fix-citiri-table th:nth-child(3),
+.meter-reading-groups .contor-fix-citiri-table td:nth-child(3) {
+    width: 34%;
+}
+
+.meter-reading-groups .contor-fix-citiri-table th:nth-child(4),
+.meter-reading-groups .contor-fix-citiri-table td:nth-child(4) {
+    width: 8%;
+}
+
+.meter-reading-groups .contor-fix-citiri-table th:nth-child(5),
+.meter-reading-groups .contor-fix-citiri-table td:nth-child(5) {
+    width: 12%;
+    text-align: right;
+}
+
+.meter-reading-groups .contor-fix-citiri-table td:nth-child(2) {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
 .contor-config-citiri-title {
     margin: 0 0 6px;
     color: var(--title-green);

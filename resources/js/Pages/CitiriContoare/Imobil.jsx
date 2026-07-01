@@ -12,9 +12,19 @@ function isContorConfigurabilTip(tipCalcul) {
     return normalized.includes('contor') && normalized.includes('configurabil');
 }
 
+function isContorFixTip(tipCalcul) {
+    const normalized = String(tipCalcul || '').toLowerCase().replace(/[\s_*-]/g, '');
+
+    return normalized === 'contorfix';
+}
+
 function tipCitireLabel(tipCalcul) {
     if (isPausalTip(tipCalcul)) {
         return 'Pausal';
+    }
+
+    if (isContorFixTip(tipCalcul)) {
+        return 'Contor fix';
     }
 
     if (isContorConfigurabilTip(tipCalcul)) {
@@ -43,7 +53,7 @@ function formatDecimalForInput(value) {
     return normalized.replace(/(\.\d*?)0+$/, '$1').replace(/\.$/, '');
 }
 
-function flattenCitiri(spatii, contoareConfigurabile = []) {
+function flattenCitiri(spatii, contoareConfigurabile = [], contoareFix = []) {
     const citiriSpatii = spatii.flatMap((spatiu) => (spatiu.liniiContor || []).map((linie) => {
         const base = {
             spatiu_id: spatiu.id,
@@ -84,17 +94,24 @@ function flattenCitiri(spatii, contoareConfigurabile = []) {
         };
     });
 
-    return [...citiriConfigurabile, ...citiriSpatii];
+    const citiriFix = (contoareFix || []).map((linie) => ({
+        spatiu_id: linie.spatiu_id,
+        configurare_anexa_linie_id: linie.configurare_anexa_linie_id,
+        tip_calcul: linie.tip_calcul,
+        consum: formatDecimalForInput(linie.consum),
+    }));
+
+    return [...citiriConfigurabile, ...citiriFix, ...citiriSpatii];
 }
 
-function buildFormState({ imobilId, luna, dataCitire, spatii, contoareConfigurabile }) {
+function buildFormState({ imobilId, luna, dataCitire, spatii, contoareConfigurabile, contoareFix }) {
     const initialDataCitire = dataCitire || new Date().toISOString().slice(0, 16);
 
     return {
         imobil_id: imobilId || '',
         luna: luna || initialDataCitire.slice(0, 7),
         data_citire: initialDataCitire,
-        citiri: flattenCitiri(spatii, contoareConfigurabile),
+        citiri: flattenCitiri(spatii, contoareConfigurabile, contoareFix),
     };
 }
 
@@ -177,6 +194,21 @@ function matchesContorConfigurabilSearch(linie, search, matchingSpatii) {
     return linieHaystack.includes(query);
 }
 
+function matchesContorFixSearch(linie, search) {
+    const query = normalizeStrictSearch(search);
+
+    if (!query) {
+        return true;
+    }
+
+    return spatiuMatchesSearch({
+        identificator: linie.spatiu_identificator,
+        chirias: linie.chirias,
+    }, search)
+        || normalizeStrictSearch(linie.denumire || '').includes(query)
+        || normalizeStrictSearch(linie.anexa || '').includes(query);
+}
+
 export default function Imobil({
     embedded = false,
     imobil,
@@ -189,6 +221,7 @@ export default function Imobil({
     luniCitite = [],
     spatii = [],
     contoareConfigurabile = [],
+    contoareFix = [],
     searchSpatiu = '',
     searchMatchingSpatii = [],
     spatiiIndex = [],
@@ -198,8 +231,8 @@ export default function Imobil({
         luna,
         dataCitire,
         mode,
-        spatii: flattenCitiri(spatii, contoareConfigurabile),
-    }), [imobil?.id, luna, dataCitire, mode, spatii, contoareConfigurabile]);
+        spatii: flattenCitiri(spatii, contoareConfigurabile, contoareFix),
+    }), [imobil?.id, luna, dataCitire, mode, spatii, contoareConfigurabile, contoareFix]);
 
     const lastServerStateKey = useRef(serverStateKey);
     const { data, setData, post, processing, errors } = useForm(buildFormState({
@@ -208,6 +241,7 @@ export default function Imobil({
         dataCitire,
         spatii,
         contoareConfigurabile,
+        contoareFix,
     }));
     const [inchidereProcessing, setInchidereProcessing] = React.useState(false);
     const [search, setSearch] = React.useState(searchSpatiu || '');
@@ -222,8 +256,8 @@ export default function Imobil({
         }
 
         lastServerStateKey.current = serverStateKey;
-        setData(buildFormState({ imobilId: imobil?.id, luna, dataCitire, spatii, contoareConfigurabile }));
-    }, [serverStateKey, imobil?.id, luna, dataCitire, spatii, contoareConfigurabile, setData]);
+        setData(buildFormState({ imobilId: imobil?.id, luna, dataCitire, spatii, contoareConfigurabile, contoareFix }));
+    }, [serverStateKey, imobil?.id, luna, dataCitire, spatii, contoareConfigurabile, contoareFix, setData]);
 
     const luniCititeValues = useMemo(
         () => new Set(luniCitite.map((item) => item.luna)),
@@ -253,7 +287,7 @@ export default function Imobil({
                 [field]: value,
             };
 
-            if (isPausalTip(tipCalcul)) {
+            if (isPausalTip(tipCalcul) || isContorFixTip(tipCalcul)) {
                 entry.consum = value;
             } else if (spatiuId === null || spatiuId === undefined || spatiuId === '') {
                 entry.index_vechi = field === 'index_vechi' ? value : '';
@@ -338,17 +372,26 @@ export default function Imobil({
         () => randuriConfigurabile.filter(({ linie }) => matchesContorConfigurabilSearch(linie, search, matchingSpatii)),
         [randuriConfigurabile, search, matchingSpatii],
     );
-    const totalRanduri = randuriCitiri.length + randuriConfigurabile.length;
+    const randuriFix = useMemo(
+        () => (contoareFix || []).map((linie) => ({ linie })),
+        [contoareFix],
+    );
+    const filteredRanduriFix = useMemo(
+        () => randuriFix.filter(({ linie }) => matchesContorFixSearch(linie, search)),
+        [randuriFix, search],
+    );
+    const totalRanduri = randuriCitiri.length + randuriConfigurabile.length + randuriFix.length;
     const isNewMode = mode === 'new';
     const hasEditableLines = !lunaInchisa && (
         randuriCitiri.some(({ linie }) => isLineEditable(linie))
         || randuriConfigurabile.some(({ linie }) => isLineEditable(linie))
+        || randuriFix.some(({ linie }) => isLineEditable(linie))
     );
     const canCloseMonth = !lunaInchisa;
 
     const topbarActions = (
         <>
-            {!embedded && (randuriCitiri.length > 0 || randuriConfigurabile.length > 0) ? (
+            {!embedded && (randuriCitiri.length > 0 || randuriConfigurabile.length > 0 || randuriFix.length > 0) ? (
                 <input
                     className="filter-input topbar-search"
                     type="search"
@@ -384,7 +427,7 @@ export default function Imobil({
                 {totalRanduri === 0 ? (
                     <div className="readonly-info-card">
                         <h2>Nu există contoare de citit</h2>
-                        <p>Niciun spațiu din acest imobil nu are anexă cu linii de tip Contor, iar nu există contoare configurabile sau pausale de configurat. Alocă anexa pe spații și adaugă servicii cu tip calcul Contor, Pausal sau Contor configurabil.</p>
+                        <p>Niciun spațiu din acest imobil nu are anexă cu linii de tip Contor, Contor fix, Pausal sau Contor configurabil. Alocă anexa pe spații și adaugă serviciile corespunzătoare.</p>
                     </div>
                 ) : (
                     <div className="meter-reading-groups">
@@ -518,6 +561,62 @@ export default function Imobil({
                             </div>
                         ) : null}
 
+                        {filteredRanduriFix.length > 0 ? (
+                            <div className="contor-fix-citiri-block">
+                                <h2 className="contor-fix-citiri-title">Contoare fix (spațiu)</h2>
+                                <p className="contor-fix-citiri-help">Introdu manual valoarea facturată pentru fiecare spațiu; apare în anexă la coloana Facturat.</p>
+                                <div className="responsive-table contor-fix-citiri-scroll">
+                                    <table className="citiri-contoare-table contor-fix-citiri-table">
+                                        <thead>
+                                            <tr>
+                                                <th>Spațiu</th>
+                                                <th>Chiriaș</th>
+                                                <th>Serviciu</th>
+                                                <th>UM</th>
+                                                <th>Facturat</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {filteredRanduriFix.map(({ linie }) => {
+                                                const editable = isLineEditable(linie);
+                                                const citire = data.citiri[citireIndexFor(linie.spatiu_id, linie.configurare_anexa_linie_id)] || {
+                                                    consum: formatDecimalForInput(linie.consum),
+                                                };
+
+                                                return (
+                                                    <tr key={`fix-${linie.spatiu_id}-${linie.configurare_anexa_linie_id}`}>
+                                                        <td><strong>{linie.spatiu_identificator}</strong></td>
+                                                        <td title={linie.chirias || undefined}>{linie.chirias || '—'}</td>
+                                                        <td title={linie.denumire}>{linie.denumire}</td>
+                                                        <td>{linie.um || '—'}</td>
+                                                        <td>
+                                                            <input
+                                                                className="table-input"
+                                                                type="text"
+                                                                inputMode="decimal"
+                                                                value={citire.consum ?? ''}
+                                                                readOnly={!editable}
+                                                                tabIndex={!editable ? -1 : undefined}
+                                                                aria-readonly={!editable ? 'true' : undefined}
+                                                                aria-label="Facturat contor fix"
+                                                                onChange={(event) => updateCitire(
+                                                                    linie.spatiu_id,
+                                                                    linie.configurare_anexa_linie_id,
+                                                                    'consum',
+                                                                    event.target.value,
+                                                                    linie.tip_calcul,
+                                                                )}
+                                                            />
+                                                        </td>
+                                                    </tr>
+                                                );
+                                            })}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        ) : null}
+
                         {randuriCitiri.length > 0 && filteredRanduriCitiri.length > 0 ? (
                         <div className="responsive-table">
                             <table className="citiri-contoare-table">
@@ -633,7 +732,7 @@ export default function Imobil({
                             </div>
                         ) : null}
 
-                        {search.trim() && filteredRanduriConfigurabile.length === 0 && filteredRanduriCitiri.length === 0 ? (
+                        {search.trim() && filteredRanduriConfigurabile.length === 0 && filteredRanduriFix.length === 0 && filteredRanduriCitiri.length === 0 ? (
                             <div className="readonly-info-card">
                                 <h2>Niciun rezultat</h2>
                                 <p>Nu am găsit spații sau contoare configurabile care să corespundă căutării „{search.trim()}”. Încearcă după identificator spațiu sau chiriaș.</p>

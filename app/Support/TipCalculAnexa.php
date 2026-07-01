@@ -17,6 +17,10 @@ class TipCalculAnexa
             return 'contor_configurabil';
         }
 
+        if ($normalized === 'contorfix') {
+            return 'contor_fix';
+        }
+
         if ($normalized === 'contor') {
             return 'contor';
         }
@@ -43,6 +47,11 @@ class TipCalculAnexa
     public static function isContor(?string $tipCalcul): bool
     {
         return self::normalize($tipCalcul) === 'contor';
+    }
+
+    public static function isContorFix(?string $tipCalcul): bool
+    {
+        return self::normalize($tipCalcul) === 'contor_fix';
     }
 
     public static function isPausal(?string $tipCalcul): bool
@@ -125,6 +134,7 @@ class TipCalculAnexa
     public static function isCitire(?string $tipCalcul): bool
     {
         return self::isContor($tipCalcul)
+            || self::isContorFix($tipCalcul)
             || self::isPausal($tipCalcul)
             || self::isContorConfigurabil($tipCalcul);
     }
@@ -148,6 +158,20 @@ class TipCalculAnexa
     {
         return $query
             ->whereRaw('lower(trim(tip_calcul)) = ?', ['contor'])
+            ->where(function ($query): void {
+                $query->whereNull('tip_linie')
+                    ->orWhere('tip_linie', '!=', 'header');
+            })
+            ->where('activ', true);
+    }
+
+    public static function applyLiniiContorFixSpatiuScope($query)
+    {
+        return $query
+            ->whereRaw(
+                'lower(replace(replace(replace(trim(tip_calcul), " ", ""), "_", ""), "-", "")) = ?',
+                ['contorfix']
+            )
             ->where(function ($query): void {
                 $query->whereNull('tip_linie')
                     ->orWhere('tip_linie', '!=', 'header');
