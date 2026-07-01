@@ -640,6 +640,32 @@ class CitiriContoareTest extends TestCase
             );
     }
 
+    public function test_cautarea_citiri_potriveste_chiriasul_pe_pagina_imobil(): void
+    {
+        $imobil = $this->creeazaImobil();
+        $configurare = $this->creeazaConfigurare($imobil, 'Anexa Pers < 50 mp');
+        $this->creeazaLinieContor($configurare, 'Energie Electrica');
+
+        $spatiu = $this->creeazaSpatiu($imobil, $configurare, 'HQC 00.01');
+        $spatiu->update([
+            'status' => 'inchiriat',
+            'chirias' => 'NEXENT BANK N.V. Amsterdam',
+        ]);
+
+        $this->get(route('citiri-contoare.imobil', [
+            'imobil' => $imobil->id,
+            'mode' => 'new',
+            'search' => 'nexent',
+        ]))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->has('searchMatchingSpatii', 1)
+                ->where('searchMatchingSpatii.0.id', $spatiu->id)
+                ->has('spatii', 1)
+                ->where('spatii.0.identificator', 'HQC 00.01')
+            );
+    }
+
     public function test_cautarea_citiri_nu_potriveste_chiriasul_fara_identificator(): void
     {
         $imobil = $this->creeazaImobil();

@@ -113,18 +113,16 @@ function normalizeStrictSearch(value) {
     return String(value || '').trim().toLowerCase().replace(/\s+/g, '');
 }
 
-function identificatorMatchesSearch(spatiu, search) {
+function spatiuMatchesSearch(spatiu, search) {
     const query = normalizeStrictSearch(search);
 
     if (!query) {
         return true;
     }
 
-    return normalizeStrictSearch(spatiu.identificator).includes(query);
-}
-
-function spatiuMatchesSearch(spatiu, search) {
-    return identificatorMatchesSearch(spatiu, search);
+    return [spatiu.identificator, spatiu.chirias, spatiu.locator]
+        .filter(Boolean)
+        .some((value) => normalizeStrictSearch(value).includes(query));
 }
 
 function getMatchingSpatiuIds(spatii, search) {
@@ -136,19 +134,13 @@ function getMatchingSpatiuIds(spatii, search) {
 
     return new Set(
         spatii
-            .filter((spatiu) => identificatorMatchesSearch(spatiu, search))
+            .filter((spatiu) => spatiuMatchesSearch(spatiu, search))
             .map((spatiu) => Number(spatiu.id)),
     );
 }
 
 function matchesCitiriSearch(spatiu, linie, search) {
-    const query = normalizeStrictSearch(search);
-
-    if (!query) {
-        return true;
-    }
-
-    return identificatorMatchesSearch(spatiu, search);
+    return spatiuMatchesSearch(spatiu, search);
 }
 
 function matchingSpatiiForSearch(search, searchMatchingSpatii, spatiiIndex) {
@@ -361,7 +353,7 @@ export default function Imobil({
                     className="filter-input topbar-search"
                     type="search"
                     value={search}
-                    placeholder="Caută spațiu..."
+                    placeholder="Caută spațiu, chiriaș..."
                     onChange={(event) => setSearch(event.target.value)}
                 />
             ) : null}
@@ -644,7 +636,7 @@ export default function Imobil({
                         {search.trim() && filteredRanduriConfigurabile.length === 0 && filteredRanduriCitiri.length === 0 ? (
                             <div className="readonly-info-card">
                                 <h2>Niciun rezultat</h2>
-                                <p>Nu am găsit spații sau contoare configurabile care să corespundă căutării „{search.trim()}”. Încearcă după identificator spațiu, anexă sau serviciu.</p>
+                                <p>Nu am găsit spații sau contoare configurabile care să corespundă căutării „{search.trim()}”. Încearcă după identificator spațiu sau chiriaș.</p>
                             </div>
                         ) : null}
                     </div>
