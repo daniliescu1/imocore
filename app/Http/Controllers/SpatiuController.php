@@ -718,7 +718,6 @@ class SpatiuController extends Controller
             : null;
 
         if (Spatiu::etajFaraPersoane($validated['etaj'] ?? null)) {
-            $validated['persoane_declarate'] = 0;
             $validated['regim_incalzire'] = 'neincalzit';
             $validated['procent_incalzire_override'] = null;
 

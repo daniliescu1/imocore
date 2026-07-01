@@ -128,12 +128,12 @@ class Spatiu extends Model
 
     public function persoanePentruAnexa(): int
     {
-        if ($this->status === 'administrativ' || $this->status === 'comun' || self::etajFaraPersoane($this->etaj)) {
-            return 0;
-        }
-
         if ($this->persoane_declarate !== null) {
             return (int) $this->persoane_declarate;
+        }
+
+        if ($this->status === 'administrativ' || $this->status === 'comun' || self::etajFaraPersoane($this->etaj)) {
+            return 0;
         }
 
         return $this->persoane_standard;

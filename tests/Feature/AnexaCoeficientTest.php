@@ -167,6 +167,53 @@ class AnexaCoeficientTest extends TestCase
         $this->assertEquals(298.92, round((float) $linie->valoare, 2));
     }
 
+    public function test_generarea_anexei_foloseste_persoane_declarate_pe_acoperis(): void
+    {
+        $anexa = $this->genereazaAnexa([
+            'etaj' => 'Acoperiș',
+            'persoane_declarate' => 1,
+        ], [
+            [
+                'denumire' => 'Curatenie Spatii Comune / pers',
+                'tip_calcul' => 'persoane',
+                'um' => 'Pers',
+                'pret_unitar' => '35.04',
+                'tva_21' => '21',
+                'ordine' => 1,
+                'nr_crt' => 1,
+            ],
+        ]);
+
+        $linie = $anexa->linii->first();
+
+        $this->assertEquals(1, (float) $linie->cantitate);
+        $this->assertEquals(35.04, round((float) $linie->valoare, 2));
+    }
+
+    public function test_persoane_pentru_anexa_pe_acoperis_fara_declarate_raman_zero(): void
+    {
+        $spatiu = Spatiu::query()->create([
+            'imobil_id' => Imobil::query()->create([
+                'nume' => 'Test',
+                'strada' => 'Strada 1',
+                'numar' => '1',
+                'localitate' => 'Timișoara',
+            ])->id,
+            'identificator' => 'H5',
+            'etaj' => 'Acoperiș',
+            'status' => 'inchiriat',
+            'suprafata_contractuala_mp' => 30,
+            'persoane_declarate' => null,
+            'ordine' => 1,
+        ]);
+
+        $this->assertSame(0, $spatiu->persoanePentruAnexa());
+
+        $spatiu->update(['persoane_declarate' => 1]);
+
+        $this->assertSame(1, $spatiu->fresh()->persoanePentruAnexa());
+    }
+
     public function test_generarea_anexei_foloseste_citirile_contoare_nu_valorile_din_configurare(): void
     {
         $imobil = Imobil::query()->create([

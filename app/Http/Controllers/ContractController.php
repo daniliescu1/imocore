@@ -239,7 +239,7 @@ class ContractController extends Controller
             'configurare_anexa_id' => $this->resolveConfigurareAnexaIdForSpatiu($request, $contract->spatiu),
         ];
 
-        if ($status === 'activ') {
+        if (in_array($status, ['activ', 'incomplet'], true)) {
             $effectiveStatus = $spatiuStatus
                 ?? ($contract->spatiu->status === 'administrativ' ? 'administrativ' : 'inchiriat');
 
