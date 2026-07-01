@@ -103,6 +103,51 @@ class ModuleSpatiuSearchTest extends TestCase
             );
     }
 
+    public function test_citiri_contoare_index_redirecteaza_la_imobil_cand_cauti_chiriasul(): void
+    {
+        $imobil = Imobil::query()->create([
+            'nume' => '700 Office',
+            'strada' => 'Strada A',
+            'numar' => '1',
+            'localitate' => 'Timișoara',
+        ]);
+
+        $configurare = \App\Models\ConfigurareAnexaImobil::query()->create([
+            'imobil_id' => $imobil->id,
+            'denumire' => 'Anexa test',
+            'implicit' => true,
+            'activ' => true,
+        ]);
+
+        \App\Models\ConfigurareAnexaLinie::query()->create([
+            'configurare_anexa_id' => $configurare->id,
+            'denumire' => 'Apă rece',
+            'nr_crt' => 1,
+            'tip_calcul' => 'contor',
+            'um' => 'mc',
+            'activ' => true,
+        ]);
+
+        Spatiu::query()->create([
+            'imobil_id' => $imobil->id,
+            'identificator' => 'HQC118',
+            'chirias' => 'Nexent Pharma SRL',
+            'status' => 'inchiriat',
+            'suprafata_contractuala_mp' => 27,
+            'pret_lunar' => 370,
+            'moneda' => 'EUR',
+            'configurare_anexa_id' => $configurare->id,
+        ]);
+
+        $this->actingAs(User::factory()->create())
+            ->get('/citiri-contoare?search=nexent')
+            ->assertRedirect(route('citiri-contoare.imobil', [
+                'imobil' => $imobil->id,
+                'mode' => 'new',
+                'search' => 'nexent',
+            ]));
+    }
+
     public function test_citiri_contoare_index_filtrare_dupa_imobil(): void
     {
         $imobil = Imobil::query()->create([

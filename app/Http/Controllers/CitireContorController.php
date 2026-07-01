@@ -72,7 +72,10 @@ class CitireContorController extends Controller
         }
 
         if ($search !== '') {
-            StrictSearch::whereColumnContains($query, 'nume', $search);
+            $query->where(function ($query) use ($search): void {
+                StrictSearch::whereColumnContains($query, 'nume', $search);
+                $query->orWhereHas('spatii', fn ($spatiuQuery) => StrictSearch::whereSpatiuListMatch($spatiuQuery, $search));
+            });
         }
 
         $imobile = $query
@@ -187,7 +190,7 @@ class CitireContorController extends Controller
 
         return Spatiu::query()
             ->where('imobil_id', $imobil->id)
-            ->tap(fn ($query) => StrictSearch::whereSpatiuIdentificator($query, $search))
+            ->tap(fn ($query) => StrictSearch::whereSpatiuListMatch($query, $search))
             ->orderBy('identificator')
             ->get(['id', 'identificator', 'chirias', 'configurare_anexa_id'])
             ->map(fn (Spatiu $spatiu): array => [
@@ -262,7 +265,7 @@ class CitireContorController extends Controller
                 'imobil',
                 fn ($imobilQuery) => $imobilQuery->where('localitate', $localitate)
             ))
-            ->tap(fn ($query) => StrictSearch::whereSpatiuIdentificator($query, $search))
+            ->tap(fn ($query) => StrictSearch::whereSpatiuListMatch($query, $search))
             ->distinct()
             ->pluck('imobil_id');
     }
