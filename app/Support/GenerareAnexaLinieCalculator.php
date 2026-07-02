@@ -119,13 +119,17 @@ class GenerareAnexaLinieCalculator
             );
         }
 
+        $cantitate = self::applyCoeficientCantitatePret($cantitate, $linieConfigurata, $tipCalcul);
+
         $pretUnitar = $linieConfigurata->pret_unitar;
         $valoare = $linieConfigurata->valoare;
         $moneda = PretServiciuStandard::normalizeMoneda($linieConfigurata->moneda);
 
         if ($moneda === PretServiciuStandard::MONEDA_EUR) {
-            $pretEur = ServiciuStandardAnexa::pretPentruDenumire((string) $linieConfigurata->denumire)
-                ?? $linieConfigurata->facturat;
+            $pretEur = ServiciuStandardAnexa::pretPentruDenumire(
+                (string) $linieConfigurata->denumire,
+                $linieConfigurata->serviciu_standard_pret_id,
+            ) ?? $linieConfigurata->facturat;
             $curs = PretServiciuStandard::cursEur();
             $pretUnitar = PretServiciuStandard::pretUnitarLei($pretEur, $moneda, $curs);
 
@@ -198,5 +202,35 @@ class GenerareAnexaLinieCalculator
             ->whereIn('luna', array_unique([$lunaUtilitati, $lunaFacturare]))
             ->orderByRaw('case when luna = ? then 0 else 1 end', [$lunaUtilitati])
             ->first();
+    }
+
+    private static function applyCoeficientCantitatePret(
+        mixed $cantitate,
+        ConfigurareAnexaLinie $linieConfigurata,
+        ?string $tipCalcul,
+    ): mixed {
+        if ($cantitate === null || $cantitate === '') {
+            return $cantitate;
+        }
+
+        if (
+            self::tipCalculMpCoeficient($tipCalcul)
+            || self::tipCalculPeMp($tipCalcul)
+            || $tipCalcul === 'persoane'
+            || TipCalculAnexa::folosesteFacturatDinTemplate($tipCalcul)
+        ) {
+            return $cantitate;
+        }
+
+        $multiplier = ServiciuStandardAnexa::coeficientCantitatePentruPret(
+            $linieConfigurata->serviciu_standard_pret_id,
+            (string) $linieConfigurata->denumire,
+        );
+
+        if ($multiplier === 1.0) {
+            return $cantitate;
+        }
+
+        return round((float) $cantitate * $multiplier, 3);
     }
 }

@@ -365,6 +365,7 @@ class ConfigurareAnexaController extends Controller
                     'id' => $linie->id,
                     'tip_linie' => $linie->tip_linie ?: 'serviciu',
                     'denumire' => $linie->denumire,
+                    'serviciu_standard_pret_id' => $linie->serviciu_standard_pret_id,
                     'nr_crt' => $linie->nr_crt,
                     'index_vechi' => $this->indexForForm($linie, $tipCalcul),
                     'index_nou' => $this->indexNouForForm($linie, $tipCalcul),
@@ -396,6 +397,7 @@ class ConfigurareAnexaController extends Controller
             'linii.*.id' => ['nullable', 'integer'],
             'linii.*.tip_linie' => ['nullable', 'in:serviciu,header'],
             'linii.*.denumire' => ['nullable', 'string', 'max:255'],
+            'linii.*.serviciu_standard_pret_id' => ['nullable', 'integer', 'exists:servicii_standard_anexa,id'],
             'linii.*.nr_crt' => ['nullable', 'integer', 'min:0'],
             'linii.*.index_vechi' => ['nullable', 'string', 'max:255'],
             'linii.*.index_nou' => ['nullable', 'string', 'max:255'],
@@ -453,6 +455,9 @@ class ConfigurareAnexaController extends Controller
                 'ordine' => $index + 1,
                 'tip_linie' => $tipLinie,
                 'denumire' => $tipLinie === 'header' ? '' : trim($linieData['denumire']),
+                'serviciu_standard_pret_id' => $tipLinie === 'header'
+                    ? null
+                    : ($linieData['serviciu_standard_pret_id'] ?? null ?: null),
                 'nr_crt' => $tipLinie === 'header' ? null : ($linieData['nr_crt'] ?? null),
                 'index_vechi' => $tipLinie === 'header' ? null : ($linieData['index_vechi'] ?? null),
                 'index_nou' => $tipLinie === 'header' ? null : ($linieData['index_nou'] ?? null),

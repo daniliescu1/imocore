@@ -38,6 +38,7 @@ Route::get('/imobile/{imobil}/cf/{index}/descarcare', [ImobilController::class, 
 Route::get('/configurare-anexa', [ConfigurareAnexaController::class, 'index'])->name('configurare-anexa.index');
 Route::put('/configurare-anexa/curs', [ConfigurareAnexaController::class, 'updateCurs'])->name('configurare-anexa.curs.update');
 Route::put('/configurare-anexa/servicii-standard/pret/bulk', [ServiciuStandardAnexaController::class, 'updateBulkPreturi'])->name('configurare-anexa.servicii-standard.pret.bulk');
+Route::post('/configurare-anexa/servicii-standard/pret/variant', [ServiciuStandardAnexaController::class, 'storePretVariant'])->name('configurare-anexa.servicii-standard.pret.variant');
 Route::get('/configurare-anexa/servicii-standard/{tip}', [ServiciuStandardAnexaController::class, 'index'])->name('configurare-anexa.servicii-standard.index');
 Route::post('/configurare-anexa/servicii-standard/{tip}', [ServiciuStandardAnexaController::class, 'store'])->name('configurare-anexa.servicii-standard.store');
 Route::put('/configurare-anexa/servicii-standard/{tip}/{serviciuStandard}', [ServiciuStandardAnexaController::class, 'update'])->name('configurare-anexa.servicii-standard.update');

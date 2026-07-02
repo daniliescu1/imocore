@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Link, router, useForm } from '@inertiajs/react';
 import { Pencil, Trash2 } from 'lucide-react';
 import AppLayout from '../../Layouts/AppLayout';
@@ -9,10 +9,27 @@ function hasPret(value) {
     return value !== null && value !== undefined && String(value).trim() !== '';
 }
 
+function groupPreturi(valori) {
+    const groups = new Map();
+
+    valori.forEach((item) => {
+        const key = item.valoare;
+        if (!groups.has(key)) {
+            groups.set(key, { denumire: key, variants: [] });
+        }
+        groups.get(key).variants.push(item);
+    });
+
+    return Array.from(groups.values());
+}
+
 function PreturiGrid({ valori, tvaOptiuni = [], umOptiuni = [] }) {
+    const groups = useMemo(() => groupPreturi(valori), [valori]);
     const [preturi, setPreturi] = useState(() => (
         Object.fromEntries(valori.map((item) => [item.id, {
+            label: item.label || 'Standard',
             pret: formatDecimal(item.coeficient),
+            coeficient_cantitate: item.coeficient_cantitate ?? '100',
             moneda: item.moneda || 'RON',
             tva: item.tva || '',
             um: item.um || '',
@@ -22,39 +39,24 @@ function PreturiGrid({ valori, tvaOptiuni = [], umOptiuni = [] }) {
 
     useEffect(() => {
         setPreturi(Object.fromEntries(valori.map((item) => [item.id, {
+            label: item.label || 'Standard',
             pret: formatDecimal(item.coeficient),
+            coeficient_cantitate: item.coeficient_cantitate ?? '100',
             moneda: item.moneda || 'RON',
             tva: item.tva || '',
             um: item.um || '',
         }])));
     }, [valori]);
 
+    function updateField(id, field, value) {
+        setPreturi((current) => ({
+            ...current,
+            [id]: { ...current[id], [field]: value },
+        }));
+    }
+
     function updatePret(id, value) {
-        setPreturi((current) => ({
-            ...current,
-            [id]: { ...current[id], pret: value.replace(',', '.') },
-        }));
-    }
-
-    function updateTva(id, value) {
-        setPreturi((current) => ({
-            ...current,
-            [id]: { ...current[id], tva: value },
-        }));
-    }
-
-    function updateUm(id, value) {
-        setPreturi((current) => ({
-            ...current,
-            [id]: { ...current[id], um: value },
-        }));
-    }
-
-    function updateMoneda(id, value) {
-        setPreturi((current) => ({
-            ...current,
-            [id]: { ...current[id], moneda: value },
-        }));
+        updateField(id, 'pret', value.replace(',', '.'));
     }
 
     function blurPret(id) {
@@ -69,7 +71,9 @@ function PreturiGrid({ valori, tvaOptiuni = [], umOptiuni = [] }) {
         router.put('/configurare-anexa/servicii-standard/pret/bulk', {
             preturi: valori.map((item) => ({
                 id: item.id,
+                label: preturi[item.id]?.label || item.label || 'Standard',
                 coeficient: formatDecimal(preturi[item.id]?.pret) || '',
+                coeficient_cantitate: formatDecimal(preturi[item.id]?.coeficient_cantitate) || '100',
                 moneda: preturi[item.id]?.moneda || 'RON',
                 tva: preturi[item.id]?.tva || '',
                 um: preturi[item.id]?.um || '',
@@ -81,82 +85,153 @@ function PreturiGrid({ valori, tvaOptiuni = [], umOptiuni = [] }) {
         });
     }
 
+    function addVariant(group) {
+        const first = group.variants[0];
+        const row = first ? preturi[first.id] : null;
+        const label = window.prompt('Numele variantei de preț (ex. Repartizare 20%)', 'Variantă nouă');
+
+        if (!label || !String(label).trim()) {
+            return;
+        }
+
+        router.post('/configurare-anexa/servicii-standard/pret/variant', {
+            valoare: group.denumire,
+            label: String(label).trim(),
+            coeficient: row?.pret || '',
+            coeficient_cantitate: '100',
+            moneda: row?.moneda || 'RON',
+            tva: row?.tva || '',
+            um: row?.um || '',
+        }, { preserveScroll: true });
+    }
+
+    function deleteVariant(item, group) {
+        if (group.variants.length <= 1) {
+            window.alert('Nu poți șterge singura variantă de preț a serviciului.');
+            return;
+        }
+
+        if (!window.confirm(`Ștergi varianta «${item.label}»?`)) {
+            return;
+        }
+
+        router.delete(`/configurare-anexa/servicii-standard/pret/${item.id}`, { preserveScroll: true });
+    }
+
     return (
         <form className="standard-values-grid-wrap" onSubmit={submit}>
-            <div className="standard-values-grid">
-                {valori.map((item) => {
-                    const row = preturi[item.id] || { pret: '', moneda: 'RON', tva: '', um: '' };
-                    const lipsestePret = !hasPret(row.pret);
-                    const lipsesteTva = !hasPret(row.tva);
-                    const lipsesteUm = !hasPret(row.um);
-
-                    return (
-                        <div key={item.id} className="standard-values-grid-item">
-                            <div className="standard-values-grid-content">
-                                <strong className="standard-values-grid-label">{item.label}</strong>
-                                <div className="preturi-grid-field">
-                                    <input
-                                        type="text"
-                                        inputMode="decimal"
-                                        className="preturi-grid-input"
-                                        value={row.pret}
-                                        placeholder="—"
-                                        aria-label={`Preț ${item.label}`}
-                                        onChange={(event) => updatePret(item.id, event.target.value)}
-                                        onBlur={() => blurPret(item.id)}
-                                    />
-                                    <span className="preturi-grid-unit">
-                                        <select
-                                            className="preturi-grid-moneda"
-                                            value={row.moneda || 'RON'}
-                                            aria-label={`Monedă ${item.label}`}
-                                            onChange={(event) => updateMoneda(item.id, event.target.value)}
-                                        >
-                                            <option value="RON">lei</option>
-                                            <option value="EUR">EUR</option>
-                                        </select>
-                                    </span>
-                                </div>
-                                <div className="preturi-grid-meta-row">
-                                    <select
-                                        className="preturi-grid-um"
-                                        value={row.um}
-                                        aria-label={`UM ${item.label}`}
-                                        onChange={(event) => updateUm(item.id, event.target.value)}
-                                    >
-                                        <option value="">UM</option>
-                                        {umOptiuni.map((opt) => (
-                                            <option value={opt.valoare} key={opt.valoare}>{opt.label}</option>
-                                        ))}
-                                        {row.um && !umOptiuni.some((opt) => opt.valoare === row.um) ? (
-                                            <option value={row.um}>{row.um}</option>
-                                        ) : null}
-                                    </select>
-                                    <select
-                                        className="preturi-grid-tva"
-                                        value={row.tva}
-                                        aria-label={`TVA ${item.label}`}
-                                        onChange={(event) => updateTva(item.id, event.target.value)}
-                                    >
-                                        <option value="">TVA</option>
-                                        {tvaOptiuni.map((opt) => (
-                                            <option value={opt.valoare} key={opt.valoare}>{opt.label}</option>
-                                        ))}
-                                    </select>
-                                </div>
-                                {lipsestePret ? (
-                                    <small className="preturi-missing">fără preț setat</small>
-                                ) : null}
-                                {!lipsestePret && lipsesteUm ? (
-                                    <small className="preturi-missing">fără UM setată</small>
-                                ) : null}
-                                {!lipsestePret && !lipsesteUm && lipsesteTva ? (
-                                    <small className="preturi-missing">fără TVA setat</small>
-                                ) : null}
-                            </div>
+            <div className="preturi-variant-groups">
+                {groups.map((group) => (
+                    <section className="preturi-variant-group" key={group.denumire}>
+                        <div className="preturi-variant-group-head">
+                            <h3>{group.denumire}</h3>
+                            <button type="button" className="secondary-button" onClick={() => addVariant(group)}>
+                                + Preț nou
+                            </button>
                         </div>
-                    );
-                })}
+                        <div className="preturi-variant-rows">
+                            {group.variants.map((item) => {
+                                const row = preturi[item.id] || {
+                                    label: item.label,
+                                    pret: '',
+                                    coeficient_cantitate: '100',
+                                    moneda: 'RON',
+                                    tva: '',
+                                    um: '',
+                                };
+                                const lipsestePret = !hasPret(row.pret);
+                                const lipsesteTva = !hasPret(row.tva);
+                                const lipsesteUm = !hasPret(row.um);
+
+                                return (
+                                    <div className="preturi-variant-row" key={item.id}>
+                                        <input
+                                            type="text"
+                                            className="preturi-variant-label"
+                                            value={row.label}
+                                            aria-label={`Variantă ${group.denumire}`}
+                                            onChange={(event) => updateField(item.id, 'label', event.target.value)}
+                                        />
+                                        <div className="preturi-grid-field">
+                                            <input
+                                                type="text"
+                                                inputMode="decimal"
+                                                className="preturi-grid-input"
+                                                value={row.pret}
+                                                placeholder="—"
+                                                aria-label={`Preț ${row.label}`}
+                                                onChange={(event) => updatePret(item.id, event.target.value)}
+                                                onBlur={() => blurPret(item.id)}
+                                            />
+                                            <span className="preturi-grid-unit">
+                                                <select
+                                                    className="preturi-grid-moneda"
+                                                    value={row.moneda || 'RON'}
+                                                    aria-label={`Monedă ${row.label}`}
+                                                    onChange={(event) => updateField(item.id, 'moneda', event.target.value)}
+                                                >
+                                                    <option value="RON">lei</option>
+                                                    <option value="EUR">EUR</option>
+                                                </select>
+                                            </span>
+                                        </div>
+                                        <div className="preturi-grid-field preturi-coef-field">
+                                            <input
+                                                type="text"
+                                                inputMode="decimal"
+                                                className="preturi-grid-input"
+                                                value={row.coeficient_cantitate}
+                                                aria-label={`Coeficient cantitate ${row.label}`}
+                                                onChange={(event) => updateField(item.id, 'coeficient_cantitate', event.target.value.replace(',', '.'))}
+                                            />
+                                            <span className="preturi-grid-unit">% cant.</span>
+                                        </div>
+                                        <div className="preturi-grid-meta-row">
+                                            <select
+                                                className="preturi-grid-um"
+                                                value={row.um}
+                                                aria-label={`UM ${row.label}`}
+                                                onChange={(event) => updateField(item.id, 'um', event.target.value)}
+                                            >
+                                                <option value="">UM</option>
+                                                {umOptiuni.map((opt) => (
+                                                    <option value={opt.valoare} key={opt.valoare}>{opt.label}</option>
+                                                ))}
+                                                {row.um && !umOptiuni.some((opt) => opt.valoare === row.um) ? (
+                                                    <option value={row.um}>{row.um}</option>
+                                                ) : null}
+                                            </select>
+                                            <select
+                                                className="preturi-grid-tva"
+                                                value={row.tva}
+                                                aria-label={`TVA ${row.label}`}
+                                                onChange={(event) => updateField(item.id, 'tva', event.target.value)}
+                                            >
+                                                <option value="">TVA</option>
+                                                {tvaOptiuni.map((opt) => (
+                                                    <option value={opt.valoare} key={opt.valoare}>{opt.label}</option>
+                                                ))}
+                                            </select>
+                                        </div>
+                                        <div className="preturi-variant-row-actions">
+                                            {lipsestePret ? <small className="preturi-missing">fără preț</small> : null}
+                                            {!lipsestePret && lipsesteUm ? <small className="preturi-missing">fără UM</small> : null}
+                                            {!lipsestePret && !lipsesteUm && lipsesteTva ? <small className="preturi-missing">fără TVA</small> : null}
+                                            <button
+                                                type="button"
+                                                className="delete-inline-button"
+                                                aria-label={`Șterge ${row.label}`}
+                                                onClick={() => deleteVariant(item, group)}
+                                            >
+                                                <Trash2 size={14} strokeWidth={2.4} />
+                                            </button>
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    </section>
+                ))}
             </div>
             {valori.length > 0 ? (
                 <div className="preturi-grid-actions">
@@ -278,7 +353,7 @@ export default function ServiciiStandard({ tipActiv, tipuri = [], valori = [], t
     return (
         <AppLayout
             title={`Valori standard — ${activeTip?.label || ''}`}
-            subtitle={isPret ? 'Preț unitar, UM și TVA standard pentru fiecare denumire de serviciu' : 'Valorile apar ca dropdown la configurarea liniilor de anexă'}
+            subtitle={isPret ? 'Preț unitar, coeficient % cantitate, UM și TVA pentru fiecare serviciu' : 'Valorile apar ca dropdown la configurarea liniilor de anexă'}
             showGlobalSearch={false}
             topbarActions={topbarActions}
         >
@@ -287,7 +362,7 @@ export default function ServiciiStandard({ tipActiv, tipuri = [], valori = [], t
 
                 {isPret ? (
                     <>
-                        <p className="standard-values-note">Lista urmează denumirile din tab-ul Denumire serviciu. Setează prețul, moneda, UM și TVA pentru fiecare serviciu. Prețurile în EUR se convertesc automat la lei pe anexă folosind cursul valutar.</p>
+                        <p className="standard-values-note">Poți adăuga mai multe variante de preț pe aceeași denumire de serviciu. Coeficientul % cantitate se aplică la generarea anexei (ex. 20 = 20% din consumul contorului). Alege varianta în editarea anexei.</p>
                         {valori.length === 0 ? (
                             <p className="preturi-grid-empty">Nu există denumiri de serviciu. Adaugă servicii în tab-ul Denumire serviciu.</p>
                         ) : (

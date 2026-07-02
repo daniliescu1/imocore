@@ -898,6 +898,7 @@ class SpatiuController extends Controller
             'ordine' => $linie->ordine,
             'tip_linie' => $linie->tip_linie,
             'denumire' => $linie->denumire,
+            'serviciu_standard_pret_id' => $linie->serviciu_standard_pret_id,
             'nr_crt' => $linie->nr_crt,
             'index_vechi' => $linie->index_vechi,
             'index_nou' => $linie->index_nou,

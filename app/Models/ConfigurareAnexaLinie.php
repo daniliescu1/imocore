@@ -14,6 +14,7 @@ class ConfigurareAnexaLinie extends Model
         'ordine',
         'tip_linie',
         'denumire',
+        'serviciu_standard_pret_id',
         'nr_crt',
         'index_vechi',
         'index_nou',
@@ -44,5 +45,10 @@ class ConfigurareAnexaLinie extends Model
     public function configurare(): BelongsTo
     {
         return $this->belongsTo(ConfigurareAnexaImobil::class, 'configurare_anexa_id');
+    }
+
+    public function serviciuStandardPret(): BelongsTo
+    {
+        return $this->belongsTo(ServiciuStandardAnexa::class, 'serviciu_standard_pret_id');
     }
 }

@@ -7,6 +7,7 @@ const emptyAnexaLine = {
     tip_linie: 'serviciu',
     nr_crt: '',
     denumire: '',
+    serviciu_standard_pret_id: '',
     index_vechi: '',
     index_nou: '',
     facturat: '',
@@ -147,14 +148,28 @@ function pretUnitarFromStandard(standard, cursEur) {
     return standard.pret;
 }
 
-function standardForDenumire(denumire, serviciiStandard) {
-    if (!denumire) return null;
+function pretVariantsForDenumire(denumire, serviciiStandard) {
+    if (!denumire) {
+        return [];
+    }
 
     const key = normalizeDenumireKey(denumire);
-    const pretStandard = (serviciiStandard.pret || []).find(
-        (item) => normalizeDenumireKey(item.valoare) === key
-            || normalizeDenumireKey(item.label) === key,
+
+    return (serviciiStandard.pret || []).filter(
+        (item) => normalizeDenumireKey(item.denumire || item.valoare) === key,
     );
+}
+
+function standardForPretVariant(pretId, denumire, serviciiStandard) {
+    const variants = pretVariantsForDenumire(denumire, serviciiStandard);
+
+    if (variants.length === 0) {
+        return null;
+    }
+
+    const pretStandard = pretId
+        ? variants.find((item) => Number(item.id) === Number(pretId))
+        : variants[0];
 
     if (!pretStandard) {
         return null;
@@ -167,11 +182,23 @@ function standardForDenumire(denumire, serviciiStandard) {
     const um = pretStandard.um ? String(pretStandard.um).trim() : null;
     const moneda = pretStandard.moneda || 'RON';
 
-    return { pret, tva, um, moneda };
+    return {
+        id: pretStandard.id,
+        pret,
+        tva,
+        um,
+        moneda,
+        coeficient_cantitate: pretStandard.coeficient_cantitate,
+        label: pretStandard.label,
+    };
+}
+
+function standardForDenumire(denumire, serviciiStandard) {
+    return standardForPretVariant(null, denumire, serviciiStandard);
 }
 
 function applyStandardValuesToLine(line, serviciiStandard, cursEur = 5) {
-    const standard = standardForDenumire(line.denumire, serviciiStandard);
+    const standard = standardForPretVariant(line.serviciu_standard_pret_id, line.denumire, serviciiStandard);
 
     if (!standard) {
         return line;
@@ -181,6 +208,7 @@ function applyStandardValuesToLine(line, serviciiStandard, cursEur = 5) {
     const pretUnitar = pretUnitarFromStandard(standard, cursEur);
     const nextLine = {
         ...line,
+        serviciu_standard_pret_id: standard.id,
         moneda,
         ...(pretUnitar !== null ? { pret_unitar: pretUnitar } : {}),
         ...(standard.tva !== null && standard.tva !== '' ? { tva_21: standard.tva } : {}),
@@ -320,8 +348,37 @@ function formatLineForForm(line) {
         coeficient: isCoeficient
             ? (coeficientFallback(line.coeficient) || coeficientFallback(line.index_nou) || '0.09')
             : formatDecimalForInput(line.coeficient),
+        serviciu_standard_pret_id: line.serviciu_standard_pret_id ?? '',
         tva_21: normalizeTvaValue(line.tva_21),
     };
+}
+
+function PretVariantSelect({ linie, serviciiStandard, onChange }) {
+    const variants = pretVariantsForDenumire(linie.denumire, serviciiStandard);
+
+    if (variants.length === 0) {
+        return null;
+    }
+
+    const selectedId = linie.serviciu_standard_pret_id || variants[0]?.id || '';
+
+    return (
+        <select
+            className="annex-pret-variant-select"
+            value={selectedId}
+            aria-label="Variantă preț"
+            onChange={(event) => onChange(event.target.value)}
+        >
+            {variants.map((variant) => (
+                <option value={variant.id} key={variant.id}>
+                    {variant.label}
+                    {variant.coeficient_cantitate && String(variant.coeficient_cantitate) !== '100'
+                        ? ` · ${variant.coeficient_cantitate}% cant.`
+                        : ''}
+                </option>
+            ))}
+        </select>
+    );
 }
 
 function AnnexColumnHeader({ showActions = false, lineIndex = null, onMoveUp, onMoveDown, onRemove, canMoveUp = false, canMoveDown = false }) {
@@ -488,6 +545,10 @@ export default function Form({
             const nextLine = { ...linie, [field]: field === 'nr_crt' ? lineIndex + 1 : value };
 
             if (field === 'denumire') {
+                return applyStandardValuesToLine({ ...nextLine, serviciu_standard_pret_id: '' }, serviciiStandard, cursImplicit);
+            }
+
+            if (field === 'serviciu_standard_pret_id') {
                 return applyStandardValuesToLine(nextLine, serviciiStandard, cursImplicit);
             }
 
@@ -710,7 +771,12 @@ export default function Form({
                                         {linie.um && !unitati.some((opt) => opt.valoare === linie.um) ? <option value={linie.um}>{linie.um}</option> : null}
                                     </select>
                                 </label>
-                                <label className="form-field annex-line-small">
+                                <label className="form-field annex-line-small annex-pret-field">
+                                    <PretVariantSelect
+                                        linie={linie}
+                                        serviciiStandard={serviciiStandard}
+                                        onChange={(value) => updateLine(lineIndex, 'serviciu_standard_pret_id', value)}
+                                    />
                                     <input type="number" step="0.0001" value={linie.pret_unitar ?? ''} aria-label="Preț unitar" onChange={(event) => updateLine(lineIndex, 'pret_unitar', event.target.value)} />
                                 </label>
                                 <label className="form-field annex-line-small">
@@ -795,7 +861,12 @@ export default function Form({
                                         {linie.um && !unitati.some((opt) => opt.valoare === linie.um) ? <option value={linie.um}>{linie.um}</option> : null}
                                     </select>
                                 </label>
-                                <label className="form-field annex-line-small">
+                                <label className="form-field annex-line-small annex-pret-field">
+                                    <PretVariantSelect
+                                        linie={linie}
+                                        serviciiStandard={serviciiStandard}
+                                        onChange={(value) => updateLine(lineIndex, 'serviciu_standard_pret_id', value)}
+                                    />
                                     <input type="number" step="0.0001" value={linie.pret_unitar ?? ''} aria-label="Preț unitar" onChange={(event) => updateLine(lineIndex, 'pret_unitar', event.target.value)} />
                                 </label>
                                 <label className="form-field annex-line-small">

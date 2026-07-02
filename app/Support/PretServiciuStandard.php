@@ -4,6 +4,7 @@ namespace App\Support;
 
 use App\Models\ConfigurareAnexaLinie;
 use App\Models\Factura;
+use App\Models\ServiciuStandardAnexa;
 use App\Models\SetareAplicatie;
 
 class PretServiciuStandard
@@ -59,7 +60,7 @@ class PretServiciuStandard
     }
 
     public static function propagateToLinii(
-        string $denumire,
+        ServiciuStandardAnexa $pretRecord,
         mixed $coeficient,
         ?string $moneda,
         ?string $tva,
@@ -77,9 +78,23 @@ class PretServiciuStandard
             'um' => $um,
         ], fn ($value) => $value !== null && $value !== '');
 
-        if ($updates !== []) {
+        if ($updates === []) {
+            return;
+        }
+
+        $linkedQuery = ConfigurareAnexaLinie::query()
+            ->where('serviciu_standard_pret_id', $pretRecord->id);
+
+        if ($linkedQuery->exists()) {
+            $linkedQuery->update($updates);
+        } else {
             ConfigurareAnexaLinie::query()
-                ->where('denumire', $denumire)
+                ->where('denumire', $pretRecord->valoare)
+                ->whereNull('serviciu_standard_pret_id')
+                ->when(
+                    ServiciuStandardAnexa::variantLabel($pretRecord) !== 'Standard',
+                    fn ($query) => $query->whereRaw('0 = 1'),
+                )
                 ->update($updates);
         }
 
@@ -88,18 +103,24 @@ class PretServiciuStandard
         }
 
         $valoareLei = self::valoareLeiDinPretEur($coeficient, $curs);
-
-        ConfigurareAnexaLinie::query()
-            ->where('denumire', $denumire)
+        $eurQuery = ConfigurareAnexaLinie::query()
+            ->where(function ($query) use ($pretRecord): void {
+                $query->where('serviciu_standard_pret_id', $pretRecord->id)
+                    ->orWhere(function ($query) use ($pretRecord): void {
+                        $query->where('denumire', $pretRecord->valoare)
+                            ->whereNull('serviciu_standard_pret_id');
+                    });
+            })
             ->where(function ($query): void {
                 $query->whereRaw('lower(trim(tip_calcul)) = ?', ['fix'])
                     ->orWhereRaw('lower(trim(tip_calcul)) = ?', ['administrare'])
                     ->orWhereRaw('lower(trim(tip_calcul)) = ?', ['manual'])
                     ->orWhereRaw('lower(trim(tip_calcul)) = ?', ['zero']);
-            })
-            ->update([
-                'facturat' => $coeficient,
-                'valoare' => $valoareLei,
-            ]);
+            });
+
+        $eurQuery->update([
+            'facturat' => $coeficient,
+            'valoare' => $valoareLei,
+        ]);
     }
 }
