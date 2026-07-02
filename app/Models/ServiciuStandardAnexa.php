@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Support\CoeficientCantitatePret;
+use App\Support\PretGunoiMenajer;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
@@ -34,6 +35,7 @@ class ServiciuStandardAnexa extends Model
         'label',
         'coeficient',
         'coeficient_cantitate',
+        'pret_persoana_suplimentara',
         'moneda',
         'tva',
         'um',
@@ -46,7 +48,13 @@ class ServiciuStandardAnexa extends Model
         'ordine' => 'integer',
         'coeficient' => 'decimal:4',
         'coeficient_cantitate' => 'decimal:4',
+        'pret_persoana_suplimentara' => 'decimal:4',
     ];
+
+    public static function isGunoiMenajer(?string $denumire): bool
+    {
+        return PretGunoiMenajer::isGunoiMenajer($denumire);
+    }
 
     public function liniiConfigurare(): HasMany
     {
@@ -251,6 +259,25 @@ class ServiciuStandardAnexa extends Model
         return CoeficientCantitatePret::toMultiplier($item?->coeficient_cantitate);
     }
 
+    public static function pretPersoanaSuplimentaraPentruPret(?int $pretId, ?string $denumire = null): ?float
+    {
+        $item = $pretId
+            ? static::query()->whereKey($pretId)->where('tip', self::TIP_PRET)->first()
+            : ($denumire ? self::pretRecordPentruDenumire($denumire) : null);
+
+        if (! $item || ! self::isGunoiMenajer($item->valoare)) {
+            return null;
+        }
+
+        $pret = $item->pret_persoana_suplimentara;
+
+        if ($pret === null || $pret === '') {
+            return null;
+        }
+
+        return (float) $pret;
+    }
+
     public static function pretRecordPentruDenumire(string $denumire, ?int $pretId = null): ?self
     {
         if ($pretId) {
@@ -295,6 +322,9 @@ class ServiciuStandardAnexa extends Model
             'coeficient' => $item->coeficient,
             'coeficient_cantitate' => $item->tip === self::TIP_PRET
                 ? CoeficientCantitatePret::toPercentForForm($item->coeficient_cantitate)
+                : null,
+            'pret_persoana_suplimentara' => $item->tip === self::TIP_PRET && self::isGunoiMenajer($item->valoare)
+                ? PretGunoiMenajer::normalizePretOptional($item->pret_persoana_suplimentara)
                 : null,
             'moneda' => $item->tip === self::TIP_PRET
                 ? \App\Support\PretServiciuStandard::normalizeMoneda($item->moneda)

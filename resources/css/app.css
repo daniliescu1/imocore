@@ -3697,6 +3697,20 @@ tr:last-child td {
     padding: 4px 6px;
 }
 
+.preturi-variant-row-gunoi {
+    grid-template-columns: minmax(120px, 1.2fr) minmax(150px, 1fr) minmax(130px, 0.85fr) minmax(110px, 0.7fr) minmax(180px, 1fr) auto;
+}
+
+.preturi-gunoi-sup-field {
+    grid-template-columns: 1fr auto;
+}
+
+@media (max-width: 1100px) {
+    .preturi-variant-row-gunoi {
+        grid-template-columns: 1fr;
+    }
+}
+
 @media (max-width: 1100px) {
     .preturi-variant-row {
         grid-template-columns: 1fr;

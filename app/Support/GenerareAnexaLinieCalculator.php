@@ -142,9 +142,19 @@ class GenerareAnexaLinieCalculator
         }
 
         if ($cantitate !== null && $pretUnitar !== null && $moneda !== PretServiciuStandard::MONEDA_EUR) {
-            $valoare = (float) $cantitate * (float) $pretUnitar;
+            $valoare = self::valoarePentruLinie(
+                $tipCalcul,
+                (float) $cantitate,
+                (float) $pretUnitar,
+                $linieConfigurata,
+            );
         } elseif ($cantitate !== null && $pretUnitar !== null && $moneda === PretServiciuStandard::MONEDA_EUR && ! TipCalculAnexa::folosesteFacturatDinTemplate($tipCalcul)) {
-            $valoare = (float) $cantitate * (float) $pretUnitar;
+            $valoare = self::valoarePentruLinie(
+                $tipCalcul,
+                (float) $cantitate,
+                (float) $pretUnitar,
+                $linieConfigurata,
+            );
         }
 
         $valoare = (float) ($valoare ?? 0);
@@ -232,5 +242,32 @@ class GenerareAnexaLinieCalculator
         }
 
         return round((float) $cantitate * $multiplier, 3);
+    }
+
+    private static function valoarePentruLinie(
+        ?string $tipCalcul,
+        float $cantitate,
+        float $pretUnitar,
+        ConfigurareAnexaLinie $linieConfigurata,
+    ): float {
+        if ($tipCalcul === 'persoane' && ServiciuStandardAnexa::isGunoiMenajer($linieConfigurata->denumire)) {
+            $pretSuplimentar = ServiciuStandardAnexa::pretPersoanaSuplimentaraPentruPret(
+                $linieConfigurata->serviciu_standard_pret_id,
+                (string) $linieConfigurata->denumire,
+            );
+
+            if ($pretSuplimentar !== null) {
+                $moneda = PretServiciuStandard::normalizeMoneda($linieConfigurata->moneda);
+
+                if ($moneda === PretServiciuStandard::MONEDA_EUR) {
+                    $curs = PretServiciuStandard::cursEur();
+                    $pretSuplimentar = (float) PretServiciuStandard::pretUnitarLei((string) $pretSuplimentar, $moneda, $curs);
+                }
+
+                return PretGunoiMenajer::valoarePentruPersoane($cantitate, $pretUnitar, $pretSuplimentar);
+            }
+        }
+
+        return $cantitate * $pretUnitar;
     }
 }

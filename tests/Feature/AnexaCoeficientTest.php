@@ -167,6 +167,90 @@ class AnexaCoeficientTest extends TestCase
         $this->assertEquals(298.92, round((float) $linie->valoare, 2));
     }
 
+    public function test_generarea_anexei_calculeaza_gunoi_menajer_cu_pret_persoana_suplimentara(): void
+    {
+        $variant = ServiciuStandardAnexa::query()->create([
+            'tip' => ServiciuStandardAnexa::TIP_PRET,
+            'valoare' => 'Servicii Gunoi Menajer',
+            'label' => 'Dumbravita',
+            'coeficient' => 51.89,
+            'pret_persoana_suplimentara' => 25,
+            'activ' => true,
+        ]);
+
+        $anexa = $this->genereazaAnexa([
+            'suprafata_contractuala_mp' => '100',
+            'persoane_declarate' => 3,
+        ], [
+            [
+                'denumire' => 'Servicii Gunoi Menajer',
+                'serviciu_standard_pret_id' => $variant->id,
+                'tip_calcul' => 'persoane',
+                'um' => 'PERS',
+                'pret_unitar' => 51.89,
+                'ordine' => 1,
+                'nr_crt' => 1,
+            ],
+        ]);
+
+        $linie = $anexa->linii->first();
+
+        $this->assertEquals(3, (float) $linie->cantitate);
+        $this->assertEquals(101.89, round((float) $linie->valoare, 2));
+    }
+
+    public function test_generarea_anexei_pastreaza_gunoi_menajer_fara_pret_suplimentar(): void
+    {
+        $anexa = $this->genereazaAnexa([
+            'suprafata_contractuala_mp' => '100',
+            'persoane_declarate' => 3,
+        ], [
+            [
+                'denumire' => 'Servicii Gunoi Menajer',
+                'tip_calcul' => 'persoane',
+                'um' => 'PERS',
+                'pret_unitar' => 51.89,
+                'ordine' => 1,
+                'nr_crt' => 1,
+            ],
+        ]);
+
+        $linie = $anexa->linii->first();
+
+        $this->assertEquals(3, (float) $linie->cantitate);
+        $this->assertEquals(155.67, round((float) $linie->valoare, 2));
+    }
+
+    public function test_generarea_anexei_ignora_pret_suplimentar_pentru_alte_servicii_pe_persoane(): void
+    {
+        $variant = ServiciuStandardAnexa::query()->create([
+            'tip' => ServiciuStandardAnexa::TIP_PRET,
+            'valoare' => 'Curatenie Spatii Comune / pers',
+            'label' => 'Standard',
+            'coeficient' => 35.04,
+            'pret_persoana_suplimentara' => 25,
+            'activ' => true,
+        ]);
+
+        $anexa = $this->genereazaAnexa([
+            'persoane_declarate' => 2,
+        ], [
+            [
+                'denumire' => 'Curatenie Spatii Comune / pers',
+                'serviciu_standard_pret_id' => $variant->id,
+                'tip_calcul' => 'persoane',
+                'um' => 'Pers',
+                'pret_unitar' => 35.04,
+                'ordine' => 1,
+                'nr_crt' => 1,
+            ],
+        ]);
+
+        $linie = $anexa->linii->first();
+
+        $this->assertEquals(70.08, round((float) $linie->valoare, 2));
+    }
+
     public function test_generarea_anexei_foloseste_persoane_declarate_pe_acoperis(): void
     {
         $anexa = $this->genereazaAnexa([

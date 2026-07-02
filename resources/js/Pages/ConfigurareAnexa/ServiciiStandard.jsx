@@ -5,6 +5,12 @@ import AppLayout from '../../Layouts/AppLayout';
 import ConfigurareAnexaTabs from '../../Components/ConfigurareAnexaTabs';
 import { formatDecimal } from '../../lib/formatDecimal';
 
+const GUNOI_MENAJER_DENUMIRE = 'Servicii Gunoi Menajer';
+
+function isGunoiMenajer(denumire) {
+    return String(denumire || '').trim().toLowerCase() === GUNOI_MENAJER_DENUMIRE.toLowerCase();
+}
+
 function hasPret(value) {
     return value !== null && value !== undefined && String(value).trim() !== '';
 }
@@ -29,6 +35,7 @@ function PreturiGrid({ valori, tvaOptiuni = [], umOptiuni = [] }) {
         Object.fromEntries(valori.map((item) => [item.id, {
             label: item.label || 'Standard',
             pret: formatDecimal(item.coeficient),
+            pret_persoana_suplimentara: formatDecimal(item.pret_persoana_suplimentara),
             coeficient_cantitate: item.coeficient_cantitate ?? '100',
             moneda: item.moneda || 'RON',
             tva: item.tva || '',
@@ -41,6 +48,7 @@ function PreturiGrid({ valori, tvaOptiuni = [], umOptiuni = [] }) {
         setPreturi(Object.fromEntries(valori.map((item) => [item.id, {
             label: item.label || 'Standard',
             pret: formatDecimal(item.coeficient),
+            pret_persoana_suplimentara: formatDecimal(item.pret_persoana_suplimentara),
             coeficient_cantitate: item.coeficient_cantitate ?? '100',
             moneda: item.moneda || 'RON',
             tva: item.tva || '',
@@ -59,10 +67,10 @@ function PreturiGrid({ valori, tvaOptiuni = [], umOptiuni = [] }) {
         updateField(id, 'pret', value.replace(',', '.'));
     }
 
-    function blurPret(id) {
+    function blurPret(id, field = 'pret') {
         setPreturi((current) => ({
             ...current,
-            [id]: { ...current[id], pret: formatDecimal(current[id]?.pret) },
+            [id]: { ...current[id], [field]: formatDecimal(current[id]?.[field]) },
         }));
     }
 
@@ -73,6 +81,9 @@ function PreturiGrid({ valori, tvaOptiuni = [], umOptiuni = [] }) {
                 id: item.id,
                 label: preturi[item.id]?.label || item.label || 'Standard',
                 coeficient: formatDecimal(preturi[item.id]?.pret) || '',
+                pret_persoana_suplimentara: isGunoiMenajer(item.valoare)
+                    ? formatDecimal(preturi[item.id]?.pret_persoana_suplimentara) || ''
+                    : '',
                 coeficient_cantitate: formatDecimal(preturi[item.id]?.coeficient_cantitate) || '100',
                 moneda: preturi[item.id]?.moneda || 'RON',
                 tva: preturi[item.id]?.tva || '',
@@ -131,9 +142,11 @@ function PreturiGrid({ valori, tvaOptiuni = [], umOptiuni = [] }) {
                         </div>
                         <div className="preturi-variant-rows">
                             {group.variants.map((item) => {
+                                const isGunoi = isGunoiMenajer(group.denumire);
                                 const row = preturi[item.id] || {
                                     label: item.label,
                                     pret: '',
+                                    pret_persoana_suplimentara: '',
                                     coeficient_cantitate: '100',
                                     moneda: 'RON',
                                     tva: '',
@@ -144,7 +157,7 @@ function PreturiGrid({ valori, tvaOptiuni = [], umOptiuni = [] }) {
                                 const lipsesteUm = !hasPret(row.um);
 
                                 return (
-                                    <div className="preturi-variant-row" key={item.id}>
+                                    <div className={`preturi-variant-row${isGunoi ? ' preturi-variant-row-gunoi' : ''}`} key={item.id}>
                                         <input
                                             type="text"
                                             className="preturi-variant-label"
@@ -159,7 +172,7 @@ function PreturiGrid({ valori, tvaOptiuni = [], umOptiuni = [] }) {
                                                 className="preturi-grid-input"
                                                 value={row.pret}
                                                 placeholder="—"
-                                                aria-label={`Preț ${row.label}`}
+                                                aria-label={isGunoi ? `Preț prima persoană ${row.label}` : `Preț ${row.label}`}
                                                 onChange={(event) => updatePret(item.id, event.target.value)}
                                                 onBlur={() => blurPret(item.id)}
                                             />
@@ -175,6 +188,21 @@ function PreturiGrid({ valori, tvaOptiuni = [], umOptiuni = [] }) {
                                                 </select>
                                             </span>
                                         </div>
+                                        {isGunoi ? (
+                                            <div className="preturi-grid-field preturi-gunoi-sup-field">
+                                                <input
+                                                    type="text"
+                                                    inputMode="decimal"
+                                                    className="preturi-grid-input"
+                                                    value={row.pret_persoana_suplimentara ?? ''}
+                                                    placeholder="—"
+                                                    aria-label={`Preț persoană suplimentară ${row.label}`}
+                                                    onChange={(event) => updateField(item.id, 'pret_persoana_suplimentara', event.target.value.replace(',', '.'))}
+                                                    onBlur={() => blurPret(item.id, 'pret_persoana_suplimentara')}
+                                                />
+                                                <span className="preturi-grid-unit">lei / pers. supl.</span>
+                                            </div>
+                                        ) : null}
                                         <div className="preturi-grid-field preturi-coef-field">
                                             <input
                                                 type="text"
@@ -362,7 +390,7 @@ export default function ServiciiStandard({ tipActiv, tipuri = [], valori = [], t
 
                 {isPret ? (
                     <>
-                        <p className="standard-values-note">Poți adăuga mai multe variante de preț pe aceeași denumire de serviciu. Coeficientul % cantitate se aplică la generarea anexei (ex. 20 = 20% din consumul contorului). Alege varianta în editarea anexei.</p>
+                        <p className="standard-values-note">Poți adăuga mai multe variante de preț pe aceeași denumire de serviciu. Coeficientul % cantitate se aplică la generarea anexei (ex. 20 = 20% din consumul contorului). La «Servicii Gunoi Menajer» poți seta opțional preț pentru persoana suplimentară; dacă îl lași gol, se facturează același preț pentru fiecare persoană. Alege varianta în editarea anexei.</p>
                         {valori.length === 0 ? (
                             <p className="preturi-grid-empty">Nu există denumiri de serviciu. Adaugă servicii în tab-ul Denumire serviciu.</p>
                         ) : (

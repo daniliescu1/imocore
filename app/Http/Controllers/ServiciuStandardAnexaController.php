@@ -7,6 +7,7 @@ use App\Models\Factura;
 use App\Models\ServiciuStandardAnexa;
 use App\Models\SetareAplicatie;
 use App\Support\CoeficientCantitatePret;
+use App\Support\PretGunoiMenajer;
 use App\Support\PretServiciuStandard;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -62,6 +63,10 @@ class ServiciuStandardAnexaController extends Controller
                     'coeficient_cantitate' => $tip === ServiciuStandardAnexa::TIP_PRET
                         ? CoeficientCantitatePret::toPercentForForm($item->coeficient_cantitate)
                         : null,
+                    'pret_persoana_suplimentara' => $tip === ServiciuStandardAnexa::TIP_PRET
+                        && ServiciuStandardAnexa::isGunoiMenajer($item->valoare)
+                        ? PretGunoiMenajer::normalizePretOptional($item->pret_persoana_suplimentara)
+                        : null,
                     'moneda' => $tip === ServiciuStandardAnexa::TIP_PRET
                         ? PretServiciuStandard::normalizeMoneda($item->moneda)
                         : null,
@@ -112,6 +117,7 @@ class ServiciuStandardAnexaController extends Controller
             'preturi.*.label' => ['nullable', 'string', 'max:255'],
             'preturi.*.coeficient' => ['nullable', 'string', 'max:32'],
             'preturi.*.coeficient_cantitate' => ['nullable', 'string', 'max:32'],
+            'preturi.*.pret_persoana_suplimentara' => ['nullable', 'string', 'max:32'],
             'preturi.*.moneda' => ['nullable', 'string', 'in:RON,EUR'],
             'preturi.*.tva' => ['nullable', 'string', 'max:16'],
             'preturi.*.um' => ['nullable', 'string', 'max:32'],
@@ -147,11 +153,15 @@ class ServiciuStandardAnexaController extends Controller
             $label = trim((string) ($pret['label'] ?? $item->label ?? 'Standard'));
             $label = $label === '' ? 'Standard' : $label;
             $coeficientCantitate = CoeficientCantitatePret::normalizeForSave($pret['coeficient_cantitate'] ?? $item->coeficient_cantitate);
+            $pretPersoanaSuplimentara = ServiciuStandardAnexa::isGunoiMenajer($item->valoare)
+                ? PretGunoiMenajer::normalizePretOptional($pret['pret_persoana_suplimentara'] ?? null)
+                : null;
 
             $item->update([
                 'label' => $label,
                 'coeficient' => $coeficient,
                 'coeficient_cantitate' => $coeficientCantitate,
+                'pret_persoana_suplimentara' => $pretPersoanaSuplimentara,
                 'moneda' => $moneda,
                 'tva' => $tva,
                 'um' => $um,
@@ -179,6 +189,7 @@ class ServiciuStandardAnexaController extends Controller
             'label' => ['required', 'string', 'max:255'],
             'coeficient' => ['nullable', 'string', 'max:32'],
             'coeficient_cantitate' => ['nullable', 'string', 'max:32'],
+            'pret_persoana_suplimentara' => ['nullable', 'string', 'max:32'],
             'moneda' => ['nullable', 'string', 'in:RON,EUR'],
             'tva' => ['nullable', 'string', 'max:16'],
             'um' => ['nullable', 'string', 'max:32'],
@@ -221,6 +232,9 @@ class ServiciuStandardAnexaController extends Controller
             'label' => $label,
             'coeficient' => $coeficient,
             'coeficient_cantitate' => CoeficientCantitatePret::normalizeForSave($validated['coeficient_cantitate'] ?? null),
+            'pret_persoana_suplimentara' => ServiciuStandardAnexa::isGunoiMenajer($denumire)
+                ? PretGunoiMenajer::normalizePretOptional($validated['pret_persoana_suplimentara'] ?? null)
+                : null,
             'moneda' => PretServiciuStandard::normalizeMoneda($validated['moneda'] ?? null),
             'tva' => $tva,
             'um' => $um,
