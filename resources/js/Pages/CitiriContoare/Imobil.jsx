@@ -53,6 +53,42 @@ function formatDecimalForInput(value) {
     return normalized.replace(/(\.\d*?)0+$/, '$1').replace(/\.$/, '');
 }
 
+function citireKey(spatiuId, linieId) {
+    const spatiuKey = spatiuId === null || spatiuId === undefined || spatiuId === '' ? 'imobil' : String(spatiuId);
+
+    return `${spatiuKey}:${linieId}`;
+}
+
+function citireIndexForIn(citiri, spatiuId, linieId) {
+    return citiri.findIndex((citire) => (
+        (citire.spatiu_id === null || citire.spatiu_id === undefined || citire.spatiu_id === ''
+            ? spatiuId === null || spatiuId === undefined || spatiuId === ''
+            : Number(citire.spatiu_id) === Number(spatiuId))
+        && Number(citire.configurare_anexa_linie_id) === Number(linieId)
+    ));
+}
+
+function buildCitireFromReferinta(spatiuId, linieId, tipCalcul, referinta) {
+    const base = {
+        spatiu_id: spatiuId,
+        configurare_anexa_linie_id: linieId,
+        tip_calcul: tipCalcul,
+    };
+
+    if (isPausalTip(tipCalcul) || isContorFixTip(tipCalcul)) {
+        return {
+            ...base,
+            consum: formatDecimalForInput(referinta.consum),
+        };
+    }
+
+    return {
+        ...base,
+        index_vechi: formatDecimalForInput(referinta.index_vechi),
+        index_nou: formatDecimalForInput(referinta.index_nou),
+    };
+}
+
 function flattenCitiri(spatii, contoareConfigurabile = [], contoareFix = []) {
     const citiriSpatii = spatii.flatMap((spatiu) => (spatiu.liniiContor || []).map((linie) => {
         const base = {
@@ -115,8 +151,8 @@ function buildFormState({ imobilId, luna, dataCitire, spatii, contoareConfigurab
     };
 }
 
-function isLineEditable(linie) {
-    return Boolean(linie.editabila);
+function isLineEditable(linie, lunaInchisa) {
+    return ! lunaInchisa && Boolean(linie?.editabila !== false);
 }
 
 function formatLunaLabel(luna) {
@@ -219,6 +255,11 @@ export default function Imobil({
     lunaInchisa = false,
     luniSelectabile = [],
     luniCitite = [],
+    lunaUlterioara = null,
+    citiriLunaUlterioara = [],
+    poatePreiaDinLunaUlterioara = false,
+    poateStergeCitiriLuna = false,
+    areCitiriSalvate = false,
     spatii = [],
     contoareConfigurabile = [],
     contoareFix = [],
@@ -244,6 +285,7 @@ export default function Imobil({
         contoareFix,
     }));
     const [inchidereProcessing, setInchidereProcessing] = React.useState(false);
+    const [stergereProcessing, setStergereProcessing] = React.useState(false);
     const [search, setSearch] = React.useState(searchSpatiu || '');
 
     useEffect(() => {
@@ -343,6 +385,73 @@ export default function Imobil({
         });
     }
 
+    function preiaDinLunaUlterioara() {
+        if (!poatePreiaDinLunaUlterioara || !lunaUlterioara) {
+            return;
+        }
+
+        if (!window.confirm(`Preiei valorile din ${formatLunaLabel(lunaUlterioara)} în ${formatLunaLabel(data.luna)}? Le poți modifica înainte de salvare.`)) {
+            return;
+        }
+
+        const referinte = new Map(
+            (citiriLunaUlterioara || []).map((citire) => [
+                citireKey(citire.spatiu_id, citire.configurare_anexa_linie_id),
+                citire,
+            ]),
+        );
+        const updated = [...data.citiri];
+
+        function copiazaLinie(spatiuId, linie) {
+            const referinta = referinte.get(citireKey(spatiuId, linie.configurare_anexa_linie_id));
+
+            if (!referinta) {
+                return;
+            }
+
+            const entry = buildCitireFromReferinta(
+                spatiuId,
+                linie.configurare_anexa_linie_id,
+                linie.tip_calcul,
+                referinta,
+            );
+            const index = citireIndexForIn(updated, spatiuId, linie.configurare_anexa_linie_id);
+
+            if (index === -1) {
+                updated.push(entry);
+
+                return;
+            }
+
+            updated[index] = { ...updated[index], ...entry };
+        }
+
+        spatii.forEach((spatiu) => {
+            (spatiu.liniiContor || []).forEach((linie) => copiazaLinie(spatiu.id, linie));
+        });
+        (contoareConfigurabile || []).forEach((linie) => copiazaLinie(null, linie));
+        (contoareFix || []).forEach((linie) => copiazaLinie(linie.spatiu_id, linie));
+
+        setData('citiri', updated);
+    }
+
+    function stergeCitiriLuna() {
+        if (!poateStergeCitiriLuna) {
+            return;
+        }
+
+        if (!window.confirm(`Ștergi toate citirile salvate pentru ${formatLunaLabel(data.luna)}? Luna va rămâne goală.`)) {
+            return;
+        }
+
+        setStergereProcessing(true);
+        router.delete(`/citiri-contoare/imobil/${imobil.id}`, {
+            data: { luna: data.luna },
+            preserveScroll: true,
+            onFinish: () => setStergereProcessing(false),
+        });
+    }
+
     const randuriCitiri = useMemo(() => spatii.flatMap((spatiu) => (spatiu.liniiContor || []).map((linie) => ({
         spatiu,
         linie,
@@ -382,12 +491,18 @@ export default function Imobil({
     );
     const totalRanduri = randuriCitiri.length + randuriConfigurabile.length + randuriFix.length;
     const isNewMode = mode === 'new';
-    const hasEditableLines = !lunaInchisa && (
-        randuriCitiri.some(({ linie }) => isLineEditable(linie))
-        || randuriConfigurabile.some(({ linie }) => isLineEditable(linie))
-        || randuriFix.some(({ linie }) => isLineEditable(linie))
-    );
+    const lineEditable = (linie) => isLineEditable(linie, lunaInchisa);
+    const hasEditableLines = !lunaInchisa && totalRanduri > 0;
+    const canSaveCitiri = !lunaInchisa && totalRanduri > 0;
     const canCloseMonth = !lunaInchisa;
+    const arataButonPreia = isNewMode && !lunaInchisa;
+    const preiaButtonLabel = poatePreiaDinLunaUlterioara && lunaUlterioara
+        ? `Preia din ${formatLunaLabel(lunaUlterioara)}`
+        : 'Preia din luna ulterioară';
+    const preiaButtonTitle = poatePreiaDinLunaUlterioara
+        ? undefined
+        : 'Nu există citiri salvate pe o lună ulterioară pentru acest imobil.';
+    const stergeButtonLabel = `Șterge citiri ${formatLunaLabel(data.luna)}`;
 
     const topbarActions = (
         <>
@@ -413,6 +528,27 @@ export default function Imobil({
             <button className={isNewMode ? 'secondary-button' : 'primary-button'} type="button" onClick={() => reload({ mode: isNewMode ? 'history' : 'new' })}>
                 {isNewMode ? 'Vezi istoric' : 'Citire lună nouă'}
             </button>
+            {arataButonPreia ? (
+                <button
+                    className="secondary-button"
+                    type="button"
+                    disabled={!poatePreiaDinLunaUlterioara || processing || inchidereProcessing || stergereProcessing}
+                    title={preiaButtonTitle}
+                    onClick={preiaDinLunaUlterioara}
+                >
+                    {preiaButtonLabel}
+                </button>
+            ) : null}
+            {poateStergeCitiriLuna ? (
+                <button
+                    className="delete-all-header-button"
+                    type="button"
+                    disabled={processing || inchidereProcessing || stergereProcessing}
+                    onClick={stergeCitiriLuna}
+                >
+                    {stergereProcessing ? 'Se șterg...' : stergeButtonLabel}
+                </button>
+            ) : null}
         </>
     );
 
@@ -465,7 +601,7 @@ export default function Imobil({
                                         </thead>
                                         <tbody>
                                             {filteredRanduriConfigurabile.map(({ linie }) => {
-                                                const editable = isLineEditable(linie);
+                                                const editable = lineEditable(linie);
                                                 const pausal = isPausalTip(linie.tip_calcul) || linie.is_pausal;
                                                 const citire = data.citiri[citireIndexFor(null, linie.configurare_anexa_linie_id)] || (
                                                     pausal
@@ -578,7 +714,7 @@ export default function Imobil({
                                         </thead>
                                         <tbody>
                                             {filteredRanduriFix.map(({ linie }) => {
-                                                const editable = isLineEditable(linie);
+                                                const editable = lineEditable(linie);
                                                 const citire = data.citiri[citireIndexFor(linie.spatiu_id, linie.configurare_anexa_linie_id)] || {
                                                     consum: formatDecimalForInput(linie.consum),
                                                 };
@@ -635,7 +771,7 @@ export default function Imobil({
                                 <tbody>
                                     {filteredRanduriCitiri.map(({ spatiu, linie }) => {
                                         const pausal = isPausalTip(linie.tip_calcul);
-                                        const editable = isLineEditable(linie);
+                                        const editable = lineEditable(linie);
                                         const citire = data.citiri[citireIndexFor(spatiu.id, linie.configurare_anexa_linie_id)] || (
                                             pausal
                                                 ? { consum: formatDecimalForInput(linie.consum) }
@@ -751,8 +887,29 @@ export default function Imobil({
                             <input type="datetime-local" value={data.data_citire} onChange={(event) => setData('data_citire', event.target.value)} />
                         </label>
                         <div className="form-actions">
-                            {hasEditableLines ? (
-                                <button className="primary-button" type="submit" disabled={processing || data.citiri.length === 0}>
+                            {arataButonPreia ? (
+                                <button
+                                    className="secondary-button"
+                                    type="button"
+                                    disabled={!poatePreiaDinLunaUlterioara || processing || inchidereProcessing || stergereProcessing}
+                                    title={preiaButtonTitle}
+                                    onClick={preiaDinLunaUlterioara}
+                                >
+                                    {preiaButtonLabel}
+                                </button>
+                            ) : null}
+                            {poateStergeCitiriLuna ? (
+                                <button
+                                    className="delete-all-header-button"
+                                    type="button"
+                                    disabled={processing || inchidereProcessing || stergereProcessing}
+                                    onClick={stergeCitiriLuna}
+                                >
+                                    {stergereProcessing ? 'Se șterg...' : stergeButtonLabel}
+                                </button>
+                            ) : null}
+                            {canSaveCitiri ? (
+                                <button className="primary-button" type="submit" disabled={processing || stergereProcessing || data.citiri.length === 0}>
                                     {processing ? 'Se salvează...' : `Salvează citirea ${formatLunaLabel(data.luna)}`}
                                 </button>
                             ) : null}
@@ -760,7 +917,7 @@ export default function Imobil({
                                 <button
                                     className="secondary-button"
                                     type="button"
-                                    disabled={inchidereProcessing || processing}
+                                    disabled={inchidereProcessing || processing || stergereProcessing}
                                     onClick={inchideCitirile}
                                 >
                                     {inchidereProcessing ? 'Se salvează și închide...' : `Salvează și închide ${formatLunaLabel(data.luna)}`}

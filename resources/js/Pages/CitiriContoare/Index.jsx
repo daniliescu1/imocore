@@ -108,7 +108,7 @@ export default function Index({
                                 <tr>
                                     <th>Imobil</th>
                                     <th>Contoare de citit</th>
-                                    <th>Ultima lună citită</th>
+                                    <th>Ultima lună închisă</th>
                                 </tr>
                             </thead>
                             <tbody>

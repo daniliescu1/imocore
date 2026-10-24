@@ -71,6 +71,7 @@ Route::get('/citiri-contoare', [CitireContorController::class, 'index'])->name('
 Route::get('/citiri-contoare/imobil/{imobil}', [CitireContorController::class, 'imobil'])->name('citiri-contoare.imobil');
 Route::post('/citiri-contoare', [CitireContorController::class, 'store'])->name('citiri-contoare.store');
 Route::post('/citiri-contoare/inchide', [CitireContorController::class, 'inchide'])->name('citiri-contoare.inchide');
+Route::delete('/citiri-contoare/imobil/{imobil}', [CitireContorController::class, 'destroyLuna'])->name('citiri-contoare.luna.destroy');
 Route::get('/configurare-contoare', [ConfigurareContoareController::class, 'index'])->name('configurare-contoare.index');
 Route::get('/configurare-contoare/imobil/{imobil}', [ConfigurareContoareController::class, 'imobil'])->name('configurare-contoare.imobil');
 Route::get('/configurare-contoare/imobil/{imobil}/contor/{contorConfigurabil}', [ConfigurareContoareController::class, 'contor'])->name('configurare-contoare.contor');

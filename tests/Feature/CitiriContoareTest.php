@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\CitireContor;
+use App\Models\CitireContorLunaInchisa;
 use App\Support\ContorConfigurabilSync;
 use App\Models\ConfigurareAnexaImobil;
 use App\Models\ConfigurareAnexaLinie;
@@ -15,6 +16,286 @@ use Tests\TestCase;
 class CitiriContoareTest extends TestCase
 {
     use RefreshDatabase;
+
+    public function test_indexul_citiri_contoare_afiseaza_ultima_luna_inchisa(): void
+    {
+        $imobil = $this->creeazaImobil();
+        $configurare = $this->creeazaConfigurare($imobil);
+        $linie = $this->creeazaLinieContor($configurare, 'Apă rece');
+        $spatiu = $this->creeazaSpatiu($imobil, $configurare);
+        $spatiu->update(['status' => 'inchiriat']);
+
+        CitireContor::query()->create([
+            'spatiu_id' => $spatiu->id,
+            'configurare_anexa_linie_id' => $linie->id,
+            'luna' => '2026-05',
+            'index_vechi' => 100,
+            'index_nou' => 120,
+            'consum' => 20,
+        ]);
+
+        CitireContor::query()->create([
+            'spatiu_id' => $spatiu->id,
+            'configurare_anexa_linie_id' => $linie->id,
+            'luna' => '2026-06',
+            'index_vechi' => 120,
+            'index_nou' => 140,
+            'consum' => 20,
+        ]);
+
+        CitireContorLunaInchisa::query()->create([
+            'imobil_id' => $imobil->id,
+            'luna' => '2026-05',
+            'inchis_at' => now(),
+        ]);
+
+        $this->get(route('citiri-contoare.index'))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('imobile.0.ultima_luna_citita', '2026-05')
+            );
+    }
+
+    public function test_pagina_imobil_ofera_citiri_luna_ulterioara_pentru_preia(): void
+    {
+        $imobil = $this->creeazaImobil();
+        $configurare = $this->creeazaConfigurare($imobil);
+        $linie = $this->creeazaLinieContor($configurare, 'Apă rece');
+        $spatiu = $this->creeazaSpatiu($imobil, $configurare);
+        $spatiu->update(['status' => 'inchiriat']);
+
+        CitireContor::query()->create([
+            'spatiu_id' => $spatiu->id,
+            'configurare_anexa_linie_id' => $linie->id,
+            'luna' => '2026-06',
+            'index_vechi' => 120,
+            'index_nou' => 140,
+            'consum' => 20,
+        ]);
+
+        $this->get(route('citiri-contoare.imobil', [
+            'imobil' => $imobil->id,
+            'mode' => 'new',
+            'luna' => '2026-05',
+        ]))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('luna', '2026-05')
+                ->where('lunaUlterioara', '2026-06')
+                ->where('poatePreiaDinLunaUlterioara', true)
+                ->has('citiriLunaUlterioara', 1)
+                ->where('citiriLunaUlterioara.0.index_vechi', fn ($value) => (float) $value === 120.0)
+                ->where('citiriLunaUlterioara.0.index_nou', fn ($value) => (float) $value === 140.0)
+                ->where('spatii.0.liniiContor.0.editabila', true)
+            );
+    }
+
+    public function test_luna_cu_citiri_salvata_raman_editabila_pana_la_inchidere_chiar_cu_luna_ulterioara(): void
+    {
+        $imobil = $this->creeazaImobil();
+        $configurare = $this->creeazaConfigurare($imobil);
+        $linie = $this->creeazaLinieContor($configurare, 'Apă rece');
+        $spatiu = $this->creeazaSpatiu($imobil, $configurare);
+        $spatiu->update(['status' => 'inchiriat']);
+
+        CitireContor::query()->create([
+            'spatiu_id' => $spatiu->id,
+            'configurare_anexa_linie_id' => $linie->id,
+            'luna' => '2026-05',
+            'index_vechi' => 100,
+            'index_nou' => 120,
+            'consum' => 20,
+        ]);
+
+        CitireContor::query()->create([
+            'spatiu_id' => $spatiu->id,
+            'configurare_anexa_linie_id' => $linie->id,
+            'luna' => '2026-06',
+            'index_vechi' => 120,
+            'index_nou' => 140,
+            'consum' => 20,
+        ]);
+
+        $this->get(route('citiri-contoare.imobil', [
+            'imobil' => $imobil->id,
+            'mode' => 'history',
+            'luna' => '2026-05',
+        ]))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('lunaInchisa', false)
+                ->where('spatii.0.liniiContor.0.editabila', true)
+            );
+    }
+
+    public function test_pagina_imobil_preia_din_prima_luna_cu_citiri_dupa_luna_selectata(): void
+    {
+        $imobil = $this->creeazaImobil();
+        $configurare = $this->creeazaConfigurare($imobil);
+        $linie = $this->creeazaLinieContor($configurare, 'Apă rece');
+        $spatiu = $this->creeazaSpatiu($imobil, $configurare);
+        $spatiu->update(['status' => 'inchiriat']);
+
+        CitireContor::query()->create([
+            'spatiu_id' => $spatiu->id,
+            'configurare_anexa_linie_id' => $linie->id,
+            'luna' => '2026-06',
+            'index_vechi' => 120,
+            'index_nou' => 140,
+            'consum' => 20,
+        ]);
+
+        CitireContor::query()->create([
+            'spatiu_id' => $spatiu->id,
+            'configurare_anexa_linie_id' => $linie->id,
+            'luna' => '2026-07',
+            'index_vechi' => 140,
+            'index_nou' => 160,
+            'consum' => 20,
+        ]);
+
+        $this->get(route('citiri-contoare.imobil', [
+            'imobil' => $imobil->id,
+            'mode' => 'new',
+            'luna' => '2026-05',
+        ]))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('luna', '2026-05')
+                ->where('lunaUlterioara', '2026-06')
+                ->where('poatePreiaDinLunaUlterioara', true)
+            );
+    }
+
+    public function test_salveaza_citiri_pe_luna_anterioara_chiar_daca_exista_luna_ulterioara(): void
+    {
+        $imobil = $this->creeazaImobil();
+        $configurare = $this->creeazaConfigurare($imobil);
+        $linie = $this->creeazaLinieContor($configurare, 'Curent');
+        $spatiu = $this->creeazaSpatiu($imobil, $configurare);
+        $spatiu->update(['status' => 'inchiriat']);
+
+        CitireContor::query()->create([
+            'spatiu_id' => $spatiu->id,
+            'configurare_anexa_linie_id' => $linie->id,
+            'luna' => '2026-06',
+            'index_vechi' => 120,
+            'index_nou' => 140,
+            'consum' => 20,
+        ]);
+
+        $this->post(route('citiri-contoare.store'), [
+            'imobil_id' => $imobil->id,
+            'luna' => '2026-05',
+            'data_citire' => '2026-05-20T14:30',
+            'citiri' => [[
+                'spatiu_id' => $spatiu->id,
+                'configurare_anexa_linie_id' => $linie->id,
+                'index_vechi' => 100,
+                'index_nou' => 120,
+            ]],
+        ])->assertRedirect();
+
+        $this->assertDatabaseHas('citiri_contoare', [
+            'spatiu_id' => $spatiu->id,
+            'configurare_anexa_linie_id' => $linie->id,
+            'luna' => '2026-05',
+            'index_vechi' => 100,
+            'index_nou' => 120,
+            'consum' => 20,
+        ]);
+    }
+
+    public function test_sterge_citiri_luna_neinchisa(): void
+    {
+        $imobil = $this->creeazaImobil();
+        $configurare = $this->creeazaConfigurare($imobil);
+        $linie = $this->creeazaLinieContor($configurare, 'Curent');
+        $spatiu = $this->creeazaSpatiu($imobil, $configurare);
+        $spatiu->update(['status' => 'inchiriat']);
+
+        CitireContor::query()->create([
+            'spatiu_id' => $spatiu->id,
+            'configurare_anexa_linie_id' => $linie->id,
+            'luna' => '2026-06',
+            'index_vechi' => 120,
+            'index_nou' => 140,
+            'consum' => 20,
+        ]);
+
+        $this->delete(route('citiri-contoare.luna.destroy', $imobil), [
+            'luna' => '2026-06',
+        ])->assertRedirect();
+
+        $this->assertDatabaseMissing('citiri_contoare', [
+            'spatiu_id' => $spatiu->id,
+            'configurare_anexa_linie_id' => $linie->id,
+            'luna' => '2026-06',
+        ]);
+    }
+
+    public function test_pagina_imobil_ofera_stergere_cand_luna_are_citiri_salvate(): void
+    {
+        $imobil = $this->creeazaImobil();
+        $configurare = $this->creeazaConfigurare($imobil);
+        $linie = $this->creeazaLinieContor($configurare, 'Curent');
+        $spatiu = $this->creeazaSpatiu($imobil, $configurare);
+        $spatiu->update(['status' => 'inchiriat']);
+
+        CitireContor::query()->create([
+            'spatiu_id' => $spatiu->id,
+            'configurare_anexa_linie_id' => $linie->id,
+            'luna' => '2026-06',
+            'index_vechi' => 120,
+            'index_nou' => 140,
+            'consum' => 20,
+        ]);
+
+        $this->get(route('citiri-contoare.imobil', [
+            'imobil' => $imobil->id,
+            'luna' => '2026-06',
+            'mode' => 'history',
+        ]))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('poateStergeCitiriLuna', true)
+                ->where('areCitiriSalvate', true)
+            );
+    }
+
+    public function test_nu_sterge_citiri_luna_inchisa(): void
+    {
+        $imobil = $this->creeazaImobil();
+        $configurare = $this->creeazaConfigurare($imobil);
+        $linie = $this->creeazaLinieContor($configurare, 'Curent');
+        $spatiu = $this->creeazaSpatiu($imobil, $configurare);
+        $spatiu->update(['status' => 'inchiriat']);
+
+        CitireContor::query()->create([
+            'spatiu_id' => $spatiu->id,
+            'configurare_anexa_linie_id' => $linie->id,
+            'luna' => '2026-05',
+            'index_vechi' => 100,
+            'index_nou' => 120,
+            'consum' => 20,
+        ]);
+
+        CitireContorLunaInchisa::query()->create([
+            'imobil_id' => $imobil->id,
+            'luna' => '2026-05',
+            'inchis_at' => now(),
+        ]);
+
+        $this->delete(route('citiri-contoare.luna.destroy', $imobil), [
+            'luna' => '2026-05',
+        ])->assertRedirect();
+
+        $this->assertDatabaseHas('citiri_contoare', [
+            'spatiu_id' => $spatiu->id,
+            'configurare_anexa_linie_id' => $linie->id,
+            'luna' => '2026-05',
+        ]);
+    }
 
     public function test_indexul_citiri_contoare_afiseaza_lista_de_imobile(): void
     {
@@ -353,7 +634,7 @@ class CitiriContoareTest extends TestCase
                 ->has('spatii.1.liniiContor', 1)
                 ->where('contoareConfigurabile.0.editabila', true)
                 ->where('contoareConfigurabile.0.configurare_anexa_linie_id', $linieNouaPausal->id)
-                ->where('spatii.0.liniiContor.0.editabila', false)
+                ->where('spatii.0.liniiContor.0.editabila', true)
             );
 
         $this->post(route('citiri-contoare.store'), [
