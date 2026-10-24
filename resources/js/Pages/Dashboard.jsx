@@ -82,7 +82,7 @@ export default function Dashboard({ today, stats, freeSpaces, overdue, endings }
     const { isOwner = false } = usePage().props;
 
     return (
-        <AppLayout title="Panou principal." subtitle={today}>
+        <AppLayout title="Panou principal" subtitle={today}>
             <div className="stats-grid">
                 <StatCard tone="total" icon={Building2} label="Spații totale" value={stats.total} />
                 <StatCard tone="free" icon={DoorOpen} label="Spații libere" value={stats.libere} href="/spatii?status=liber">
